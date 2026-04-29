@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "restaurant-qr-system",
+  "compatibility_date": "2026-04-29",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "restaurant-saas"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
