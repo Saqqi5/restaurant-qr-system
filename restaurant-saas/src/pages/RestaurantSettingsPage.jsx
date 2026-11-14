@@ -66,8 +66,9 @@ export default function RestaurantSettingsPage() {
         });
         setLogoPreview(r.logo_url || "");
       }
-      setLoaded(true);
-    });
+    })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, [restaurantId]);
   const [logoFile, setLogoFile]   = useState(null);
   const [logoPreview, setLogoPreview] = useState(restaurant?.logo_url || "");

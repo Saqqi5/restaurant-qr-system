@@ -19,17 +19,21 @@ export default function PlatformSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
+  // A failed read (e.g. rules not published yet) must not leave the page
+  // stuck on "Loading settings…" — the form opens with the defaults instead.
   useEffect(() => {
-    getPlatformSettings().then((s) => {
-      if (s) {
-        setForm({
-          basic: Number(s.basic ?? DEFAULT_PLAN_LIMITS.basic),
-          standard: Number(s.standard ?? DEFAULT_PLAN_LIMITS.standard),
-          unlimited: Number(s.unlimited ?? DEFAULT_PLAN_LIMITS.unlimited),
-        });
-      }
-      setLoaded(true);
-    });
+    getPlatformSettings()
+      .then((s) => {
+        if (s) {
+          setForm({
+            basic: Number(s.basic ?? DEFAULT_PLAN_LIMITS.basic),
+            standard: Number(s.standard ?? DEFAULT_PLAN_LIMITS.standard),
+            unlimited: Number(s.unlimited ?? DEFAULT_PLAN_LIMITS.unlimited),
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, []);
 
   async function handleSave(e) {
