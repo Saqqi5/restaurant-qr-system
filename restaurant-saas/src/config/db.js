@@ -69,7 +69,7 @@ export async function createRestaurant(data) {
     created_at: serverTimestamp(),
     active: true,
     plan: data.plan || "premium",
-    // 30-day period (Premium trial) — at expiry the login is blocked until
+    // 7-day period (Premium trial) — at expiry the login is blocked until
     // the super admin continues the plan (see continuePlan).
     plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
   };
