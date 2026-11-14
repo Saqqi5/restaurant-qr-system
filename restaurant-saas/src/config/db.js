@@ -29,6 +29,8 @@
  *   - restaurant_id, verified, created_at
  */
 
+import { expiryDateFrom } from "./plans";
+
 import {
   collection, doc, setDoc, updateDoc, deleteDoc,
   getDoc, getDocs, query, where, onSnapshot,
@@ -65,9 +67,21 @@ export async function createRestaurant(data) {
     created_at: serverTimestamp(),
     active: true,
     plan: data.plan || "basic",
+    // 30-day period (Basic trial) — at expiry the login is blocked until
+    // the super admin continues the plan (see continuePlan).
+    plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
   };
   await setDoc(ref, restaurant);
   return { id: ref.id, ...restaurant };
+}
+
+// Super admin, one click: extend the plan by another 30 days and clear
+// any expiry block (the new plan_expires_at is what unblocks the login).
+export async function continuePlan(restaurantId) {
+  await updateDoc(restaurantDoc(restaurantId), {
+    plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
+    updated_at: serverTimestamp(),
+  });
 }
 
 export async function updateRestaurant(restaurantId, data) {

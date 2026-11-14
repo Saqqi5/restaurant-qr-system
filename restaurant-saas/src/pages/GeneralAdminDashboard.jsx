@@ -7,6 +7,7 @@ import {
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
+import { formatExpiryDate } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 import MenuItemModal from "../components/admin/MenuItemModal";
@@ -19,7 +20,7 @@ import AnalyticsPanel from "../components/admin/AnalyticsPanel";
 const TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
 
 export default function GeneralAdminDashboard() {
-  const { userProfile, restaurantId, logout } = useAuth();
+  const { userProfile, restaurantId, logout, trialInfo } = useAuth();
   const currency = useRestaurantCurrency(restaurantId);
   const [activeTab, setActiveTab] = useState("menu");
   const [menuItems, setMenuItems] = useState([]);
@@ -111,6 +112,14 @@ export default function GeneralAdminDashboard() {
       onLogout={logout}
       userProfile={userProfile}
     >
+      {trialInfo?.expiringSoon && (
+        <div className="trial-banner">
+          ⚠️ Aap ka Basic trial {formatExpiryDate(trialInfo.expiresAt)} ko khatam ho raha hai
+          {trialInfo.daysLeft === 0 ? " (aaj)" : ` (${trialInfo.daysLeft} din baaki hain)`}.
+          Continue rakhne ke liye subscription fee pay kar dein, warna is date ke baad
+          aap ka login block ho jayega.
+        </div>
+      )}
       <StatsBar stats={[
         { label: "Menu Items", value: menuItems.length, icon: "🍽️" },
         { label: "Today's Orders", value: todayOrders.length, icon: "📋" },

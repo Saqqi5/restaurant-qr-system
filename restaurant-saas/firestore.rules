@@ -93,6 +93,11 @@ service cloud.firestore {
     // it above the plan's limit. A count already above the limit (e.g. after
     // a downgrade) may stay, but may not grow further. Only the super admin
     // may change a restaurant's plan.
+    // A restaurant admin may never move the plan's expiry date.
+    function trialFieldsUnchanged() {
+      return !('plan_expires_at' in request.resource.data.diff(resource.data).affectedKeys());
+    }
+
     function planTableLimit(plan) {
       return plan == 'basic' ? 10
         : (plan == 'premium' || plan == 'unlimited') ? 1000000
@@ -148,7 +153,7 @@ service cloud.firestore {
       // update everything except the plan, and may not raise the table count
       // above the plan's limit (lowering it is always allowed).
       allow update: if isSuperAdmin()
-        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit());
+        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged());
 
       // ── Menu Items ──────────────────────────────────────────
       match /menu/{itemId} {

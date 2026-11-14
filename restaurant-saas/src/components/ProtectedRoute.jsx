@@ -10,13 +10,33 @@ const ROLE_REDIRECTS = {
 };
 
 export default function ProtectedRoute({ children, role }) {
-  const { isAuthenticated, userProfile, loading } = useAuth();
+  const { isAuthenticated, userProfile, loading, trialBlocked, trialInfo, logout } = useAuth();
   const location = useLocation();
 
   if (loading) return <div className="app-loading"><div className="spinner" /></div>;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (trialBlocked) {
+    return (
+      <div className="trial-blocked">
+        <div className="trial-blocked-card">
+          <h2>⛔ Login Blocked</h2>
+          <p>
+            Aap ka trial {trialInfo?.expiresAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ko
+            khatam ho gaya hai.
+          </p>
+          <p>
+            Plan continue rakhne ke liye subscription fee pay kar dein aur
+            administrator se rabta karein — wo aik click pe aap ka plan
+            dubara chala denge.
+          </p>
+          <button className="btn-primary" onClick={logout}>Sign Out</button>
+        </div>
+      </div>
+    );
   }
 
   if (role && userProfile?.role !== role && userProfile?.role !== "super_admin") {

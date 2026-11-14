@@ -65,6 +65,7 @@ const RESTAURANT = {
   payment_bank_name: "Saqlyn Restaurant Ltd",
   active:       true,
   plan:         "basic",
+  plan_expires_at: null,
 };
 
 const STAFF = [
@@ -112,6 +113,7 @@ const RESTAURANT2 = {
   discount_rate: 0,
   active:            true,
   plan:              "basic",
+  plan_expires_at: null,
 };
 
 const STAFF2 = [

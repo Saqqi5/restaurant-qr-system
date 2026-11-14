@@ -9,7 +9,8 @@ import {
 } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { auth, firebaseConfig } from "../config/firebase";
-import { getUser, createUser } from "../config/db";
+import { getUser, createUser, getRestaurant, subscribeToRestaurant } from "../config/db";
+import { getExpiryInfo, formatExpiryDate } from "../config/plans";
 
 const AuthContext = createContext(null);
 
@@ -17,6 +18,12 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Live trial/expiry state of the signed-in user's restaurant (null for
+  // the super admin, and for restaurants with no expiry). trialBlocked is
+  // true once the period has ended — the login is then blocked until the
+  // super admin continues the plan.
+  const [trialInfo, setTrialInfo] = useState(null);
+  const trialBlocked = trialInfo?.expired === true;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -32,9 +39,29 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    const rid = userProfile?.restaurant_id;
+    if (!rid || userProfile?.role === "super_admin") {
+      setTrialInfo(null);
+      return;
+    }
+    const unsub = subscribeToRestaurant(rid, (doc) => setTrialInfo(getExpiryInfo(doc)));
+    return unsub;
+  }, [userProfile?.restaurant_id, userProfile?.role]);
+
   async function login(email, password) {
     const result = await signInWithEmailAndPassword(auth, email, password);
     const profile = await getUser(result.user.uid);
+    // A restaurant whose period has ended may not sign in at all.
+    if (profile?.restaurant_id && profile?.role !== "super_admin") {
+      const restaurant = await getRestaurant(profile.restaurant_id);
+      const info = getExpiryInfo(restaurant);
+      if (info.expired) {
+        await signOut(auth);
+        setUserProfile(null);
+        throw new Error(`Aap ka trial ${formatExpiryDate(info.expiresAt)} ko khatam ho gaya hai. Plan continue rakhne ke liye subscription fee pay kar dein aur administrator se rabta karein.`);
+      }
+    }
     setUserProfile(profile);
     return { user: result.user, profile };
   }
@@ -95,6 +122,8 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!currentUser,
     role: userProfile?.role,
     restaurantId: userProfile?.restaurant_id,
+    trialInfo,
+    trialBlocked,
   };
 
   return (

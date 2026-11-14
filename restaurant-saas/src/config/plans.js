@@ -47,6 +47,42 @@ export function getStaffLimit(plan, overrides) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : PLANS[key].defaultStaffLimit;
 }
 
+// ── Trial / subscription period ──────────────────────────────────────────
+// A new restaurant starts on a 30-day period (the Basic trial for a new
+// customer, the first billing period for a paid plan). At expiry the login
+// is blocked until the super admin continues the plan (one click, +30 days).
+// A restaurant with no plan_expires_at (older data) never expires.
+export const TRIAL_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function expiryDateFrom(date) {
+  const base = date instanceof Date ? date.getTime() : Date.now();
+  return new Date(base + TRIAL_DAYS * DAY_MS);
+}
+
+function toDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  if (typeof v.toDate === "function") return v.toDate();
+  if (typeof v.seconds === "number") return new Date(v.seconds * 1000);
+  return null;
+}
+
+// { expiresAt: Date|null, daysLeft: number|null, expired: boolean,
+//   expiringSoon: boolean } — expiringSoon = 2 days or less left.
+export function getExpiryInfo(restaurant) {
+  const expiresAt = toDate(restaurant?.plan_expires_at);
+  if (!expiresAt) return { expiresAt: null, daysLeft: null, expired: false, expiringSoon: false };
+  const expired = expiresAt.getTime() < Date.now();
+  const daysLeft = Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / DAY_MS));
+  return { expiresAt, daysLeft, expired, expiringSoon: !expired && daysLeft <= 2 };
+}
+
+export function formatExpiryDate(date) {
+  if (!date) return "—";
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 // Can the table count move from `current` to `next` under this plan?
 // Owners may lower the count anytime, but never raise it above the plan's
 // limit (a count already above the limit — e.g. after a downgrade — may
