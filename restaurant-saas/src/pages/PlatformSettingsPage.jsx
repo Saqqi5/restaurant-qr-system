@@ -97,10 +97,14 @@ export default function PlatformSettingsPage() {
                   onChange={(e) => setForm({ ...form, standard: parseInt(e.target.value) || 1 })} />
               </div>
               <div className="form-group">
-                <label>Premium plan — max tables</label>
+                <label>Premium plan — max tables (0 = unlimited)</label>
                 <input type="number" min="0" value={form.premium}
                   onChange={(e) => setForm({ ...form, premium: parseInt(e.target.value) || 0 })} />
-                <p className="form-hint">0 = no limit at all.</p>
+                <p className="form-hint">
+                  {form.premium === 0
+                    ? "∞ Unlimited — Premium has no table limit."
+                    : `${form.premium} tables max.`}
+                </p>
               </div>
             </div>
           </section>
