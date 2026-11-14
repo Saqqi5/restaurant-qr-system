@@ -27,8 +27,12 @@ export default function LoginPage() {
       const { profile } = await login(email, password);
       const redirect = location.state?.from?.pathname || ROLE_REDIRECTS[profile?.role] || "/";
       navigate(redirect, { replace: true });
-    } catch {
-      setError("Invalid email or password. Please try again.");
+    } catch (err) {
+      // login() throws a plain message for an expired trial (thrown only
+      // AFTER a successful sign-in, so it leaks nothing). A real wrong
+      // password comes back as a Firebase error (with a code) and keeps
+      // the generic message.
+      setError(err?.code ? "Invalid email or password. Please try again." : (err?.message || "Invalid email or password. Please try again."));
     }
     setLoading(false);
   }
