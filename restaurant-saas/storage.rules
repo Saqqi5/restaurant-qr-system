@@ -10,5 +10,12 @@ service firebase.storage {
         request.resource.size < 5 * 1024 * 1024 && // 5MB max
         request.resource.contentType.matches('image/.*');
     }
+
+    // Payment proofs — customers upload screenshots (no login), staff read them
+    match /payments/{restaurantId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.resource.size < 5 * 1024 * 1024 && // 5MB max
+        request.resource.contentType.matches('image/.*');
+    }
   }
 }
