@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
-  getRestaurantUsers, mapDomain
+  getRestaurantUsers, mapDomain,
+  subscribeToPlanPayments, verifyPlanPayment, rejectPlanPayment
 } from "../config/db";
-import { PLANS, getPlanLimit, normalizePlan } from "../config/plans";
+import { PLANS, getPlanLimit, getPlanLabel, normalizePlan } from "../config/plans";
 import { buildQrUrl } from "../config/tenantResolver";
 import AdminLayout from "../components/admin/AdminLayout";
 import RestaurantCard from "../components/admin/RestaurantCard";
@@ -23,6 +24,8 @@ export default function SuperAdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deleting, setDeleting] = useState(null); // restaurant awaiting delete confirm
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [planPayments, setPlanPayments] = useState([]);
+  const [planActionId, setPlanActionId] = useState(null);
 
   useEffect(() => {
     getAllRestaurants().then((data) => {
@@ -30,6 +33,35 @@ export default function SuperAdminDashboard() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => subscribeToPlanPayments(setPlanPayments), []);
+
+  // Verify a plan payment: the plan activates for 30 days (see db.js).
+  async function handleVerifyPlanPayment(payment) {
+    if (planActionId) return;
+    setPlanActionId(payment.id);
+    try {
+      await verifyPlanPayment(payment);
+      setRestaurants((prev) => prev.map((r) =>
+        r.id === payment.restaurantId
+          ? { ...r, plan: payment.plan, plan_expires_at: new Date(Date.now() + 30 * 24 * 3600 * 1000) }
+          : r
+      ));
+    } finally {
+      setPlanActionId(null);
+    }
+  }
+
+  async function handleRejectPlanPayment(payment) {
+    if (planActionId) return;
+    if (!confirm(`Reject the ${getPlanLabel(payment.plan)} plan payment from ${payment.restaurantName}? The owner can submit a new one.`)) return;
+    setPlanActionId(payment.id);
+    try {
+      await rejectPlanPayment(payment);
+    } finally {
+      setPlanActionId(null);
+    }
+  }
 
   async function handleCreateRestaurant(formData) {
     const newRestaurant = await createRestaurant(formData);
@@ -105,6 +137,58 @@ export default function SuperAdminDashboard() {
           + New Restaurant
         </button>
       </div>
+
+      {/* ── Plan payment requests (owners buying/upgrading a plan) ── */}
+      {(() => {
+        const pending = planPayments.filter((p) => p.status === "pending");
+        const decided = planPayments.filter((p) => p.status !== "pending").slice(0, 5);
+        if (planPayments.length === 0) return null;
+        return (
+          <div className="settings-section" style={{ marginBottom: 24 }}>
+            <h2 className="settings-section-title">💳 Plan Payment Requests</h2>
+            {pending.length === 0 && (
+              <p className="form-hint">No pending plan payments. {decided.length > 0 && "Recent decisions are below."}</p>
+            )}
+            {pending.map((p) => (
+              <div key={p.id} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 16, marginBottom: 14, background: "var(--color-surface2)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                  <strong>{p.restaurantName || p.restaurantId}</strong>
+                  <span>
+                    {getPlanLabel(p.plan)} plan — <strong>Rs. {p.amount?.toLocaleString?.() || p.amount}</strong> ({p.method})
+                  </span>
+                </div>
+                <div className="form-hint" style={{ marginBottom: 10 }}>
+                  {p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : ""} · {p.restaurantId}
+                </div>
+                {p.proofImage && (
+                  <img src={p.proofImage} alt="Payment proof" style={{ maxWidth: "100%", maxHeight: 260, objectFit: "contain", borderRadius: 8, marginBottom: 12, display: "block" }} />
+                )}
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button className="btn-primary" onClick={() => handleVerifyPlanPayment(p)} disabled={planActionId === p.id}>
+                    {planActionId === p.id ? "Activating…" : "✅ Verify & Activate Plan"}
+                  </button>
+                  <button className="btn-secondary" onClick={() => handleRejectPlanPayment(p)} disabled={planActionId === p.id}>
+                    ❌ Reject
+                  </button>
+                </div>
+                <p className="form-hint" style={{ marginTop: 8 }}>
+                  Verifying switches the restaurant to the {getPlanLabel(p.plan)} plan and starts a fresh 30-day period.
+                </p>
+              </div>
+            ))}
+            {decided.length > 0 && (
+              <>
+                <h3 style={{ fontSize: 14, margin: "16px 0 8px" }}>Recent decisions</h3>
+                {decided.map((p) => (
+                  <div key={p.id} className="form-hint" style={{ padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
+                    {p.status === "verified" ? "✅" : "❌"} {p.restaurantName || p.restaurantId} — {getPlanLabel(p.plan)} plan, Rs. {p.amount?.toLocaleString?.() || p.amount}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {loading ? (
         <div className="grid-skeleton">

@@ -3,11 +3,11 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders,
   createMenuItem, updateMenuItem, deleteMenuItem,
-  getRestaurantUsers,
+  getRestaurantUsers, subscribeToPlatformSettings,
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
-import { formatExpiryDate, getPlanLabel } from "../config/plans";
+import { formatExpiryDate, getPlanLabel, getMenuItemLimit } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 import MenuItemModal from "../components/admin/MenuItemModal";
@@ -33,6 +33,10 @@ export default function GeneralAdminDashboard() {
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [verifyingId, setVerifyingId] = useState(null);
+  const [platformLimits, setPlatformLimits] = useState(null);
+  const [menuLimitNotice, setMenuLimitNotice] = useState("");
+
+  useEffect(() => subscribeToPlatformSettings(setPlatformLimits), []);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -48,10 +52,27 @@ export default function GeneralAdminDashboard() {
     return () => { unsubMenu(); unsubOrders(); unsubPayments(); };
   }, [restaurantId]);
 
-  async function handleVerifyPayment(paymentId) {
-    setVerifyingId(paymentId);
-    await verifyPayment(paymentId);
+  async function handleVerifyPayment(payment) {
+    setVerifyingId(payment.id);
+    await verifyPayment(payment);
     setVerifyingId(null);
+  }
+
+  // Menu-item cap for this restaurant's plan (Basic 30 / Standard 100 /
+  // Premium unlimited). Editing an existing dish doesn't change the count,
+  // only adding a new one is gated.
+  const menuLimit = getMenuItemLimit(trialInfo?.plan || "standard", platformLimits);
+
+  function handleAddItem() {
+    setEditingItem(null);
+    if (menuLimit !== null && menuItems.length >= menuLimit) {
+      setMenuLimitNotice(
+        `⬆️ Your ${getPlanLabel(trialInfo?.plan)} plan allows up to ${menuLimit} menu items. To add more, upgrade your plan or contact your administrator.`
+      );
+      return;
+    }
+    setMenuLimitNotice("");
+    setShowItemModal(true);
   }
 
   function formatDate(ts) {
@@ -158,10 +179,14 @@ export default function GeneralAdminDashboard() {
         <div className="tab-content">
           <div className="content-header">
             <h3>Menu Management</h3>
-            <button className="btn-primary" onClick={() => { setEditingItem(null); setShowItemModal(true); }}>
+            <button className="btn-primary" onClick={handleAddItem}>
               + Add Item
             </button>
           </div>
+
+          {menuLimitNotice && (
+            <div className="error-banner" style={{ marginBottom: 14 }}>{menuLimitNotice}</div>
+          )}
 
           {categories.map((cat) => (
             <div key={cat} className="menu-category-section">
@@ -198,7 +223,7 @@ export default function GeneralAdminDashboard() {
               <div className="empty-icon">🍽️</div>
               <h3>No menu items yet</h3>
               <p>Add your first menu item to get started.</p>
-              <button className="btn-primary" onClick={() => setShowItemModal(true)}>
+              <button className="btn-primary" onClick={handleAddItem}>
                 Add First Item
               </button>
             </div>
@@ -257,7 +282,7 @@ export default function GeneralAdminDashboard() {
                       )}
                       <button
                         className="btn-verify"
-                        onClick={() => handleVerifyPayment(payment.id)}
+                        onClick={() => handleVerifyPayment(payment)}
                         disabled={verifyingId === payment.id}
                       >
                         {verifyingId === payment.id ? "Verifying..." : "✓ Mark as Verified"}

@@ -223,6 +223,36 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // ── Plan Payments (owner buys a plan, super admin verifies) ─────
+    // A restaurant's general admin creates a payment proof record for their
+    // own restaurant. Only the super admin may verify or reject it — the
+    // activation (plan + 30-day expiry) happens in the app when the super
+    // admin verifies.
+    match /plan_payments/{paymentId} {
+      allow create: if isAuthenticated()
+        && isGeneralAdmin(request.resource.data.restaurantId)
+        && request.resource.data.keys().hasAll([
+            'id', 'restaurantId', 'plan', 'amount',
+            'method', 'status', 'createdAt'
+          ])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.plan in ['basic', 'standard', 'premium']
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0;
+
+      // The restaurant's general admin and the super admin can read them
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() || isGeneralAdmin(resource.data.restaurantId)
+      );
+
+      // Only the super admin can verify or reject (pending -> decided)
+      allow update: if isSuperAdmin()
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['verified', 'rejected'];
+
+      allow delete: if isSuperAdmin();
+    }
+
     // ── Domain Mappings ───────────────────────────────────────
     match /domain_mappings/{domain} {
       allow read: if true; // needed for domain resolution

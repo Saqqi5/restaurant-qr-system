@@ -50,6 +50,8 @@ export const usersCol = () => collection(db, "users");
 export const userDoc = (userId) => doc(db, "users", userId);
 export const paymentsCol = () => collection(db, "payments");
 export const paymentDoc = (paymentId) => doc(db, "payments", paymentId);
+export const planPaymentsCol = () => collection(db, "plan_payments");
+export const planPaymentDoc = (paymentId) => doc(db, "plan_payments", paymentId);
 export const domainMappingsCol = () => collection(db, "domain_mappings");
 
 // ── Restaurant Operations ──────────────────────────────────────────────────
@@ -90,8 +92,11 @@ export async function updateRestaurant(restaurantId, data) {
 
 // ── Platform Settings (super admin) ────────────────────────────────────────
 // Doc `platform_settings/platform`: { basic, standard, premium } — the
-// table cap per plan (premium stored as 0 = no cap) plus
-// { *_staff } staff caps. Absent doc = defaults.
+// table cap per plan (Premium 50) plus { *_staff } staff caps,
+// { *_menu } menu-item caps (0 = unlimited) and { *_price } monthly prices
+// (PKR), plus the platform's own payment accounts (platform_easypaisa_*,
+// platform_jazzcash_*, platform_bank_*) that owners pay into when they buy
+// a plan. Absent doc = defaults.
 export const platformSettingsDoc = () => doc(db, "platform_settings", "platform");
 
 export async function getPlatformSettings() {
@@ -123,6 +128,8 @@ export async function deleteRestaurant(restaurantId) {
   }
   const pays = await getDocs(query(paymentsCol(), where("restaurantId", "==", restaurantId)));
   for (const d of pays.docs) await deleteDoc(d.ref);
+  const planPays = await getDocs(query(planPaymentsCol(), where("restaurantId", "==", restaurantId)));
+  for (const d of planPays.docs) await deleteDoc(d.ref);
   if (restaurant?.custom_domain) {
     await deleteDoc(doc(domainMappingsCol(), restaurant.custom_domain));
   }
@@ -364,6 +371,74 @@ export function subscribeToPayment(paymentId, callback) {
 export function subscribeToRestaurantPayments(restaurantId, callback) {
   return onSnapshot(
     query(paymentsCol(), where("restaurantId", "==", restaurantId)),
+    (snap) => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      items.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+      callback(items);
+    }
+  );
+}
+
+// ── Plan Payments (owner buys a plan, super admin verifies) ──────────────
+// An owner picks a plan in Settings, pays the platform's account
+// (EasyPaisa/JazzCash/Bank) and uploads the proof screenshot. The super
+// admin verifies it — and only then the plan activates: the restaurant's
+// plan switches and a fresh 30-day period starts (plan_expires_at = now +
+// 30 days), which also unblocks an expired login. Same proof flow as the
+// food payments, but the money goes to SAQLYN (the platform), not to the
+// restaurant's own customers.
+export async function createPlanPayment(data) {
+  const ref = doc(planPaymentsCol());
+  const payment = {
+    id: ref.id,
+    restaurantId: data.restaurantId,
+    restaurantName: data.restaurantName || "",
+    plan: data.plan || "standard",
+    amount: parseFloat(data.amount),
+    method: data.method || "easypaisa",
+    status: "pending",
+    proofImage: data.proofImage || null,
+    createdAt: serverTimestamp(),
+    verifiedAt: null,
+    verifiedBy: null,
+  };
+  await setDoc(ref, payment);
+  return payment;
+}
+
+// Super admin only: verify a plan payment and activate the plan.
+export async function verifyPlanPayment(payment) {
+  await updateDoc(planPaymentDoc(payment.id), {
+    status: "verified",
+    verifiedAt: serverTimestamp(),
+    verifiedBy: "super_admin",
+  });
+  await updateDoc(restaurantDoc(payment.restaurantId), {
+    plan: payment.plan,
+    plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
+    updated_at: serverTimestamp(),
+  });
+}
+
+export async function rejectPlanPayment(payment) {
+  await updateDoc(planPaymentDoc(payment.id), {
+    status: "rejected",
+    verifiedAt: serverTimestamp(),
+    verifiedBy: "super_admin",
+  });
+}
+
+export function subscribeToPlanPayments(callback) {
+  return onSnapshot(planPaymentsCol(), (snap) => {
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    items.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+    callback(items);
+  });
+}
+
+export function subscribeToRestaurantPlanPayments(restaurantId, callback) {
+  return onSnapshot(
+    query(planPaymentsCol(), where("restaurantId", "==", restaurantId)),
     (snap) => {
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       items.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));

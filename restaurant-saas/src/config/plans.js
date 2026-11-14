@@ -1,15 +1,22 @@
-// Subscription plans — table caps AND staff-login caps per plan.
-// Limits are editable by the super admin in Platform Settings (stored in the
-// `platform_settings/platform` doc); the values here are the defaults.
-// Premium = 50 tables (his 2026-11-14 decision; was unlimited / 0).
+// Subscription plans — table caps, staff-login caps, menu-item caps and
+// monthly prices per plan. Limits are editable by the super admin in
+// Platform Settings (stored in the `platform_settings/platform` doc); the
+// values here are the defaults.
+// Tables: Basic 10 / Standard 20 / Premium 50 (his 2026-11-14 decision).
+// Staff logins: Basic 4 / Standard 10 / Premium 30.
+// Menu items: Basic 30 / Standard 100 / Premium unlimited (0 = unlimited).
+// Prices (PKR/month): Basic 5,000 / Standard 8,000 / Premium 12,000
+// (his 2026-11-14 decision; Premium was my pick).
 export const PLANS = {
-  basic:    { key: "basic",    label: "Basic",    defaultTableLimit: 10,   defaultStaffLimit: 4 },
-  standard: { key: "standard", label: "Standard", defaultTableLimit: 20,   defaultStaffLimit: 10 },
-  premium:  { key: "premium",  label: "Premium",  defaultTableLimit: 50,   defaultStaffLimit: 30 },
+  basic:    { key: "basic",    label: "Basic",    defaultTableLimit: 10,   defaultStaffLimit: 4,  defaultMenuItemLimit: 30,   defaultPrice: 5000 },
+  standard: { key: "standard", label: "Standard", defaultTableLimit: 20,   defaultStaffLimit: 10, defaultMenuItemLimit: 100,  defaultPrice: 8000 },
+  premium:  { key: "premium",  label: "Premium",  defaultTableLimit: 50,   defaultStaffLimit: 30, defaultMenuItemLimit: null, defaultPrice: 12000 },
 };
 
 export const DEFAULT_PLAN_LIMITS = { basic: 10, standard: 20, premium: 50 };
 export const DEFAULT_STAFF_LIMITS = { basic: 4, standard: 10, premium: 30 };
+export const DEFAULT_MENU_LIMITS = { basic: 30, standard: 100, premium: 0 };
+export const DEFAULT_PLAN_PRICES = { basic: 5000, standard: 8000, premium: 12000 };
 
 // Legacy values ("saas"/"standalone"/"unlimited") predate tiers.
 export function normalizePlan(plan) {
@@ -32,8 +39,30 @@ export function getPlanLimit(plan, overrides) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : PLANS[key].defaultTableLimit;
 }
 
-// Staff-login cap for a plan. overrides: { basic_staff, standard_staff,
-// premium_staff } from platform settings.
+// Monthly price (PKR) for a plan. overrides: { basic_price, standard_price,
+// premium_price } from platform settings.
+export function getPlanPrice(plan, overrides) {
+  const key = normalizePlan(plan);
+  const raw = overrides && overrides[`${key}_price`] !== undefined && overrides[`${key}_price`] !== null
+    ? overrides[`${key}_price`]
+    : PLANS[key].defaultPrice;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : PLANS[key].defaultPrice;
+}
+
+// Menu-item cap for a plan. overrides: { basic_menu, standard_menu,
+// premium_menu } from platform settings. Returns the cap, or null = no cap
+// (Premium default; a settings value of 0 also means unlimited).
+export function getMenuItemLimit(plan, overrides) {
+  const key = normalizePlan(plan);
+  const raw = overrides && overrides[`${key}_menu`] !== undefined && overrides[`${key}_menu`] !== null
+    ? overrides[`${key}_menu`]
+    : PLANS[key].defaultMenuItemLimit;
+  if (raw === null || raw === undefined) return null;
+  const n = Number(raw);
+  if (n === 0) return null;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : PLANS[key].defaultMenuItemLimit;
+}
 export function getStaffLimit(plan, overrides) {
   const key = normalizePlan(plan);
   const raw = overrides && overrides[`${key}_staff`] !== undefined && overrides[`${key}_staff`] !== null
