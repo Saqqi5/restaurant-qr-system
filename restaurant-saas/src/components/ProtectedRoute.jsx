@@ -25,13 +25,11 @@ export default function ProtectedRoute({ children, role }) {
         <div className="trial-blocked-card">
           <h2>⛔ Login Blocked</h2>
           <p>
-            Aap ka trial {trialInfo?.expiresAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ko
-            khatam ho gaya hai.
+            Your plan ended on {trialInfo?.expiresAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.
           </p>
           <p>
-            Plan continue rakhne ke liye subscription fee pay kar dein aur
-            administrator se rabta karein — wo aik click pe aap ka plan
-            dubara chala denge.
+            To continue, please pay the subscription fee and contact the
+            administrator — they can restart your plan with one click.
           </p>
           <button className="btn-primary" onClick={logout}>Sign Out</button>
         </div>

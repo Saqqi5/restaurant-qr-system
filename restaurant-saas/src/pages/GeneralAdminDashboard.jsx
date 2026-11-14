@@ -7,7 +7,7 @@ import {
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
-import { formatExpiryDate } from "../config/plans";
+import { formatExpiryDate, getPlanLabel } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 import MenuItemModal from "../components/admin/MenuItemModal";
@@ -114,10 +114,14 @@ export default function GeneralAdminDashboard() {
     >
       {trialInfo?.expiringSoon && (
         <div className="trial-banner">
-          ⚠️ Aap ka Basic trial {formatExpiryDate(trialInfo.expiresAt)} ko khatam ho raha hai
-          {trialInfo.daysLeft === 0 ? " (aaj)" : ` (${trialInfo.daysLeft} din baaki hain)`}.
-          Continue rakhne ke liye subscription fee pay kar dein, warna is date ke baad
-          aap ka login block ho jayega.
+          ⚠️ Your {getPlanLabel(trialInfo.plan)} plan ends on {formatExpiryDate(trialInfo.expiresAt)}
+          {trialInfo.daysLeft === 0
+            ? " (today)"
+            : trialInfo.daysLeft === 1
+              ? " (1 day left)"
+              : ` (${trialInfo.daysLeft} days left)`}.
+          To continue, please pay the subscription fee — otherwise your login
+          will be blocked after this date.
         </div>
       )}
       <StatsBar stats={[

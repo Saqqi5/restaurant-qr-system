@@ -10,7 +10,7 @@ import {
 import { initializeApp, getApps } from "firebase/app";
 import { auth, firebaseConfig } from "../config/firebase";
 import { getUser, createUser, getRestaurant, subscribeToRestaurant } from "../config/db";
-import { getExpiryInfo, formatExpiryDate } from "../config/plans";
+import { getExpiryInfo, formatExpiryDate, getPlanLabel } from "../config/plans";
 
 const AuthContext = createContext(null);
 
@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
       setTrialInfo(null);
       return;
     }
-    const unsub = subscribeToRestaurant(rid, (doc) => setTrialInfo(getExpiryInfo(doc)));
+    const unsub = subscribeToRestaurant(rid, (doc) => setTrialInfo({ ...getExpiryInfo(doc), plan: doc?.plan }));
     return unsub;
   }, [userProfile?.restaurant_id, userProfile?.role]);
 
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
       if (info.expired) {
         await signOut(auth);
         setUserProfile(null);
-        throw new Error(`Aap ka trial ${formatExpiryDate(info.expiresAt)} ko khatam ho gaya hai. Plan continue rakhne ke liye subscription fee pay kar dein aur administrator se rabta karein.`);
+        throw new Error(`Your ${getPlanLabel(restaurant?.plan)} plan ended on ${formatExpiryDate(info.expiresAt)}. To continue, please pay the subscription fee and contact the administrator.`);
       }
     }
     setUserProfile(profile);
