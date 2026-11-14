@@ -20,8 +20,13 @@ function getCategoryEmoji(category = "") {
   return "🍽️";
 }
 
-export default function MenuGrid({ items, categories, cart, onAdd, onRemove, currency }) {
+export default function MenuGrid({ items, categories, cart, onAdd, onRemove, currency, searchActive }) {
   const [activeCategory, setActiveCategory] = useState(categories[0] || "");
+
+  // While searching, ignore the selected category — search the whole menu.
+  const visibleItems = searchActive
+    ? items
+    : items.filter((i) => i.category === activeCategory || !activeCategory);
 
   const getCartQty = (itemId) => cart.find((c) => c.id === itemId)?.quantity || 0;
 
@@ -42,7 +47,9 @@ export default function MenuGrid({ items, categories, cart, onAdd, onRemove, cur
 
       {/* Items */}
       <div className="menu-items-grid">
-        {items.filter((i) => i.category === activeCategory || !activeCategory).map((item) => {
+        {visibleItems.length === 0 ? (
+          <div className="menu-empty">No dishes found. Try a different search or category.</div>
+        ) : visibleItems.map((item) => {
           const qty = getCartQty(item.id);
           return (
             <div key={item.id} className={`menu-card ${!item.available ? "unavailable" : ""}`}>

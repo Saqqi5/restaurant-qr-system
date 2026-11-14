@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTenant } from "../contexts/TenantContext";
 import {
   subscribeToMenu, createOrder, subscribeToTableOrders,
-  createPayment, subscribeToPayment
+  createPayment, subscribeToPayment, calculateBill
 } from "../config/db";
 import { storage } from "../config/firebase";
 import { formatPrice } from "../utils/currency";
@@ -48,6 +48,7 @@ export default function CustomerMenu() {
   const [activeOrders, setActiveOrders] = useState([]);
   const [view, setView] = useState("menu");
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Payment flow state
@@ -109,7 +110,7 @@ export default function CustomerMenu() {
 
   async function placeOrder() {
     if (!cart.length || !tableNumber) return;
-    await createOrder(restaurantId, {
+    const created = await createOrder(restaurantId, {
       table_number: tableNumber,
       items: cart.map(i => ({
         item_id: i.id,
@@ -123,6 +124,7 @@ export default function CustomerMenu() {
     });
     setCart([]);
     setCartOpen(false);
+    setPlacedOrder(created);
     setOrderPlaced(true);
     setView("orders");
     setTimeout(() => setOrderPlaced(false), 4000);
@@ -241,7 +243,7 @@ export default function CustomerMenu() {
 
       {orderPlaced && (
         <div className="order-success-banner">
-          ✅ Order placed! Kitchen is preparing your food.
+          ✅ Order {placedOrder ? `#${placedOrder.order_number ?? placedOrder.id?.slice(-6).toUpperCase()} ` : ""}placed! Kitchen is preparing your food.
         </div>
       )}
 
@@ -260,6 +262,7 @@ export default function CustomerMenu() {
             items={searchTerm.trim()
               ? menuItems.filter((i) => i.name.toLowerCase().includes(searchTerm.trim().toLowerCase()))
               : menuItems}
+            searchActive={!!searchTerm.trim()}
             categories={categories}
             cart={cart}
             onAdd={addToCart}
@@ -291,7 +294,7 @@ export default function CustomerMenu() {
           <span className="cart-fab-icon">🛒</span>
           <span className="cart-fab-count">{cartCount}</span>
           <span className="cart-fab-total">
-            {formatPrice(cart.reduce((s, i) => s + i.price * i.quantity, 0), currency)}
+            {formatPrice(calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0).total, currency)}
           </span>
         </button>
       )}

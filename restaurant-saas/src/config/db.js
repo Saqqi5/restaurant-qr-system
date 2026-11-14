@@ -334,7 +334,7 @@ function calculateOrderTotal(items = []) {
 }
 
 // Subtotal -> discount -> tax -> total. Rates are percentages (e.g. 16 = 16%).
-function calculateBill(items = [], taxRate = 0, discountRate = 0) {
+export function calculateBill(items = [], taxRate = 0, discountRate = 0) {
   const subtotal = Number(items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2));
   const discount = Number((subtotal * (discountRate / 100)).toFixed(2));
   const taxable = subtotal - discount;

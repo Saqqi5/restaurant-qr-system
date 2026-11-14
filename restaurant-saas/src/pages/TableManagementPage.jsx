@@ -17,15 +17,21 @@ const TABLE_STATUS = {
 export default function TableManagementPage() {
   const { userProfile, restaurantId, logout } = useAuth();
   const [restaurant, setRestaurant] = useState(null);
+  const [restaurantLoaded, setRestaurantLoaded] = useState(false);
   const currency = restaurant?.currency || "$";
   const [orders, setOrders] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
 
   const tableCount = restaurant?.table_count || 20;
 
+  // Wait for the restaurant doc before drawing the floor — otherwise the
+  // page briefly shows the wrong fallback count (20) instead of the real one.
   useEffect(() => {
     if (!restaurantId) return;
-    getRestaurant(restaurantId).then((r) => r && setRestaurant(r));
+    getRestaurant(restaurantId)
+      .then((r) => { if (r) setRestaurant(r); })
+      .catch(() => {})
+      .finally(() => setRestaurantLoaded(true));
   }, [restaurantId]);
 
   useEffect(() => {
@@ -69,6 +75,10 @@ export default function TableManagementPage() {
       onLogout={logout}
       userProfile={userProfile}
     >
+      {!restaurantLoaded ? (
+        <div className="tdp-empty" style={{ padding: 40 }}>Loading tables…</div>
+      ) : (
+      <>
       {/* Legend */}
       <div className="table-legend">
         {Object.entries(TABLE_STATUS).map(([key, cfg]) => (
@@ -164,6 +174,8 @@ export default function TableManagementPage() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       <style>{`
         .table-legend {

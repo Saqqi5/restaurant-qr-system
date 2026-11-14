@@ -1,8 +1,9 @@
 import { formatPrice } from "../../utils/currency";
+import { calculateBill } from "../../config/db";
 
 export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpdateNotes, onPlaceOrder, restaurant }) {
-  const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const currency = restaurant?.currency || "$";
+  const bill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0);
   const maxPrepTime = cart.length ? Math.max(...cart.map((i) => i.prep_time_minutes || 15)) : 0;
 
   if (!open) return null;
@@ -52,19 +53,31 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
               <div className="cart-summary">
                 <div className="cart-row">
                   <span>Subtotal</span>
-                  <span>{formatPrice(total, currency)}</span>
+                  <span>{formatPrice(bill.subtotal, currency)}</span>
                 </div>
+                {bill.discount > 0 && (
+                  <div className="cart-row">
+                    <span>Discount ({Number(restaurant?.discount_rate) || 0}%)</span>
+                    <span>−{formatPrice(bill.discount, currency)}</span>
+                  </div>
+                )}
+                {bill.tax > 0 && (
+                  <div className="cart-row">
+                    <span>Tax ({Number(restaurant?.tax_rate) || 0}%)</span>
+                    <span>{formatPrice(bill.tax, currency)}</span>
+                  </div>
+                )}
                 <div className="cart-row prep-time">
                   <span>⏱ Est. prep time</span>
                   <span>~{maxPrepTime} min</span>
                 </div>
                 <div className="cart-row cart-total-row">
                   <span>Total</span>
-                  <strong>{formatPrice(total, currency)}</strong>
+                  <strong>{formatPrice(bill.total, currency)}</strong>
                 </div>
               </div>
               <button className="btn-place-order" onClick={onPlaceOrder}>
-                Place Order — {formatPrice(total, currency)}
+                Place Order — {formatPrice(bill.total, currency)}
               </button>
               <p className="cart-disclaimer">Payment at the counter after your meal.</p>
             </div>
