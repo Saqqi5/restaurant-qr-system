@@ -7,3 +7,5 @@ compatibility_date = "2025-01-01"
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"
+
+# Trigger rebuild with corrected build settings (root restaurant-saas, npm run build).
