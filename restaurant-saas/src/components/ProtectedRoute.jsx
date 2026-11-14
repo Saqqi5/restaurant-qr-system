@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { getPlanLabel } from "../config/plans";
 
 const ROLE_REDIRECTS = {
   super_admin: "/admin/super",
@@ -25,7 +26,7 @@ export default function ProtectedRoute({ children, role }) {
         <div className="trial-blocked-card">
           <h2>⛔ Login Blocked</h2>
           <p>
-            Your plan ended on {trialInfo?.expiresAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.
+            Your {getPlanLabel(trialInfo?.plan)} plan ended on {trialInfo?.expiresAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.
           </p>
           <p>
             To continue, please pay the subscription fee and contact the

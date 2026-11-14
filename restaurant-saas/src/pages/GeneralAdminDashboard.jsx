@@ -114,7 +114,7 @@ export default function GeneralAdminDashboard() {
     >
       {trialInfo?.expiringSoon && (
         <div className="trial-banner">
-          ⚠️ Your {getPlanLabel(trialInfo.plan)} plan ends on {formatExpiryDate(trialInfo.expiresAt)}
+          ⚠️ Your {getPlanLabel(trialInfo.plan)} plan is about to end on {formatExpiryDate(trialInfo.expiresAt)}
           {trialInfo.daysLeft === 0
             ? " (today)"
             : trialInfo.daysLeft === 1
