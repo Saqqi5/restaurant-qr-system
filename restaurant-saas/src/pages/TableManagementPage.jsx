@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { subscribeToOrders } from "../config/db";
 import { formatPrice } from "../utils/currency";
-import { useTenant } from "../contexts/TenantContext";
+import { getRestaurant } from "../config/db";
 import { buildQrUrl } from "../config/tenantResolver";
 import AdminLayout from "../components/admin/AdminLayout";
 
@@ -16,12 +16,17 @@ const TABLE_STATUS = {
 
 export default function TableManagementPage() {
   const { userProfile, restaurantId, logout } = useAuth();
-  const { restaurant } = useTenant();
+  const [restaurant, setRestaurant] = useState(null);
   const currency = restaurant?.currency || "$";
   const [orders, setOrders] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
 
   const tableCount = restaurant?.table_count || 20;
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    getRestaurant(restaurantId).then((r) => r && setRestaurant(r));
+  }, [restaurantId]);
 
   useEffect(() => {
     if (!restaurantId) return;

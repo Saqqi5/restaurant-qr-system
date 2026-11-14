@@ -77,10 +77,10 @@ export default function LandingPage() {
               </div>
               <div className="mock-menu">
                 {[
-                  ["🍕", "Margherita Pizza", "$8.00"],
-                  ["🍝", "Pasta Carbonara", "$11.00"],
-                  ["🍰", "Tiramisu", "$6.00"],
-                  ["🥗", "Caesar Salad", "$9.00"],
+                  ["🍕", "Margherita Pizza", "$13.00"],
+                  ["🍝", "Spaghetti Carbonara", "$14.50"],
+                  ["🍰", "Tiramisu", "$6.50"],
+                  ["🥖", "Bruschetta al Pomodoro", "$7.50"],
                 ].map(([emoji, name, price], i) => (
                   <div key={i} className="mock-item">
                     <div className="mock-item-info">
@@ -91,7 +91,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <div className="mock-cart-bar">🛒 2 items · $19.00</div>
+              <div className="mock-cart-bar">🛒 2 items · $19.50</div>
             </div>
           </div>
         </div>
@@ -218,7 +218,7 @@ const DEMO_RESTAURANTS = [
     cuisine: "Italian",
     theme: "#e85d04",
     currency: "$",
-    tagline: "Pasta, Pizza aur Tiramisu — classic Italian flavours.",
+    tagline: "Pasta, Pizza and Tiramisu — classic Italian flavours.",
   },
 ];
 

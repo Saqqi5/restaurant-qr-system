@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders, createOrder,
   subscribeToRestaurantPayments
-} from "../config/db";
+, getRestaurant } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
 
@@ -16,9 +16,14 @@ export default function ServerDashboard() {
   const [view, setView] = useState("orders");
   const [cart, setCart] = useState([]);
   const [selectedTable, setSelectedTable] = useState(1);
-  const [tableCount] = useState(20);
+  const [tableCount, setTableCount] = useState(20);
   const [notes, setNotes] = useState("");
   const [placing, setPlacing] = useState(false);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    getRestaurant(restaurantId).then((r) => r?.table_count && setTableCount(r.table_count));
+  }, [restaurantId]);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {

@@ -342,7 +342,7 @@ export default function GeneralAdminDashboard() {
 
       {showQrModal && (
         <QRModal
-          restaurant={{ id: restaurantId, table_count: 20 }}
+          restaurant={{ id: restaurantId }}
           onClose={() => setShowQrModal(false)}
         />
       )}

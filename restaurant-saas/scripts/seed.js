@@ -72,7 +72,7 @@ const MENU = [
   // Mains
   { name: "Margherita Pizza",       description: "San Marzano tomatoes, fior di latte, fresh basil",    price: 13.00, category: "Pizza", image_url: "/images/margherita.jpg",        prep_time_minutes: 20, available: true,  sort_order: 1 },
   { name: "Diavola Pizza",          description: "Spicy salami, tomato, mozzarella, chili oil",         price: 15.00, category: "Pizza", image_url: "/images/diavola.jpg",        prep_time_minutes: 20, available: true,  sort_order: 2 },
-  { name: "Quattro Formaggi",       description: "Mozzarella, gorgonzola, parmesan, and taleggio",      price: 16.00, category: "Pizza", image_url: "/images/quattro-formaggi.jpg",        prep_time_minutes: 20, available: false, sort_order: 3 },
+  { name: "Quattro Formaggi",       description: "Mozzarella, gorgonzola, parmesan, and taleggio",      price: 16.00, category: "Pizza", image_url: "/images/quattro-formaggi.jpg",        prep_time_minutes: 20, available: true, sort_order: 3 },
   // Desserts
   { name: "Tiramisu",               description: "Classic Italian dessert with mascarpone and espresso", price: 6.50,  category: "Desserts", image_url: "/images/tiramisu.jpg",    prep_time_minutes: 5,  available: true,  sort_order: 1 },
   { name: "Panna Cotta",            description: "Silky vanilla cream with wild berry coulis",           price: 6.00,  category: "Desserts", image_url: "/images/panna-cotta.jpg",    prep_time_minutes: 5,  available: true,  sort_order: 2 },

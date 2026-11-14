@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { subscribeToRestaurantPayments } from "../../config/db";
+import { subscribeToRestaurantPayments, getRestaurant } from "../../config/db";
 
 export default function AdminLayout({ children, title, subtitle, onLogout, userProfile, compact }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [restaurantName, setRestaurantName] = useState("");
   const [pendingPayments, setPendingPayments] = useState([]);
   const [showToast, setShowToast] = useState(false);
   const [prevPendingCount, setPrevPendingCount] = useState(null);
@@ -14,6 +15,7 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
 
   useEffect(() => {
     if (!restaurantId || isSuperAdmin) return;
+    getRestaurant(restaurantId).then((r) => r?.name && setRestaurantName(r.name));
     const unsub = subscribeToRestaurantPayments(restaurantId, (payments) => {
       const pending = payments.filter(p => p.status === "pending");
       setPendingPayments(pending);
@@ -40,8 +42,9 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
         <div className="topbar-brand">
           <div className="topbar-brand-name">SAQL<span>YN</span></div>
           <div style={{ marginLeft: 12 }}>
-            <div className="brand-title">{title}</div>
-            {subtitle && <div className="brand-subtitle">{subtitle}</div>}
+            <div className="brand-title">{restaurantName || title}</div>
+            {subtitle && <div className="brand-subtitle">{restaurantName ? `${title} • ${subtitle}` : subtitle}</div>}
+            {!subtitle && restaurantName && <div className="brand-subtitle">{title}</div>}
           </div>
         </div>
         <div className="topbar-right">

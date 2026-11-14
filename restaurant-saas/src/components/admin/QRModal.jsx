@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { buildQrUrl } from "../../config/tenantResolver";
+import { getRestaurant } from "../../config/db";
 
 // We use the qrcode library approach but build our own simple SVG QR
 // In production, install: npm install qrcode
@@ -8,8 +9,13 @@ import { buildQrUrl } from "../../config/tenantResolver";
 export default function QRModal({ restaurant, onClose }) {
   const [selectedTable, setSelectedTable] = useState(1);
   const [qrSize, setQrSize] = useState(200);
-  const tableCount = restaurant?.table_count || 20;
-  const customDomain = restaurant?.custom_domain;
+  const [doc, setDoc] = useState(null);
+  useEffect(() => {
+    if (restaurant?.id) getRestaurant(restaurant.id).then((r) => r && setDoc(r));
+  }, [restaurant?.id]);
+  const tableCount = doc?.table_count || restaurant?.table_count || 20;
+  const customDomain = doc?.custom_domain || restaurant?.custom_domain;
+  const displayName = doc?.name || restaurant?.name || "Restaurant";
 
   const qrUrl = buildQrUrl(restaurant?.id, selectedTable, "saas", customDomain);
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(qrUrl)}&format=png&qzone=2`;
@@ -29,11 +35,11 @@ export default function QRModal({ restaurant, onClose }) {
       body { font-family: sans-serif; }
       .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px; }
       .qr-cell { text-align: center; padding: 20px; border: 2px solid #eee; border-radius: 12px; page-break-inside: avoid; }
-      h2 { color: #e85d04; }
+      h2 { color: #20C997; }
       p { color: #666; font-size: 14px; }
       img { width: 160px; height: 160px; }
     </style></head><body>
-    <h1 style="text-align:center;color:#e85d04">${restaurant?.name || "Restaurant"} — QR Codes</h1>
+    <h1 style="text-align:center;color:#20C997">${displayName} — QR Codes</h1>
     <div class="grid">`;
 
     for (let i = 1; i <= tableCount; i++) {

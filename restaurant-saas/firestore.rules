@@ -123,8 +123,10 @@ service cloud.firestore {
         // Customers can create orders (unauthenticated), but only if payload is valid
         allow create: if isValidOrderCreate();
 
-        // Staff can read all orders for their restaurant
-        allow read: if isStaff(restaurantId) || isSuperAdmin();
+        // Anyone can read orders — customers track their own table's order
+        // (the app filters client-side by table_number). Demo trade-off:
+        // for a real restaurant, restrict this to staff + per-table tokens.
+        allow read: if true;
 
         // Staff status/payment updates with constrained values
         allow update: if isOrderUpdateAllowed(restaurantId)
