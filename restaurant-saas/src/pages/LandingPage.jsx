@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getDocs } from "firebase/firestore";
-import { getAllRestaurants, menuCol } from "../config/db";
+import { getAllRestaurants, menuCol, sortMenuItems } from "../config/db";
 import { formatPrice } from "../utils/currency";
+
+// Sales go through Telegram — restaurants contact Saqlain directly,
+// and the super admin creates the restaurant (incl. the 30-day trial).
+const TELEGRAM = "https://t.me/Saqlyndigital";
 
 export default function LandingPage() {
   const [demos, setDemos] = useState({});
@@ -15,8 +19,7 @@ export default function LandingPage() {
         const byId = {};
         for (const r of restaurants) {
           const snap = await getDocs(menuCol(r.id));
-          const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          items.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          const items = sortMenuItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
           byId[r.id] = items.filter((i) => i.available !== false).slice(0, 4);
         }
         if (!cancelled) {
@@ -82,21 +85,27 @@ export default function LandingPage() {
             No apps, no queues — just scan and enjoy.
           </p>
           <div className="hero-ctas">
-            <Link to="/login" className="btn-hero-primary">Get Started →</Link>
+            <a
+              href={`${TELEGRAM}?text=${encodeURIComponent("Hi! I want SAQLYN for my restaurant.")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-hero-primary"
+            >
+              Get Started →
+            </a>
             <a href={`/r/demo_restaurant_001?table=1`} className="btn-hero-secondary">Try Demo</a>
           </div>
           <div className="hero-trust">
-            <div className="hero-trust-avatars">
-              {["👨‍🍳", "👩‍💼", "🧑‍💻"].map((e, i) => (
-                <div key={i} className="hero-trust-avatar">{e}</div>
-              ))}
-            </div>
-            Trusted by restaurants across the region
+            <span>💬 Questions? Chat with us on Telegram — two live demo restaurants below, try the full flow right now.</span>
           </div>
         </div>
         <div className="hero-visual">
           <div className="phone-mockup">
             <div className="phone-screen">
+              <div className="mock-statusbar">
+                <span>9:41</span>
+                <span>●●● ○</span>
+              </div>
               <div className="mock-header">
                 <div className="mock-restaurant-name">Bella Italia</div>
                 <div className="mock-table">Table 4</div>
@@ -187,7 +196,7 @@ export default function LandingPage() {
               {plan.featured && <div className="pricing-badge">MOST POPULAR</div>}
               <div className="pricing-plan">{plan.name}</div>
               <div className="pricing-price">
-                <span className="pricing-currency">$</span>
+                <span className="pricing-currency">{plan.currency}</span>
                 <span className="pricing-amount">{plan.price}</span>
               </div>
               <div className="pricing-period">per month</div>
@@ -200,12 +209,14 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link
-                to="/login"
+              <a
+                href={`${TELEGRAM}?text=${encodeURIComponent(plan.ctaText)}`}
+                target="_blank"
+                rel="noreferrer"
                 className={`btn-pricing ${plan.featured ? "filled" : "outline"}`}
               >
                 {plan.cta}
-              </Link>
+              </a>
             </div>
           ))}
         </div>
@@ -221,6 +232,7 @@ export default function LandingPage() {
           <div className="footer-links">
             <a href="#features" className="footer-link">Features</a>
             <a href="#pricing" className="footer-link">Pricing</a>
+            <a href={TELEGRAM} target="_blank" rel="noreferrer" className="footer-link">💬 Telegram</a>
             <Link to="/login" className="footer-link">Staff Login</Link>
           </div>
         </div>
@@ -236,7 +248,7 @@ const DEMO_RESTAURANTS = [
     cuisine: "Pakistani • Desi",
     theme: "#2d6a4f",
     currency: "Rs.",
-    tagline: "Biryani, Nihari, Karahi — asli Lahori zaiqa, Rs. prices.",
+    tagline: "Biryani, Nihari, Karahi — asli Lahori zaiqa.",
   },
   {
     id: "demo_restaurant_001",
@@ -279,30 +291,49 @@ const FEATURES = [
 const PLANS = [
   {
     name: "Basic",
-    price: "29",
+    price: "5,000",
+    currency: "Rs.",
     desc: "Perfect for small restaurants getting started with digital ordering.",
     featured: false,
-    cta: "Get Started",
+    cta: "Start 30-day free trial",
+    ctaText: "Hi! I want to start the 30-day free trial (Basic plan) for my restaurant.",
     features: [
-      "Up to 20 tables",
+      "10 tables",
+      "4 staff logins",
       "QR code ordering",
       "Kitchen & cash dashboards",
-      "Basic analytics",
-      "Email support",
+      "Tax & discount billing",
+      "Payment proof uploads",
     ],
   },
   {
-    name: "Pro",
-    price: "79",
-    desc: "For growing restaurants that need advanced features and more tables.",
+    name: "Standard",
+    price: "8,000",
+    currency: "Rs.",
+    desc: "For growing restaurants that need more tables, more staff and the server dashboard.",
     featured: true,
-    cta: "Start Free Trial",
+    cta: "Get Standard",
+    ctaText: "Hi! I want the Standard plan (Rs. 8,000/month) for my restaurant.",
     features: [
-      "Unlimited tables",
-      "Online payment proof uploads",
+      "20 tables",
+      "10 staff logins",
+      "Everything in Basic",
       "Server dashboard",
       "Advanced analytics",
-      "Custom domain",
+    ],
+  },
+  {
+    name: "Premium",
+    price: "12,000",
+    currency: "Rs.",
+    desc: "For busy restaurants — no limits on tables or staff, with priority support.",
+    featured: false,
+    cta: "Get Premium",
+    ctaText: "Hi! I want the Premium plan (Rs. 12,000/month) for my restaurant.",
+    features: [
+      "Unlimited tables",
+      "30 staff logins",
+      "Everything in Standard",
       "Priority support",
     ],
   },

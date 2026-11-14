@@ -6,7 +6,9 @@ export default function RestaurantHeader({ restaurant, tableNumber }) {
         {restaurant.logo_url ? (
           <img src={restaurant.logo_url} alt={restaurant.name} className="restaurant-logo" />
         ) : (
-          <div className="restaurant-logo-placeholder">🍽️</div>
+          <div className="restaurant-logo-monogram" aria-hidden="true">
+            {(restaurant.name || "?").trim()[0]?.toUpperCase()}
+          </div>
         )}
         <div className="restaurant-info">
           <h1 className="restaurant-name">{restaurant.name}</h1>

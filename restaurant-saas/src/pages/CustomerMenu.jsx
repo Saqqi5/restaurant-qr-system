@@ -15,33 +15,33 @@ export default function CustomerMenu() {
   const { restaurant, tableNumber, restaurantId, loading } = useTenant();
   const currency = restaurant?.currency || "$";
   // Payment accounts come from the restaurant's own settings (editable in
-  // Settings > Payment Methods); the demo values below are the fallback.
+  // Settings > Payment Methods). Only methods the restaurant actually
+  // configured are offered — no demo fallback, so money never looks like
+  // it goes to "Saqlyn Payments" for a real restaurant.
   const PAYMENT_DETAILS = {
-    easypaisa: {
+    easypaisa: restaurant?.payment_easypaisa_number ? {
       icon: "📱",
       name: "EasyPaisa",
       detail: "Send to account:",
-      number: restaurant?.payment_easypaisa_number || "0300-1234567",
-      accountName: restaurant?.payment_easypaisa_name || "Saqlyn Payments",
-      qrEmoji: "📲",
-    },
-    jazzcash: {
+      number: restaurant.payment_easypaisa_number,
+      accountName: restaurant.payment_easypaisa_name || restaurant?.name || "",
+    } : null,
+    jazzcash: restaurant?.payment_jazzcash_number ? {
       icon: "💜",
       name: "JazzCash",
       detail: "Send to mobile account:",
-      number: restaurant?.payment_jazzcash_number || "0311-7654321",
-      accountName: restaurant?.payment_jazzcash_name || "Saqlyn Payments",
-      qrEmoji: "📲",
-    },
-    bank: {
+      number: restaurant.payment_jazzcash_number,
+      accountName: restaurant.payment_jazzcash_name || restaurant?.name || "",
+    } : null,
+    bank: restaurant?.payment_bank_iban ? {
       icon: "🏦",
       name: "Bank Transfer",
       detail: "IBAN:",
-      number: restaurant?.payment_bank_iban || "PK12 HABB 0000 0012 3456 7890",
-      accountName: restaurant?.payment_bank_name || "Saqlyn Restaurant Ltd",
-      qrEmoji: "🏛️",
-    },
+      number: restaurant.payment_bank_iban,
+      accountName: restaurant.payment_bank_name || restaurant?.name || "",
+    } : null,
   };
+  const configuredMethods = Object.keys(PAYMENT_DETAILS).filter((k) => PAYMENT_DETAILS[k]);
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -62,6 +62,13 @@ export default function CustomerMenu() {
   const [paymentError, setPaymentError] = useState("");
   const [selectedMethod, setSelectedMethod] = useState("easypaisa");
   const fileInputRef = useRef(null);
+
+  // If the saved selection is not configured (e.g. EasyPaisa removed),
+  // fall back to the first configured method instead of crashing.
+  const activeMethodKey = configuredMethods.includes(selectedMethod)
+    ? selectedMethod
+    : configuredMethods[0];
+  const activeMethod = activeMethodKey ? PAYMENT_DETAILS[activeMethodKey] : null;
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -172,7 +179,7 @@ export default function CustomerMenu() {
         restaurantId,
         tableNumber,
         orderId: activeOrders[0]?.id || null,
-        method: selectedMethod,
+        method: activeMethodKey,
         orderIds: activeOrders.map((o) => o.id),
         amount: total,
         items: allItems,
@@ -201,6 +208,22 @@ export default function CustomerMenu() {
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
   const orderTotal = activeOrders.reduce((s, o) => s + (o.total || 0), 0);
   const allOrderItems = activeOrders.flatMap(o => o.items || []);
+  // Bill breakdown for the payment sheet (orders store these since the
+  // tax/discount billing update; fall back gracefully for older orders).
+  const billSubtotal = activeOrders.reduce((s, o) => s + (o.subtotal ?? o.total ?? 0), 0);
+  const billDiscount = activeOrders.reduce((s, o) => s + (o.discount_amount || 0), 0);
+  const billTax = activeOrders.reduce((s, o) => s + (o.tax_amount || 0), 0);
+
+  // The restaurant's own brand colours theme the whole customer page:
+  // primary colours the header, the brighter accent colours the buttons,
+  // prices and active states. Falls back to SAQLYN green.
+  const themePrimary = restaurant?.theme?.primary || "#20C997";
+  const themeAccent = restaurant?.theme?.accent || "#17A884";
+  const themeVars = {
+    "--color-primary": themeAccent,
+    "--color-primary-dark": themePrimary,
+    "--color-green": themePrimary,
+  };
 
   if (loading) return <CustomerSkeleton />;
 
@@ -225,7 +248,7 @@ export default function CustomerMenu() {
   }
 
   return (
-    <div className="customer-app">
+    <div className="customer-app" style={themeVars}>
       <RestaurantHeader restaurant={restaurant} tableNumber={tableNumber} />
 
       <nav className="customer-nav">
@@ -338,6 +361,24 @@ export default function CustomerMenu() {
                     </div>
                   ))}
                 </div>
+                <div className="bill-summary">
+                  <div className="bill-row">
+                    <span>Subtotal</span>
+                    <span>{formatPrice(billSubtotal, currency)}</span>
+                  </div>
+                  {billDiscount > 0 && (
+                    <div className="bill-row">
+                      <span>Discount</span>
+                      <span>−{formatPrice(billDiscount, currency)}</span>
+                    </div>
+                  )}
+                  {billTax > 0 && (
+                    <div className="bill-row">
+                      <span>Tax</span>
+                      <span>{formatPrice(billTax, currency)}</span>
+                    </div>
+                  )}
+                </div>
                 <div className="bill-total">
                   <span>Total</span>
                   <span>{formatPrice(orderTotal, currency)}</span>
@@ -363,86 +404,113 @@ export default function CustomerMenu() {
             {paymentStage === "pay" && (
               <>
                 <div className="payment-sheet-title">Choose Payment</div>
-                <div className="payment-sheet-subtitle">
-                  Send {formatPrice(orderTotal, currency)} using any method below
-                </div>
+                {!activeMethod ? (
+                  <>
+                    <div className="payment-sheet-subtitle">
+                      Online payment isn't set up for this restaurant yet.
+                    </div>
+                    <div className="payment-status-screen">
+                      <span className="payment-status-icon">💵</span>
+                      <div className="payment-status-title">Please pay at the counter</div>
+                      <div className="payment-status-desc">
+                        Your bill is {formatPrice(orderTotal, currency)}. The cash
+                        counter will take your payment and mark the order paid.
+                      </div>
+                      <button
+                        className="btn-pay-now"
+                        onClick={closePayment}
+                        style={{ maxWidth: 280, margin: "0 auto" }}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="payment-sheet-subtitle">
+                      Send {formatPrice(orderTotal, currency)} using any method below
+                    </div>
 
-                {/* Method selector */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                  {Object.keys(PAYMENT_DETAILS).map((key) => (
+                    {/* Method selector — only configured methods */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                      {configuredMethods.map((key) => (
+                        <button
+                          key={key}
+                          className={`method-btn ${activeMethodKey === key ? "active" : ""}`}
+                          onClick={() => setSelectedMethod(key)}
+                          style={{ flex: 1, padding: "10px 6px", fontSize: 12 }}
+                        >
+                          {PAYMENT_DETAILS[key].icon} {PAYMENT_DETAILS[key].name}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="payment-methods">
+                      <div className="payment-method-card">
+                        <div className="payment-method-header">
+                          <span className="payment-method-icon">{activeMethod.icon}</span>
+                          <span className="payment-method-name">{activeMethod.name}</span>
+                        </div>
+                        <div className="payment-method-detail">{activeMethod.detail}</div>
+                        <div className="payment-method-number">{activeMethod.number}</div>
+                        <div className="payment-method-detail" style={{ marginTop: 8 }}>
+                          Account Name: <strong>{activeMethod.accountName}</strong>
+                        </div>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(activeMethod.number)}&format=png&qzone=2`}
+                          alt={`${activeMethod.name} payment QR code`}
+                          className="payment-qr"
+                        />
+                        <div style={{ textAlign: "center", fontSize: 11, color: "var(--color-muted)", marginTop: 8 }}>
+                          Scan to copy the account number, or use the number above
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="upload-section">
+                      <h4>Upload Payment Screenshot</h4>
+                      <div
+                        className="file-upload-area"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProofFileChange}
+                          style={{ display: "none" }}
+                        />
+                        <div className="file-upload-icon">📸</div>
+                        {proofFile ? (
+                          <div className="file-upload-text">✅ {proofFile.name}</div>
+                        ) : (
+                          <div className="file-upload-text">Tap to upload screenshot</div>
+                        )}
+                      </div>
+                      {proofPreview && (
+                        <img src={proofPreview} alt="Payment proof" className="file-preview" />
+                      )}
+                    </div>
+
+                    {paymentError && <div className="error-banner">{paymentError}</div>}
+
                     <button
-                      key={key}
-                      className={`method-btn ${selectedMethod === key ? "active" : ""}`}
-                      onClick={() => setSelectedMethod(key)}
-                      style={{ flex: 1, padding: "10px 6px", fontSize: 12 }}
+                      className="btn-pay-now"
+                      onClick={handleSubmitPayment}
+                      disabled={uploading}
+                      style={{ marginBottom: 12 }}
                     >
-                      {PAYMENT_DETAILS[key].icon} {PAYMENT_DETAILS[key].name}
+                      {uploading ? <span className="spinner-sm" /> : "✓ Confirm Payment"}
                     </button>
-                  ))}
-                </div>
-
-                <div className="payment-methods">
-                  <div className="payment-method-card">
-                    <div className="payment-method-header">
-                      <span className="payment-method-icon">{PAYMENT_DETAILS[selectedMethod].icon}</span>
-                      <span className="payment-method-name">{PAYMENT_DETAILS[selectedMethod].name}</span>
-                    </div>
-                    <div className="payment-method-detail">{PAYMENT_DETAILS[selectedMethod].detail}</div>
-                    <div className="payment-method-number">{PAYMENT_DETAILS[selectedMethod].number}</div>
-                    <div className="payment-method-detail" style={{ marginTop: 8 }}>
-                      Account Name: <strong>{PAYMENT_DETAILS[selectedMethod].accountName}</strong>
-                    </div>
-                    <div className="payment-qr-placeholder" style={{ marginTop: 16, fontSize: 60, maxWidth: 120 }}>
-                      {PAYMENT_DETAILS[selectedMethod].qrEmoji}
-                    </div>
-                    <div style={{ textAlign: "center", fontSize: 11, color: "var(--color-muted)", marginTop: 8 }}>
-                      Scan QR code or use account number above
-                    </div>
-                  </div>
-                </div>
-
-                <div className="upload-section">
-                  <h4>Upload Payment Screenshot</h4>
-                  <div
-                    className="file-upload-area"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleProofFileChange}
-                      style={{ display: "none" }}
-                    />
-                    <div className="file-upload-icon">📸</div>
-                    {proofFile ? (
-                      <div className="file-upload-text">✅ {proofFile.name}</div>
-                    ) : (
-                      <div className="file-upload-text">Tap to upload screenshot</div>
-                    )}
-                  </div>
-                  {proofPreview && (
-                    <img src={proofPreview} alt="Payment proof" className="file-preview" />
-                  )}
-                </div>
-
-                {paymentError && <div className="error-banner">{paymentError}</div>}
-
-                <button
-                  className="btn-pay-now"
-                  onClick={handleSubmitPayment}
-                  disabled={uploading}
-                  style={{ marginBottom: 12 }}
-                >
-                  {uploading ? <span className="spinner-sm" /> : "✓ Confirm Payment"}
-                </button>
-                <button
-                  className="btn-secondary"
-                  style={{ width: "100%" }}
-                  onClick={() => setPaymentStage("bill")}
-                >
-                  ← Back
-                </button>
+                    <button
+                      className="btn-secondary"
+                      style={{ width: "100%" }}
+                      onClick={() => setPaymentStage("bill")}
+                    >
+                      ← Back
+                    </button>
+                  </>
+                )}
               </>
             )}
 

@@ -42,7 +42,7 @@ export default function LoginPage() {
       <a href="/" className="login-back-link">← Back to home</a>
       <div className="login-card">
         <div className="login-logo">
-          <span className="logo-icon">⬡</span>
+          <span className="logo-mark">S</span>
           <div className="logo-brand">SAQL<span>YN</span></div>
           <p>Restaurant Management Platform</p>
         </div>
@@ -84,7 +84,7 @@ export default function LoginPage() {
         </form>
 
         <div className="login-footer">
-          <a href="/">← Back to home</a>
+          Staff? Ask your restaurant admin for your login.
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatPrice } from "../../utils/currency";
 
 const CATEGORY_EMOJIS = {
@@ -22,6 +22,15 @@ function getCategoryEmoji(category = "") {
 
 export default function MenuGrid({ items, categories, cart, onAdd, onRemove, currency, searchActive }) {
   const [activeCategory, setActiveCategory] = useState(categories[0] || "");
+
+  // Categories arrive with the menu (async) — when they load, or when the
+  // restaurant changes, default to the first one (menu order) instead of
+  // showing every category at once with no tab highlighted.
+  useEffect(() => {
+    if (categories.length > 0 && !categories.includes(activeCategory)) {
+      setActiveCategory(categories[0]);
+    }
+  }, [categories, activeCategory]);
 
   // While searching, ignore the selected category — search the whole menu.
   const visibleItems = searchActive
@@ -69,7 +78,7 @@ export default function MenuGrid({ items, categories, cart, onAdd, onRemove, cur
                   {item.description && <p className="menu-item-desc">{item.description}</p>}
                   <div className="menu-item-meta">
                     <span className="menu-item-price">{formatPrice(item.price, currency)}</span>
-                    <span className="menu-item-prep">⏱ {item.prep_time_minutes}min</span>
+                    <span className="menu-item-prep">⏱ {item.prep_time_minutes} min</span>
                   </div>
                 </div>
                 <div className="menu-card-action">

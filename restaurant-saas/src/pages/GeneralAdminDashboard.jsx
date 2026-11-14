@@ -177,7 +177,7 @@ export default function GeneralAdminDashboard() {
                       <span className="item-desc">{item.description}</span>
                       <div className="item-meta">
                         <span className="item-price">{formatPrice(item.price, currency)}</span>
-                        <span className="item-prep">⏱ {item.prep_time_minutes}min</span>
+                        <span className="item-prep">⏱ {item.prep_time_minutes} min</span>
                         <span className={`item-status ${item.available ? "available" : "sold-out"}`}>
                           {item.available ? "Available" : "Sold Out"}
                         </span>

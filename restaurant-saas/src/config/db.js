@@ -173,15 +173,36 @@ export async function deleteMenuItem(restaurantId, itemId) {
   await deleteDoc(menuItemDoc(restaurantId, itemId));
 }
 
+// Natural menu flow for category tabs — starters first, drinks last.
+// Categories not in this list (a restaurant's custom ones) come after,
+// alphabetical among themselves. sort_order still orders dishes within
+// a category. (Previous behaviour sorted categories alphabetically, so
+// Bella opened on Beverages instead of Starters.)
+export const CATEGORY_ORDER = [
+  "Starters", "BBQ", "Desi", "Pasta", "Pizza", "Breads",
+  "Desserts", "Beverages",
+];
+
+export function categoryRank(category) {
+  const idx = CATEGORY_ORDER.indexOf(category);
+  return idx === -1 ? CATEGORY_ORDER.length : idx;
+}
+
+export function sortMenuItems(items) {
+  return [...items].sort((a, b) => {
+    const ra = categoryRank(a.category), rb = categoryRank(b.category);
+    if (ra !== rb) return ra - rb;
+    if (ra === CATEGORY_ORDER.length && a.category !== b.category) {
+      return a.category < b.category ? -1 : 1;
+    }
+    return (a.sort_order || 0) - (b.sort_order || 0);
+  });
+}
+
 export function subscribeToMenu(restaurantId, callback) {
   return onSnapshot(menuCol(restaurantId), (snap) => {
     const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    items.sort((a, b) => {
-      if (a.category < b.category) return -1;
-      if (a.category > b.category) return 1;
-      return (a.sort_order || 0) - (b.sort_order || 0);
-    });
-    callback(items);
+    callback(sortMenuItems(items));
   });
 }
 

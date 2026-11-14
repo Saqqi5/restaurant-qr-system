@@ -23,14 +23,14 @@ export default function RestaurantSettingsPage() {
   const [plan, setPlan] = useState("standard");
   const [form, setForm] = useState({
     name: "", table_count: 10, logo_url: "",
-    theme: { primary: "#e85d04", accent: "#f48c06" },
+    theme: { primary: "#20C997", accent: "#17A884" },
     tax_rate: 0, discount_rate: 0,
-    payment_easypaisa_number: "0300-1234567",
-    payment_easypaisa_name: "Saqlyn Payments",
-    payment_jazzcash_number: "0311-7654321",
-    payment_jazzcash_name: "Saqlyn Payments",
-    payment_bank_iban: "PK12 HABB 0000 0012 3456 7890",
-    payment_bank_name: "Saqlyn Restaurant Ltd",
+    payment_easypaisa_number: "",
+    payment_easypaisa_name: "",
+    payment_jazzcash_number: "",
+    payment_jazzcash_name: "",
+    payment_bank_iban: "",
+    payment_bank_name: "",
   });
   const [loaded, setLoaded] = useState(false);
   const planLimit = getPlanLimit(plan, platformLimits);
@@ -54,15 +54,18 @@ export default function RestaurantSettingsPage() {
           name: r.name || "",
           table_count: r.table_count || 10,
           logo_url: r.logo_url || "",
-          theme: r.theme || { primary: "#e85d04", accent: "#f48c06" },
+          theme: r.theme || { primary: "#20C997", accent: "#17A884" },
           tax_rate: Number(r.tax_rate) || 0,
           discount_rate: Number(r.discount_rate) || 0,
-          payment_easypaisa_number: r.payment_easypaisa_number || "0300-1234567",
-          payment_easypaisa_name: r.payment_easypaisa_name || "Saqlyn Payments",
-          payment_jazzcash_number: r.payment_jazzcash_number || "0311-7654321",
-          payment_jazzcash_name: r.payment_jazzcash_name || "Saqlyn Payments",
-          payment_bank_iban: r.payment_bank_iban || "PK12 HABB 0000 0012 3456 7890",
-          payment_bank_name: r.payment_bank_name || "Saqlyn Restaurant Ltd",
+          // No demo fallbacks: an empty account means "not configured" and
+          // the customer sees "pay at the counter". Account names default
+          // to the restaurant's own name, never "Saqlyn Payments".
+          payment_easypaisa_number: r.payment_easypaisa_number || "",
+          payment_easypaisa_name: r.payment_easypaisa_name || r.name || "",
+          payment_jazzcash_number: r.payment_jazzcash_number || "",
+          payment_jazzcash_name: r.payment_jazzcash_name || r.name || "",
+          payment_bank_iban: r.payment_bank_iban || "",
+          payment_bank_name: r.payment_bank_name || r.name || "",
         });
         setLogoPreview(r.logo_url || "");
       }
