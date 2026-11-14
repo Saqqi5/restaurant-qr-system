@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { subscribeToOrders } from "../config/db";
+import { formatPrice } from "../utils/currency";
 import { useTenant } from "../contexts/TenantContext";
 import { buildQrUrl } from "../config/tenantResolver";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -16,6 +17,7 @@ const TABLE_STATUS = {
 export default function TableManagementPage() {
   const { userProfile, restaurantId, logout } = useAuth();
   const { restaurant } = useTenant();
+  const currency = restaurant?.currency || "$";
   const [orders, setOrders] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
 
@@ -137,7 +139,7 @@ export default function TableManagementPage() {
                       <span className={`status-dot status-${order.status}`}>
                         {order.status}
                       </span>
-                      <span className="tdp-order-total">${order.total?.toFixed(2)}</span>
+                      <span className="tdp-order-total">{formatPrice(order.total, currency)}</span>
                     </div>
                     {order.items?.map((item, j) => (
                       <div key={j} className="tdp-item">
@@ -149,7 +151,7 @@ export default function TableManagementPage() {
                 ))}
                 <div className="tdp-grand-total">
                   Grand Total: <strong>
-                    ${selectedOrders.reduce((s, o) => s + (o.total || 0), 0).toFixed(2)}
+                    {formatPrice(selectedOrders.reduce((s, o) => s + (o.total || 0), 0), currency)}
                   </strong>
                 </div>
               </div>

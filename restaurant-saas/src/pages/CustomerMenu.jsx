@@ -5,6 +5,7 @@ import {
   createPayment, subscribeToPayment
 } from "../config/db";
 import { storage } from "../config/firebase";
+import { formatPrice } from "../utils/currency";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import CartDrawer from "../components/customer/CartDrawer";
 import MenuGrid from "../components/customer/MenuGrid";
@@ -40,6 +41,7 @@ const PAYMENT_DETAILS = {
 
 export default function CustomerMenu() {
   const { restaurant, tableNumber, restaurantId, loading } = useTenant();
+  const currency = restaurant?.currency || "$";
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -249,19 +251,20 @@ export default function CustomerMenu() {
           cart={cart}
           onAdd={addToCart}
           onRemove={removeFromCart}
+          currency={currency}
         />
       )}
 
       {view === "orders" && (
         <>
-          <OrderTracker orders={activeOrders} />
+          <OrderTracker orders={activeOrders} currency={currency} />
           {activeOrders.length > 0 && (
             <div className="pay-now-section">
               <button
                 className="btn-pay-now"
                 onClick={() => setPaymentStage("bill")}
               >
-                💳 Pay Bill — ${orderTotal.toFixed(2)}
+                💳 Pay Bill — {formatPrice(orderTotal, currency)}
               </button>
             </div>
           )}
@@ -274,7 +277,7 @@ export default function CustomerMenu() {
           <span className="cart-fab-icon">🛒</span>
           <span className="cart-fab-count">{cartCount}</span>
           <span className="cart-fab-total">
-            ${cart.reduce((s, i) => s + i.price * i.quantity, 0).toFixed(2)}
+            {formatPrice(cart.reduce((s, i) => s + i.price * i.quantity, 0), currency)}
           </span>
         </button>
       )}
@@ -308,14 +311,14 @@ export default function CustomerMenu() {
                     <div key={i} className="bill-item">
                       <span className="bill-item-name">{item.name} ×{item.quantity}</span>
                       <span className="bill-item-price">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        {formatPrice(item.price * item.quantity, currency)}
                       </span>
                     </div>
                   ))}
                 </div>
                 <div className="bill-total">
                   <span>Total</span>
-                  <span>${orderTotal.toFixed(2)}</span>
+                  <span>{formatPrice(orderTotal, currency)}</span>
                 </div>
                 <button
                   className="btn-pay-now"
@@ -339,7 +342,7 @@ export default function CustomerMenu() {
               <>
                 <div className="payment-sheet-title">Choose Payment</div>
                 <div className="payment-sheet-subtitle">
-                  Send ${orderTotal.toFixed(2)} using any method below
+                  Send {formatPrice(orderTotal, currency)} using any method below
                 </div>
 
                 {/* Method selector */}

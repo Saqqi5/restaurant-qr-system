@@ -1,5 +1,6 @@
 // OrdersTable.jsx
 import { updateOrderStatus } from "../../config/db";
+import { formatPrice, useRestaurantCurrency } from "../../utils/currency";
 
 const STATUS_COLORS = {
   pending: "#ff6b35", confirmed: "#f7931e", preparing: "#4a90d9",
@@ -7,6 +8,7 @@ const STATUS_COLORS = {
 };
 
 export function OrdersTable({ orders, restaurantId, showActions = true }) {
+  const currency = useRestaurantCurrency(restaurantId);
   function formatTime(ts) {
     if (!ts?.toDate) return "—";
     return ts.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -30,7 +32,7 @@ export function OrdersTable({ orders, restaurantId, showActions = true }) {
               </div>
             </div>
             <div className="order-row-right">
-              <span className="order-row-total">${order.total?.toFixed(2)}</span>
+              <span className="order-row-total">{formatPrice(order.total, currency)}</span>
               <span className="status-dot" style={{ background: STATUS_COLORS[order.status] }}>
                 {order.status}
               </span>

@@ -1,3 +1,5 @@
+import { formatPrice } from "../../utils/currency";
+
 const STATUS_STEPS = [
   { key: "pending", label: "Order Received", icon: "📋" },
   { key: "confirmed", label: "Confirmed", icon: "✅" },
@@ -8,7 +10,7 @@ const STATUS_STEPS = [
 
 const STATUS_INDEX = STATUS_STEPS.reduce((acc, s, i) => ({ ...acc, [s.key]: i }), {});
 
-export default function OrderTracker({ orders }) {
+export default function OrderTracker({ orders, currency }) {
   if (orders.length === 0) {
     return (
       <div className="order-tracker-empty">
@@ -38,7 +40,7 @@ export default function OrderTracker({ orders }) {
           <div key={order.id} className="order-track-card">
             <div className="order-track-header">
               <span className="order-track-id">Order #{order.id?.slice(-6).toUpperCase()}</span>
-              <span className="order-total-display">${order.total?.toFixed(2)}</span>
+              <span className="order-total-display">{formatPrice(order.total, currency)}</span>
             </div>
 
             {/* Progress Steps */}

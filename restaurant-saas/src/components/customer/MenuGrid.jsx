@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPrice } from "../../utils/currency";
 
 const CATEGORY_EMOJIS = {
   pizza: "🍕", pasta: "🍝", salad: "🥗", soup: "🍲",
@@ -19,7 +20,7 @@ function getCategoryEmoji(category = "") {
   return "🍽️";
 }
 
-export default function MenuGrid({ items, categories, cart, onAdd, onRemove }) {
+export default function MenuGrid({ items, categories, cart, onAdd, onRemove, currency }) {
   const [activeCategory, setActiveCategory] = useState(categories[0] || "");
 
   const getCartQty = (itemId) => cart.find((c) => c.id === itemId)?.quantity || 0;
@@ -60,7 +61,7 @@ export default function MenuGrid({ items, categories, cart, onAdd, onRemove }) {
                   <h3 className="menu-item-name">{item.name}</h3>
                   {item.description && <p className="menu-item-desc">{item.description}</p>}
                   <div className="menu-item-meta">
-                    <span className="menu-item-price">${item.price?.toFixed(2)}</span>
+                    <span className="menu-item-price">{formatPrice(item.price, currency)}</span>
                     <span className="menu-item-prep">⏱ {item.prep_time_minutes}min</span>
                   </div>
                 </div>

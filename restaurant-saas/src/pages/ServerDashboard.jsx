@@ -4,10 +4,12 @@ import {
   subscribeToMenu, subscribeToOrders, createOrder,
   subscribeToRestaurantPayments
 } from "../config/db";
+import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
 
 export default function ServerDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
+  const currency = useRestaurantCurrency(restaurantId);
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -126,7 +128,7 @@ export default function ServerDashboard() {
               <div className="server-order-header">
                 <span className="table-badge">Table {order.table_number}</span>
                 <span className={`status-pill status-${order.status}`}>{order.status}</span>
-                <span className="order-total-display">${order.total?.toFixed(2)}</span>
+                <span className="order-total-display">{formatPrice(order.total, currency)}</span>
                 {getPaymentPill(order)}
               </div>
               <div className="server-order-items">
@@ -171,7 +173,7 @@ export default function ServerDashboard() {
                         onClick={() => addToCart(item)}
                       >
                         <span className="item-name">{item.name}</span>
-                        <span className="item-price">${item.price?.toFixed(2)}</span>
+                        <span className="item-price">{formatPrice(item.price, currency)}</span>
                         {inCart && <span className="in-cart-badge">{inCart.quantity}</span>}
                       </div>
                     );
@@ -188,7 +190,7 @@ export default function ServerDashboard() {
               <div key={item.id} className="cart-item">
                 <div className="cart-item-info">
                   <span className="cart-item-name">{item.name}</span>
-                  <span className="cart-item-price">${(item.price * item.quantity).toFixed(2)}</span>
+                  <span className="cart-item-price">{formatPrice(item.price * item.quantity, currency)}</span>
                 </div>
                 <div className="cart-item-controls">
                   <button onClick={() => removeFromCart(item.id)}>−</button>
@@ -206,7 +208,7 @@ export default function ServerDashboard() {
                   onChange={(e) => setNotes(e.target.value)}
                 />
                 <div className="cart-total">
-                  Total: <strong>${cartTotal.toFixed(2)}</strong>
+                  Total: <strong>{formatPrice(cartTotal, currency)}</strong>
                 </div>
                 <button
                   className="btn-place-order"

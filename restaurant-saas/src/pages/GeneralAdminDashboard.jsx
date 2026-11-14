@@ -7,6 +7,7 @@ import {
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { storage } from "../config/firebase";
+import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import AdminLayout from "../components/admin/AdminLayout";
 import MenuItemModal from "../components/admin/MenuItemModal";
@@ -20,6 +21,7 @@ const TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
 
 export default function GeneralAdminDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
+  const currency = useRestaurantCurrency(restaurantId);
   const [activeTab, setActiveTab] = useState("menu");
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -114,7 +116,7 @@ export default function GeneralAdminDashboard() {
       <StatsBar stats={[
         { label: "Menu Items", value: menuItems.length, icon: "🍽️" },
         { label: "Today's Orders", value: todayOrders.length, icon: "📋" },
-        { label: "Today's Revenue", value: `$${todayRevenue.toFixed(2)}`, icon: "💰" },
+        { label: "Today's Revenue", value: formatPrice(todayRevenue, currency), icon: "💰" },
         { label: "Pending Orders", value: pendingOrders, icon: "⏳", alert: pendingOrders > 5 },
       ]} />
 
@@ -163,7 +165,7 @@ export default function GeneralAdminDashboard() {
                       <span className="item-name">{item.name}</span>
                       <span className="item-desc">{item.description}</span>
                       <div className="item-meta">
-                        <span className="item-price">${item.price?.toFixed(2)}</span>
+                        <span className="item-price">{formatPrice(item.price, currency)}</span>
                         <span className="item-prep">⏱ {item.prep_time_minutes}min</span>
                         <span className={`item-status ${item.available ? "available" : "sold-out"}`}>
                           {item.available ? "Available" : "Sold Out"}
@@ -225,7 +227,7 @@ export default function GeneralAdminDashboard() {
                           <div className="payment-proof-table">Table {payment.tableNumber}</div>
                           <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
                         </div>
-                        <div className="payment-proof-amount">${payment.amount?.toFixed(2)}</div>
+                        <div className="payment-proof-amount">{formatPrice(payment.amount, currency)}</div>
                       </div>
                       <div style={{ marginBottom: 10 }}>
                         {payment.items?.slice(0, 3).map((item, i) => (
@@ -266,7 +268,7 @@ export default function GeneralAdminDashboard() {
                               <div className="payment-proof-table">Table {payment.tableNumber}</div>
                               <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
                             </div>
-                            <div className="payment-proof-amount">${payment.amount?.toFixed(2)}</div>
+                            <div className="payment-proof-amount">{formatPrice(payment.amount, currency)}</div>
                           </div>
                           <div className="verified-label">✅ Verified — {formatDate(payment.verifiedAt)}</div>
                         </div>
@@ -283,7 +285,7 @@ export default function GeneralAdminDashboard() {
       {/* Analytics Tab */}
       {activeTab === "analytics" && (
         <div className="tab-content">
-          <AnalyticsPanel orders={orders} menuItems={menuItems} />
+          <AnalyticsPanel orders={orders} menuItems={menuItems} currency={currency} />
         </div>
       )}
 

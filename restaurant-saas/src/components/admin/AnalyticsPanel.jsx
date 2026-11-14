@@ -1,4 +1,6 @@
-export default function AnalyticsPanel({ orders, menuItems }) {
+import { formatPrice } from "../../utils/currency";
+
+export default function AnalyticsPanel({ orders, menuItems, currency }) {
   const paid = orders.filter((o) => o.payment_status === "paid");
   const totalRevenue = paid.reduce((s, o) => s + (o.total || 0), 0);
   const avgOrder = paid.length ? totalRevenue / paid.length : 0;
@@ -34,7 +36,7 @@ export default function AnalyticsPanel({ orders, menuItems }) {
       <div className="analytics-stats">
         <div className="analytics-card">
           <div className="analytics-icon">💰</div>
-          <div className="analytics-value">${totalRevenue.toFixed(2)}</div>
+          <div className="analytics-value">{formatPrice(totalRevenue, currency)}</div>
           <div className="analytics-label">Total Revenue</div>
         </div>
         <div className="analytics-card">
@@ -44,7 +46,7 @@ export default function AnalyticsPanel({ orders, menuItems }) {
         </div>
         <div className="analytics-card">
           <div className="analytics-icon">📊</div>
-          <div className="analytics-value">${avgOrder.toFixed(2)}</div>
+          <div className="analytics-value">{formatPrice(avgOrder, currency)}</div>
           <div className="analytics-label">Avg Order Value</div>
         </div>
         <div className="analytics-card">

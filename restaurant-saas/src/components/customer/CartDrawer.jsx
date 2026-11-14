@@ -1,5 +1,8 @@
+import { formatPrice } from "../../utils/currency";
+
 export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpdateNotes, onPlaceOrder, restaurant }) {
   const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const currency = restaurant?.currency || "$";
   const maxPrepTime = cart.length ? Math.max(...cart.map((i) => i.prep_time_minutes || 15)) : 0;
 
   if (!open) return null;
@@ -25,7 +28,7 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
                 <div key={item.id} className="cart-item">
                   <div className="cart-item-top">
                     <span className="cart-item-name">{item.name}</span>
-                    <span className="cart-item-price">${(item.price * item.quantity).toFixed(2)}</span>
+                    <span className="cart-item-price">{formatPrice(item.price * item.quantity, currency)}</span>
                   </div>
                   <div className="cart-item-controls">
                     <div className="qty-control">
@@ -33,7 +36,7 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
                       <span>{item.quantity}</span>
                       <button onClick={() => onAdd(item)}>+</button>
                     </div>
-                    <span className="unit-price">${item.price.toFixed(2)} each</span>
+                    <span className="unit-price">{formatPrice(item.price, currency)} each</span>
                   </div>
                   <input
                     className="item-notes-input"
@@ -49,7 +52,7 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
               <div className="cart-summary">
                 <div className="cart-row">
                   <span>Subtotal</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatPrice(total, currency)}</span>
                 </div>
                 <div className="cart-row prep-time">
                   <span>⏱ Est. prep time</span>
@@ -57,11 +60,11 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
                 </div>
                 <div className="cart-row cart-total-row">
                   <span>Total</span>
-                  <strong>${total.toFixed(2)}</strong>
+                  <strong>{formatPrice(total, currency)}</strong>
                 </div>
               </div>
               <button className="btn-place-order" onClick={onPlaceOrder}>
-                Place Order — ${total.toFixed(2)}
+                Place Order — {formatPrice(total, currency)}
               </button>
               <p className="cart-disclaimer">Payment at the counter after your meal.</p>
             </div>

@@ -4,10 +4,12 @@ import {
   subscribeToOrders, updatePaymentStatus,
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
+import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
 
 export default function CashCounterDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
+  const currency = useRestaurantCurrency(restaurantId);
   const [orders, setOrders] = useState([]);
   const [payments, setPayments] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -80,7 +82,7 @@ export default function CashCounterDashboard() {
         <div className="stat-card">
           <span className="stat-icon">💰</span>
           <div>
-            <div className="stat-value">${todayRevenue.toFixed(2)}</div>
+            <div className="stat-value">{formatPrice(todayRevenue, currency)}</div>
             <div className="stat-label">Today's Revenue</div>
           </div>
         </div>
@@ -156,7 +158,7 @@ export default function CashCounterDashboard() {
                     <span className="order-time">{formatTime(order.created_at)}</span>
                   </div>
                   <div className="order-header-right">
-                    <span className="order-total">${order.total?.toFixed(2)}</span>
+                    <span className="order-total">{formatPrice(order.total, currency)}</span>
                     <span className={`payment-badge ${order.payment_status}`}>
                       {order.payment_status === "paid"
                         ? `✅ ${order.payment_method || "paid"}`
@@ -171,12 +173,12 @@ export default function CashCounterDashboard() {
                       {order.items?.map((item, i) => (
                         <div key={i} className="detail-item">
                           <span>{item.name} ×{item.quantity}</span>
-                          <span>${(item.price * item.quantity).toFixed(2)}</span>
+                          <span>{formatPrice(item.price * item.quantity, currency)}</span>
                         </div>
                       ))}
                       <div className="detail-total">
                         <span>Total</span>
-                        <span>${order.total?.toFixed(2)}</span>
+                        <span>{formatPrice(order.total, currency)}</span>
                       </div>
                     </div>
 
@@ -237,7 +239,7 @@ export default function CashCounterDashboard() {
                     <div className="payment-proof-table">Table {payment.tableNumber}</div>
                     <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
                   </div>
-                  <div className="payment-proof-amount">${payment.amount?.toFixed(2)}</div>
+                  <div className="payment-proof-amount">{formatPrice(payment.amount, currency)}</div>
                 </div>
 
                 {/* Order items */}
@@ -289,7 +291,7 @@ export default function CashCounterDashboard() {
                         <div className="payment-proof-table">Table {payment.tableNumber}</div>
                         <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
                       </div>
-                      <div className="payment-proof-amount">${payment.amount?.toFixed(2)}</div>
+                      <div className="payment-proof-amount">{formatPrice(payment.amount, currency)}</div>
                     </div>
                     <div className="verified-label">✅ Payment Verified — {formatDate(payment.verifiedAt)}</div>
                   </div>

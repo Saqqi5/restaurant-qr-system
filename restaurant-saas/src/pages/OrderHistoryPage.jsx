@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { getDocs, query, orderBy, where, Timestamp } from "firebase/firestore";
 import { ordersCol } from "../config/db";
+import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
 
 function startOfDay(date) {
@@ -17,6 +18,7 @@ function endOfDay(date) {
 
 export default function OrderHistoryPage() {
   const { userProfile, restaurantId, logout } = useAuth();
+  const currency = useRestaurantCurrency(restaurantId);
   const [orders, setOrders]     = useState([]);
   const [loading, setLoading]   = useState(false);
   const [dateFrom, setDateFrom] = useState(toDateInput(startOfDay(new Date())));
@@ -115,12 +117,12 @@ export default function OrderHistoryPage() {
         </div>
         <div className="hs-item">
           <span className="hs-label">Revenue (paid)</span>
-          <span className="hs-value">${totalRevenue.toFixed(2)}</span>
+          <span className="hs-value">{formatPrice(totalRevenue, currency)}</span>
         </div>
         <div className="hs-item">
           <span className="hs-label">Avg. Order</span>
           <span className="hs-value">
-            ${filtered.length ? (totalRevenue / filtered.filter(o => o.payment_status === "paid").length || 0).toFixed(2) : "—"}
+            {filtered.length ? formatPrice(totalRevenue / filtered.filter(o => o.payment_status === "paid").length || 0, currency) : "—"}
           </span>
         </div>
       </div>
@@ -154,7 +156,7 @@ export default function OrderHistoryPage() {
                   <td className="ht-items">
                     {order.items?.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
                   </td>
-                  <td className="ht-price">${order.total?.toFixed(2)}</td>
+                  <td className="ht-price">{formatPrice(order.total, currency)}</td>
                   <td>
                     <span className={`status-pill status-${order.status}`}>
                       {order.status}

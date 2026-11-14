@@ -24,6 +24,7 @@ const RESTAURANT = {
   logo_url:          null,
   custom_domain:     null,
   theme:             { primary: "#e85d04", accent: "#f48c06" },
+  currency:          "$",
   active:            true,
   plan:              "saas",
 };
@@ -50,6 +51,62 @@ const MENU = [
   { name: "San Pellegrino",         description: "Sparkling mineral water 500ml",                             price: 3.50,  category: "Beverages", prep_time_minutes: 2,  available: true,  sort_order: 1 },
   { name: "House Red Wine (glass)", description: "Chianti Classico DOC",                                      price: 7.00,  category: "Beverages", prep_time_minutes: 2,  available: true,  sort_order: 2 },
   { name: "Espresso",               description: "Double shot Italian espresso",                               price: 2.50,  category: "Beverages", prep_time_minutes: 3,  available: true,  sort_order: 3 },
+];
+
+
+// ── Pakistani demo restaurant (Lahori Dastarkhwan) ─────────────────
+const RESTAURANT2_ID = "demo_restaurant_002";
+const RESTAURANT2 = {
+  id:                RESTAURANT2_ID,
+  name:              "Lahori Dastarkhwan",
+  slug:              "lahori-dastarkhwan",
+  table_count:       12,
+  logo_url:          null,
+  custom_domain:     null,
+  theme:             { primary: "#2d6a4f", accent: "#52b788" },
+  currency:          "Rs.",
+  active:            true,
+  plan:              "saas",
+};
+
+const STAFF2 = [
+  { email: "admin@lahoridastarkhwan.com",   password: "Admin@123",   name: "Ahmed Raza",  role: "general_admin" },
+  { email: "kitchen@lahoridastarkhwan.com", password: "Kitchen@123", name: "Chef Bilal",  role: "kitchen" },
+  { email: "cash@lahoridastarkhwan.com",    password: "Cash@123",    name: "Fatima Khan", role: "cash_counter" },
+  { email: "server@lahoridastarkhwan.com",  password: "Server@123",  name: "Usman Ali",   role: "server" },
+];
+
+const MENU2 = [
+  // Starters
+  { name: "Samosa Chaat",       description: "Crispy samosa topped with chana, yogurt, chutneys and sev", price: 250,  category: "Starters", prep_time_minutes: 8,  available: true,  sort_order: 1 },
+  { name: "Dahi Bhalla",        description: "Soft lentil dumplings in yogurt with tamarind chutney",     price: 300,  category: "Starters", prep_time_minutes: 8,  available: true,  sort_order: 2 },
+  // BBQ
+  { name: "Chicken Tikka (Leg)", description: "Charcoal-grilled chicken leg, desi masala, lemon and onion", price: 550, category: "BBQ",      prep_time_minutes: 20, available: true,  sort_order: 1 },
+  { name: "Seekh Kabab (4 pc)",  description: "Hand-minced beef kabab, smoky, with naan and raita",       price: 500,  category: "BBQ",      prep_time_minutes: 15, available: true,  sort_order: 2 },
+  { name: "Chapli Kabab (2 pc)", description: "Peshawari-style flat kabab, tomato, onion, green chilli",   price: 350,  category: "BBQ",      prep_time_minutes: 12, available: true,  sort_order: 3 },
+  { name: "Malai Boti",          description: "Creamy, mild chicken boti, grilled over charcoal",           price: 650,  category: "BBQ",      prep_time_minutes: 18, available: true,  sort_order: 4 },
+  // Desi
+  { name: "Chicken Biryani",     description: "Fragrant basmati, chicken, aloo bukhara, raita and salad",   price: 450,  category: "Desi",     prep_time_minutes: 15, available: true,  sort_order: 1 },
+  { name: "Beef Nihari",         description: "Slow-cooked beef shank stew, ginger, lemon, green chilli",   price: 850,  category: "Desi",     prep_time_minutes: 25, available: true,  sort_order: 2 },
+  { name: "Chicken Karahi (Half)", description: "Desi ghee karahi, tomato, ginger, green chilli",          price: 900,  category: "Desi",     prep_time_minutes: 20, available: true,  sort_order: 3 },
+  { name: "Chicken Karahi (Full)", description: "Desi ghee karahi, tomato, ginger, green chilli",          price: 1650, category: "Desi",     prep_time_minutes: 25, available: true,  sort_order: 4 },
+  { name: "Daal Fry",            description: "Yellow daal with garlic tarka, rice or naan",                price: 300,  category: "Desi",     prep_time_minutes: 12, available: true,  sort_order: 5 },
+  { name: "Tawa Qeema",          description: "Spiced minced beef on tawa, green chilli and coriander",     price: 700,  category: "Desi",     prep_time_minutes: 18, available: true,  sort_order: 6 },
+  { name: "Mix Sabzi",           description: "Seasonal vegetables, light masala",                          price: 350,  category: "Desi",     prep_time_minutes: 12, available: true,  sort_order: 7 },
+  // Breads
+  { name: "Naan",                description: "Tandoor-baked plain naan",                                   price: 40,   category: "Breads",   prep_time_minutes: 5,  available: true,  sort_order: 1 },
+  { name: "Roghni Naan",         description: "Sesame-topped soft naan",                                    price: 80,   category: "Breads",   prep_time_minutes: 5,  available: true,  sort_order: 2 },
+  { name: "Garlic Naan",         description: "Naan brushed with garlic butter",                            price: 120,  category: "Breads",   prep_time_minutes: 5,  available: true,  sort_order: 3 },
+  // Desserts
+  { name: "Gulab Jamun (2 pc)",  description: "Warm syrup-soaked jamun",                                    price: 150,  category: "Desserts", prep_time_minutes: 5,  available: true,  sort_order: 1 },
+  { name: "Kheer",               description: "Slow-cooked rice pudding, cardamom and pistachio",            price: 180,  category: "Desserts", prep_time_minutes: 5,  available: true,  sort_order: 2 },
+  { name: "Rasmalai",            description: "Soft cheese discs in chilled saffron milk",                   price: 200,  category: "Desserts", prep_time_minutes: 5,  available: true,  sort_order: 3 },
+  // Beverages
+  { name: "Sweet Lassi",         description: "Thick yogurt lassi, sweetened",                               price: 150,  category: "Beverages", prep_time_minutes: 3,  available: true,  sort_order: 1 },
+  { name: "Kashmiri Chai",       description: "Pink tea with crushed nuts",                                   price: 120,  category: "Beverages", prep_time_minutes: 8,  available: true,  sort_order: 2 },
+  { name: "Doodh Patti",         description: "Slow-brewed milky chai",                                       price: 100,  category: "Beverages", prep_time_minutes: 8,  available: true,  sort_order: 3 },
+  { name: "Soft Drink",          description: "Chilled soft drink 345ml",                                     price: 120,  category: "Beverages", prep_time_minutes: 2,  available: true,  sort_order: 4 },
+  { name: "Mineral Water",       description: "Mineral water 500ml",                                          price: 60,   category: "Beverages", prep_time_minutes: 2,  available: true,  sort_order: 5 },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -228,14 +285,65 @@ async function seed() {
     console.log(`   ✅ [${member.role.padEnd(14)}] ${member.email} / ${member.password}`);
   }
 
+
+  // 4b. Pakistani demo restaurant (Lahori Dastarkhwan) — Bella Italia stays as-is
+  console.log("\n🏪 Creating Pakistani demo restaurant...");
+  await writeDocument(`restaurants/${RESTAURANT2_ID}`, toFirestoreFields({
+    ...RESTAURANT2,
+  }), saWriteToken);
+  console.log(`   ✅ Restaurant ID: ${RESTAURANT2_ID}`);
+
+  console.log("\n🍽️  Seeding Pakistani menu...");
+  for (const item of MENU2) {
+    const doc = await addDocument(
+      `restaurants/${RESTAURANT2_ID}/menu`,
+      toFirestoreFields(item),
+      saWriteToken
+    );
+    const docId = doc.name.split("/").pop();
+    await writeDocument(
+      `restaurants/${RESTAURANT2_ID}/menu/${docId}`,
+      toFirestoreFields({ ...item, id: docId }),
+      saWriteToken
+    );
+    console.log(`   ✅ ${item.name} — Rs. ${item.price}`);
+  }
+
+  console.log("\n👥 Creating Pakistani staff accounts...");
+  for (const member of STAFF2) {
+    const result = await createUser(member.email, member.password);
+    if (result.existed) {
+      console.log(`   ⚠️  ${member.email} auth exists, ensuring Firestore doc...`);
+    }
+    let memberUid = result.localId;
+    if (!memberUid) {
+      const memberToken = await signIn(member.email, member.password);
+      const lookupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${API_KEY}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: memberToken }),
+      });
+      memberUid = (await lookupRes.json()).users[0].localId;
+    }
+    await writeDocument(`users/${memberUid}`, toFirestoreFields({
+      email: member.email,
+      name: member.name,
+      role: member.role,
+      restaurant_id: RESTAURANT2_ID,
+      active: true,
+    }), saWriteToken);
+    console.log(`   ✅ [${member.role.padEnd(14)}] ${member.email} / ${member.password}`);
+  }
+
   // 5. Summary
   console.log("\n" + "═".repeat(60));
   console.log("✅ SEED COMPLETE — TableQR is ready!\n");
   console.log("CREDENTIALS:");
   console.log(`  Super Admin:    ${SUPER_ADMIN.email} / ${SUPER_ADMIN.password}`);
   STAFF.forEach(s => console.log(`  ${s.role.padEnd(15)} ${s.email} / ${s.password}`));
+  STAFF2.forEach(s => console.log(`  ${s.role.padEnd(15)} ${s.email} / ${s.password}`));
   console.log("\nCUSTOMER QR URL:");
   console.log(`  http://localhost:5000/r/${RESTAURANT_ID}?table=1`);
+  console.log(`  http://localhost:5000/r/${RESTAURANT2_ID}?table=1`);
   console.log("═".repeat(60));
 }
 
