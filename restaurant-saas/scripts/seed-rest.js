@@ -9,9 +9,12 @@ const AUTH_URL    = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?k
 const FS_BASE     = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 // ── Seed Data ─────────────────────────────────────────────────────
+// The super admin password is NEVER committed (the old demo password was
+// public in this repo — changed 2026-11-14). Pass it when seeding:
+//   SUPER_ADMIN_PASSWORD=<password> node scripts/seed-rest.js
 const SUPER_ADMIN = {
   email: "superadmin@tableqr.com",
-  password: "SuperAdmin@123",
+  password: process.env.SUPER_ADMIN_PASSWORD || "CHANGE_ME",
   name: "Platform Admin",
 };
 
