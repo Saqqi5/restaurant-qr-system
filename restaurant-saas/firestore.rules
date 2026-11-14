@@ -133,8 +133,14 @@ service cloud.firestore {
 
     // ── Users ─────────────────────────────────────────────────
     match /users/{userId} {
+      // A restaurant's general admin can read the staff of their OWN
+      // restaurant (StaffModal list + plan cap). Nobody can read another
+      // restaurant's staff — kitchen / cash / server can only read
+      // themselves, and the super admin can read everyone.
       allow read: if isAuthenticated() && (
         request.auth.uid == userId || isSuperAdmin()
+        || (getUserData().role == 'general_admin'
+            && getUserData().restaurant_id == resource.data.restaurant_id)
       );
       allow create: if isSuperAdmin() || isStaffCreateAllowed();
       allow update: if isSuperAdmin() || request.auth.uid == userId;
