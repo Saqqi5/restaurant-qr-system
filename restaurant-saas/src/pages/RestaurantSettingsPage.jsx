@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTenant } from "../contexts/TenantContext";
 import { updateRestaurant, getRestaurant } from "../config/db";
-import { storage } from "../config/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 
 const PRESET_THEMES = [
@@ -69,9 +68,8 @@ export default function RestaurantSettingsPage() {
     try {
       let logo_url = form.logo_url;
       if (logoFile) {
-        const storageRef = ref(storage, `restaurants/${restaurantId}/logo_${Date.now()}`);
-        const snap = await uploadBytes(storageRef, logoFile);
-        logo_url = await getDownloadURL(snap.ref);
+        // Stored as a data URL — no Firebase Storage needed.
+        logo_url = await downscaleImage(logoFile, 400, 0.8);
       }
       await updateRestaurant(restaurantId, { ...form, logo_url });
       setSaved(true);

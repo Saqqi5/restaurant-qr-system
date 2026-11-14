@@ -4,9 +4,8 @@ import {
   subscribeToMenu, createOrder, subscribeToTableOrders,
   createPayment, subscribeToPayment, calculateBill
 } from "../config/db";
-import { storage } from "../config/firebase";
 import { formatPrice } from "../utils/currency";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { downscaleImage } from "../utils/image";
 import CartDrawer from "../components/customer/CartDrawer";
 import MenuGrid from "../components/customer/MenuGrid";
 import OrderTracker from "../components/customer/OrderTracker";
@@ -156,13 +155,14 @@ export default function CustomerMenu() {
       const total = activeOrders.reduce((s, o) => s + (o.total || 0), 0);
       const allItems = activeOrders.flatMap(o => o.items || []);
 
-      // Upload screenshot to Firebase Storage
-      const storageRef = ref(
-        storage,
-        `payments/${restaurantId}/table_${tableNumber}_${Date.now()}_proof`
-      );
-      const snapshot = await uploadBytes(storageRef, proofFile);
-      const screenshotUrl = await getDownloadURL(snapshot.ref);
+      // Compress the screenshot to a data URL stored in the payment record.
+      // No Firebase Storage needed (Storage requires the paid Blaze plan).
+      const screenshotUrl = await downscaleImage(proofFile, 800, 0.72);
+      if (screenshotUrl.length > 700000) {
+        setPaymentError("Screenshot is too large. Please use a smaller image.");
+        setUploading(false);
+        return;
+      }
 
       // Create payment record in Firestore
       const payment = await createPayment({

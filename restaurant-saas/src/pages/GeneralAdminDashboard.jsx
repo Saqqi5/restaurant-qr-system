@@ -6,9 +6,8 @@ import {
   getRestaurantUsers,
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
-import { storage } from "../config/firebase";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 import MenuItemModal from "../components/admin/MenuItemModal";
 import OrdersTable from "../components/admin/OrdersTable";
@@ -62,9 +61,8 @@ export default function GeneralAdminDashboard() {
   async function handleSaveItem(formData, imageFile) {
     let image_url = formData.image_url;
     if (imageFile) {
-      const storageRef = ref(storage, `restaurants/${restaurantId}/menu/${Date.now()}_${imageFile.name}`);
-      const snapshot = await uploadBytes(storageRef, imageFile);
-      image_url = await getDownloadURL(snapshot.ref);
+      // Stored as a data URL in the menu item — no Firebase Storage needed.
+      image_url = await downscaleImage(imageFile, 800, 0.8);
     }
     const data = { ...formData, image_url };
 
