@@ -36,9 +36,9 @@ export default function CashCounterDashboard() {
     setProcessing(false);
   }
 
-  async function handleVerifyPayment(paymentId) {
-    setVerifying(paymentId);
-    await verifyPayment(paymentId);
+  async function handleVerifyPayment(payment) {
+    setVerifying(payment.id);
+    await verifyPayment(payment);
     setVerifying(null);
   }
 
@@ -267,6 +267,11 @@ export default function CashCounterDashboard() {
                 <div className="payment-proof-header">
                   <div>
                     <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                    {payment.method && (
+                      <div className="payment-proof-meta">
+                        {payment.method === "bank" ? "🏦 Bank Transfer" : payment.method === "jazzcash" ? "💜 JazzCash" : "📱 EasyPaisa"}
+                      </div>
+                    )}
                     <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
                   </div>
                   <div className="payment-proof-amount">{formatPrice(payment.amount, currency)}</div>
@@ -298,7 +303,7 @@ export default function CashCounterDashboard() {
 
                 <button
                   className="btn-verify"
-                  onClick={() => handleVerifyPayment(payment.id)}
+                  onClick={() => handleVerifyPayment(payment)}
                   disabled={verifying === payment.id}
                 >
                   {verifying === payment.id ? "Verifying..." : "✓ Mark as Verified"}
@@ -319,6 +324,11 @@ export default function CashCounterDashboard() {
                     <div className="payment-proof-header">
                       <div>
                         <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                        {payment.method && (
+                          <div className="payment-proof-meta">
+                            {payment.method === "bank" ? "🏦 Bank Transfer" : payment.method === "jazzcash" ? "💜 JazzCash" : "📱 EasyPaisa"}
+                          </div>
+                        )}
                         <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
                       </div>
                       <div className="payment-proof-amount">{formatPrice(payment.amount, currency)}</div>

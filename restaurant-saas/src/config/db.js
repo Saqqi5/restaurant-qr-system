@@ -240,6 +240,8 @@ export async function createPayment(data) {
     restaurantId: data.restaurantId,
     tableNumber: parseInt(data.tableNumber, 10),
     orderId: data.orderId || null,
+    method: data.method || "easypaisa",
+    orderIds: data.orderIds || (data.orderId ? [data.orderId] : []),
     amount: parseFloat(data.amount),
     items: data.items || [],
     status: "pending",
@@ -251,11 +253,21 @@ export async function createPayment(data) {
   return payment;
 }
 
-export async function verifyPayment(paymentId) {
-  await updateDoc(paymentDoc(paymentId), {
+export async function verifyPayment(payment) {
+  await updateDoc(paymentDoc(payment.id), {
     status: "verified",
     verifiedAt: serverTimestamp(),
   });
+  // Mark every order this payment covers as paid — without this the order
+  // stays "unpaid" forever (revenue, Paid Orders and the receipt never update).
+  const ids = payment.orderIds?.length
+    ? payment.orderIds
+    : payment.orderId
+      ? [payment.orderId]
+      : [];
+  for (const orderId of ids) {
+    await updatePaymentStatus(payment.restaurantId, orderId, payment.method || "online");
+  }
 }
 
 export function subscribeToPayment(paymentId, callback) {

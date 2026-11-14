@@ -22,6 +22,12 @@ export default function RestaurantSettingsPage() {
     name: "", table_count: 10, logo_url: "",
     theme: { primary: "#e85d04", accent: "#f48c06" },
     tax_rate: 0, discount_rate: 0,
+    payment_easypaisa_number: "0300-1234567",
+    payment_easypaisa_name: "Saqlyn Payments",
+    payment_jazzcash_number: "0311-7654321",
+    payment_jazzcash_name: "Saqlyn Payments",
+    payment_bank_iban: "PK12 HABB 0000 0012 3456 7890",
+    payment_bank_name: "Saqlyn Restaurant Ltd",
   });
   const [loaded, setLoaded] = useState(false);
 
@@ -38,6 +44,12 @@ export default function RestaurantSettingsPage() {
           theme: r.theme || { primary: "#e85d04", accent: "#f48c06" },
           tax_rate: Number(r.tax_rate) || 0,
           discount_rate: Number(r.discount_rate) || 0,
+          payment_easypaisa_number: r.payment_easypaisa_number || "0300-1234567",
+          payment_easypaisa_name: r.payment_easypaisa_name || "Saqlyn Payments",
+          payment_jazzcash_number: r.payment_jazzcash_number || "0311-7654321",
+          payment_jazzcash_name: r.payment_jazzcash_name || "Saqlyn Payments",
+          payment_bank_iban: r.payment_bank_iban || "PK12 HABB 0000 0012 3456 7890",
+          payment_bank_name: r.payment_bank_name || "Saqlyn Restaurant Ltd",
         });
         setLogoPreview(r.logo_url || "");
       }
@@ -182,6 +194,62 @@ export default function RestaurantSettingsPage() {
                 onChange={(e) => setForm({ ...form, discount_rate: parseFloat(e.target.value) || 0 })}
               />
               <p className="form-hint">Default discount applied to every bill.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Payment Methods ───────────────────────────────────── */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">💳 Payment Methods</h2>
+          <p className="form-hint">These are the accounts customers see on the Pay Bill screen. Change them to your own numbers — every restaurant has its own.</p>
+          <div className="settings-grid">
+            <div className="form-group">
+              <label>EasyPaisa Number</label>
+              <input
+                type="text"
+                value={form.payment_easypaisa_number}
+                onChange={(e) => setForm({ ...form, payment_easypaisa_number: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>EasyPaisa Account Name</label>
+              <input
+                type="text"
+                value={form.payment_easypaisa_name}
+                onChange={(e) => setForm({ ...form, payment_easypaisa_name: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>JazzCash Number</label>
+              <input
+                type="text"
+                value={form.payment_jazzcash_number}
+                onChange={(e) => setForm({ ...form, payment_jazzcash_number: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>JazzCash Account Name</label>
+              <input
+                type="text"
+                value={form.payment_jazzcash_name}
+                onChange={(e) => setForm({ ...form, payment_jazzcash_name: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Bank IBAN</label>
+              <input
+                type="text"
+                value={form.payment_bank_iban}
+                onChange={(e) => setForm({ ...form, payment_bank_iban: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Bank Account Title</label>
+              <input
+                type="text"
+                value={form.payment_bank_name}
+                onChange={(e) => setForm({ ...form, payment_bank_name: e.target.value })}
+              />
             </div>
           </div>
         </section>

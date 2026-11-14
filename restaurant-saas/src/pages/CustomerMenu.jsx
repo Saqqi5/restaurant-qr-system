@@ -11,36 +11,37 @@ import MenuGrid from "../components/customer/MenuGrid";
 import OrderTracker from "../components/customer/OrderTracker";
 import RestaurantHeader from "../components/customer/RestaurantHeader";
 
-const PAYMENT_DETAILS = {
-  easypaisa: {
-    icon: "📱",
-    name: "EasyPaisa",
-    detail: "Send to account:",
-    number: "0300-1234567",
-    accountName: "Saqlyn Payments",
-    qrEmoji: "📲",
-  },
-  jazzcash: {
-    icon: "💜",
-    name: "JazzCash",
-    detail: "Send to mobile account:",
-    number: "0311-7654321",
-    accountName: "Saqlyn Payments",
-    qrEmoji: "📲",
-  },
-  bank: {
-    icon: "🏦",
-    name: "Bank Transfer",
-    detail: "IBAN:",
-    number: "PK12 HABB 0000 0012 3456 7890",
-    accountName: "Saqlyn Restaurant Ltd",
-    qrEmoji: "🏛️",
-  },
-};
-
 export default function CustomerMenu() {
   const { restaurant, tableNumber, restaurantId, loading } = useTenant();
   const currency = restaurant?.currency || "$";
+  // Payment accounts come from the restaurant's own settings (editable in
+  // Settings > Payment Methods); the demo values below are the fallback.
+  const PAYMENT_DETAILS = {
+    easypaisa: {
+      icon: "📱",
+      name: "EasyPaisa",
+      detail: "Send to account:",
+      number: restaurant?.payment_easypaisa_number || "0300-1234567",
+      accountName: restaurant?.payment_easypaisa_name || "Saqlyn Payments",
+      qrEmoji: "📲",
+    },
+    jazzcash: {
+      icon: "💜",
+      name: "JazzCash",
+      detail: "Send to mobile account:",
+      number: restaurant?.payment_jazzcash_number || "0311-7654321",
+      accountName: restaurant?.payment_jazzcash_name || "Saqlyn Payments",
+      qrEmoji: "📲",
+    },
+    bank: {
+      icon: "🏦",
+      name: "Bank Transfer",
+      detail: "IBAN:",
+      number: restaurant?.payment_bank_iban || "PK12 HABB 0000 0012 3456 7890",
+      accountName: restaurant?.payment_bank_name || "Saqlyn Restaurant Ltd",
+      qrEmoji: "🏛️",
+    },
+  };
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -169,6 +170,8 @@ export default function CustomerMenu() {
         restaurantId,
         tableNumber,
         orderId: activeOrders[0]?.id || null,
+        method: selectedMethod,
+        orderIds: activeOrders.map((o) => o.id),
         amount: total,
         items: allItems,
         screenshotUrl,
