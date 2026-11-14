@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTenant } from "../contexts/TenantContext";
+import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, createOrder, subscribeToTableOrders,
   createPayment, subscribeToPayment, calculateBill
@@ -13,6 +15,8 @@ import RestaurantHeader from "../components/customer/RestaurantHeader";
 
 export default function CustomerMenu() {
   const { restaurant, tableNumber, restaurantId, loading } = useTenant();
+  const { userProfile, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const currency = restaurant?.currency || "$";
   // Payment accounts come from the restaurant's own settings (editable in
   // Settings > Payment Methods). Only methods the restaurant actually
@@ -225,7 +229,7 @@ export default function CustomerMenu() {
     "--color-green": themePrimary,
   };
 
-  if (loading) return <CustomerSkeleton />;
+  if (loading || authLoading) return <CustomerSkeleton />;
 
   if (!restaurant) {
     return (
@@ -233,6 +237,38 @@ export default function CustomerMenu() {
         <div className="error-icon">🍽️</div>
         <h2>Restaurant not found</h2>
         <p>Please scan the correct QR code or ask your server for help.</p>
+      </div>
+    );
+  }
+
+  // Staff of one restaurant must never see another restaurant's menu or
+  // its table orders. The customer menu is public for real customers
+  // (anonymous), but a signed-in staff member belongs to exactly one
+  // restaurant — opening any other restaurant's menu is blocked here.
+  // The super admin (no restaurant of their own) is exempt.
+  const STAFF_DASHBOARD = {
+    general_admin: "/admin/restaurant",
+    kitchen: "/admin/kitchen",
+    cash_counter: "/admin/cash",
+    server: "/admin/server",
+  };
+  if (
+    userProfile &&
+    userProfile.role !== "super_admin" &&
+    userProfile.restaurant_id &&
+    userProfile.restaurant_id !== restaurantId
+  ) {
+    return (
+      <div className="error-state">
+        <div className="error-icon">⛔</div>
+        <h2>This menu belongs to another restaurant</h2>
+        <p>You are signed in as staff of another restaurant. Please use your own restaurant&apos;s QR code or dashboard.</p>
+        <button
+          className="btn-primary"
+          onClick={() => navigate(STAFF_DASHBOARD[userProfile.role] || "/login")}
+        >
+          Go to my dashboard
+        </button>
       </div>
     );
   }
