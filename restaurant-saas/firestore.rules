@@ -88,7 +88,7 @@ service cloud.firestore {
         isCashCounter(restaurantId);
     }
 
-    // ── Plan limits (Basic 10 / Standard 20 / Unlimited) ──────────────
+    // ── Plan limits (Basic 10 / Standard 20 / Premium 50) ──────────────
     // A restaurant admin may lower the table count anytime, but never raise
     // it above the plan's limit. A count already above the limit (e.g. after
     // a downgrade) may stay, but may not grow further. Only the super admin
@@ -100,7 +100,7 @@ service cloud.firestore {
 
     function planTableLimit(plan) {
       return plan == 'basic' ? 10
-        : (plan == 'premium' || plan == 'unlimited') ? 1000000
+        : (plan == 'premium' || plan == 'unlimited') ? 50
         : 20;
     }
     // A restaurant's general admin may create staff accounts for their OWN

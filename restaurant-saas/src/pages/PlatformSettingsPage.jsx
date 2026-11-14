@@ -50,7 +50,7 @@ export default function PlatformSettingsPage() {
       await updatePlatformSettings({
         basic: Math.max(1, Math.floor(form.basic) || DEFAULT_PLAN_LIMITS.basic),
         standard: Math.max(1, Math.floor(form.standard) || DEFAULT_PLAN_LIMITS.standard),
-        premium: Math.max(0, Math.floor(form.premium) || 0),
+        premium: Math.max(1, Math.floor(form.premium) || DEFAULT_PLAN_LIMITS.premium),
         basic_staff: Math.max(1, Math.floor(form.basic_staff) || DEFAULT_STAFF_LIMITS.basic),
         standard_staff: Math.max(1, Math.floor(form.standard_staff) || DEFAULT_STAFF_LIMITS.standard),
         premium_staff: Math.max(1, Math.floor(form.premium_staff) || DEFAULT_STAFF_LIMITS.premium),
@@ -97,13 +97,11 @@ export default function PlatformSettingsPage() {
                   onChange={(e) => setForm({ ...form, standard: parseInt(e.target.value) || 1 })} />
               </div>
               <div className="form-group">
-                <label>Premium plan — max tables (0 = unlimited)</label>
-                <input type="number" min="0" value={form.premium}
-                  onChange={(e) => setForm({ ...form, premium: parseInt(e.target.value) || 0 })} />
+                <label>Premium plan — max tables</label>
+                <input type="number" min="1" value={form.premium}
+                  onChange={(e) => setForm({ ...form, premium: parseInt(e.target.value) || 1 })} />
                 <p className="form-hint">
-                  {form.premium === 0
-                    ? "∞ Unlimited — Premium has no table limit."
-                    : `${form.premium} tables max.`}
+                  {`${form.premium} tables max.`}
                 </p>
               </div>
             </div>
