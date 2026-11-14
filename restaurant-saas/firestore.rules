@@ -88,6 +88,26 @@ service cloud.firestore {
         isCashCounter(restaurantId);
     }
 
+    // ── Plan limits (Basic 10 / Standard 20 / Unlimited) ──────────────
+    // A restaurant admin may lower the table count anytime, but never raise
+    // it above the plan's limit. A count already above the limit (e.g. after
+    // a downgrade) may stay, but may not grow further. Only the super admin
+    // may change a restaurant's plan.
+    function planTableLimit(plan) {
+      return plan == 'basic' ? 10
+        : plan == 'unlimited' ? 1000000
+        : 20;
+    }
+    function planUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan']);
+    }
+    function tableCountWithinLimit() {
+      let oldCount = resource.data.get('table_count', 0);
+      let newCount = request.resource.data.get('table_count', oldCount);
+      let plan = request.resource.data.get('plan', resource.data.get('plan', 'standard'));
+      return newCount <= oldCount || newCount <= planTableLimit(plan);
+    }
+
     // ── Users ─────────────────────────────────────────────────
     match /users/{userId} {
       allow read: if isAuthenticated() && (
@@ -106,8 +126,11 @@ service cloud.firestore {
       // Only super admin can create/delete restaurants
       allow create, delete: if isSuperAdmin();
 
-      // Super admin or the restaurant's general admin can update
-      allow update: if isSuperAdmin() || isGeneralAdmin(restaurantId);
+      // Super admin can change anything. A restaurant's general admin can
+      // update everything except the plan, and may not raise the table count
+      // above the plan's limit (lowering it is always allowed).
+      allow update: if isSuperAdmin()
+        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit());
 
       // ── Menu Items ──────────────────────────────────────────
       match /menu/{itemId} {
@@ -180,6 +203,14 @@ service cloud.firestore {
     // ── Domain Mappings ───────────────────────────────────────
     match /domain_mappings/{domain} {
       allow read: if true; // needed for domain resolution
+      allow write: if isSuperAdmin();
+    }
+
+    // ── Platform Settings ───────────────────────────────────────
+    match /platform_settings/{docId} {
+      // Anyone can read the plan limits (the apps need them for the UI)
+      allow read: if true;
+      // Only the super admin can change them
       allow write: if isSuperAdmin();
     }
   }

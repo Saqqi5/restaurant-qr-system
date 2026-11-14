@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTenant } from "../contexts/TenantContext";
-import { updateRestaurant, getRestaurant } from "../config/db";
+import { updateRestaurant, getRestaurant, subscribeToPlatformSettings } from "../config/db";
+import { getPlanLimit, getPlanLabel, normalizePlan } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 
@@ -18,6 +19,8 @@ export default function RestaurantSettingsPage() {
   const { userProfile, restaurantId, logout } = useAuth();
   const { restaurant } = useTenant();
 
+  const [platformLimits, setPlatformLimits] = useState(null);
+  const [plan, setPlan] = useState("standard");
   const [form, setForm] = useState({
     name: "", table_count: 10, logo_url: "",
     theme: { primary: "#e85d04", accent: "#f48c06" },
@@ -30,6 +33,15 @@ export default function RestaurantSettingsPage() {
     payment_bank_name: "Saqlyn Restaurant Ltd",
   });
   const [loaded, setLoaded] = useState(false);
+  const planLimit = getPlanLimit(plan, platformLimits);
+  // Owners may lower the count anytime; the cap is the plan limit, or the
+  // current count when already above it (grandfathered — cannot grow further).
+  const maxTables = planLimit === null ? 500 : Math.max(form.table_count || 1, planLimit);
+
+  useEffect(() => {
+    const unsub = subscribeToPlatformSettings(setPlatformLimits);
+    return unsub;
+  }, []);
 
   // TenantContext is empty on /admin/* routes, so load the restaurant doc
   // directly — without this the form opens blank and saving wipes the name.
@@ -37,6 +49,7 @@ export default function RestaurantSettingsPage() {
     if (!restaurantId) return;
     getRestaurant(restaurantId).then((r) => {
       if (r) {
+        setPlan(normalizePlan(r.plan));
         setForm({
           name: r.name || "",
           table_count: r.table_count || 10,
@@ -140,10 +153,14 @@ export default function RestaurantSettingsPage() {
 
             <div className="form-group">
               <label>Number of Tables</label>
+              <p className="form-hint" style={{ margin: "0 0 6px" }}>
+                📋 {getPlanLabel(plan)} plan — up to {planLimit === null ? "unlimited" : `${planLimit} tables`}.
+                You can lower this anytime, but not raise it above your plan limit.
+              </p>
               <input
-                type="number" min="1" max="500"
+                type="number" min="1" max={maxTables}
                 value={form.table_count}
-                onChange={(e) => setForm({ ...form, table_count: parseInt(e.target.value) })}
+                onChange={(e) => setForm({ ...form, table_count: Math.min(Math.max(parseInt(e.target.value) || 1, 1), maxTables) })}
               />
               <span className="form-hint">Used for QR code generation and table selectors.</span>
             </div>

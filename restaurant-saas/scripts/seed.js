@@ -64,7 +64,7 @@ const RESTAURANT = {
   payment_bank_iban: "PK12 HABB 0000 0012 3456 7890",
   payment_bank_name: "Saqlyn Restaurant Ltd",
   active:       true,
-  plan:         "saas",
+  plan:         "standard",
 };
 
 const STAFF = [
@@ -111,7 +111,7 @@ const RESTAURANT2 = {
   tax_rate:     16,
   discount_rate: 0,
   active:            true,
-  plan:              "saas",
+  plan:              "standard",
 };
 
 const STAFF2 = [

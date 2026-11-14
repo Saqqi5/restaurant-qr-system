@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { PLANS, getPlanLimit, normalizePlan } from "../../config/plans";
 
 export default function CreateRestaurantModal({ onClose, onCreate }) {
   const [form, setForm] = useState({
-    name: "", table_count: 10, logo_url: "", plan: "saas",
+    name: "", table_count: 10, logo_url: "", plan: "basic",
     theme: { primary: "#e85d04", accent: "#f48c06" }
   });
+  const createLimit = getPlanLimit(normalizePlan(form.plan), null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
@@ -30,8 +32,11 @@ export default function CreateRestaurantModal({ onClose, onCreate }) {
             </div>
             <div className="form-group">
               <label>Number of Tables</label>
-              <input type="number" min="1" max="200" value={form.table_count}
-                onChange={(e) => setForm({ ...form, table_count: parseInt(e.target.value) })} />
+              <input type="number" min="1" max={createLimit === null ? 200 : createLimit} value={form.table_count}
+                onChange={(e) => setForm({ ...form, table_count: Math.min(Math.max(parseInt(e.target.value) || 1, 1), createLimit === null ? 200 : createLimit) })} />
+              {createLimit !== null && (
+                <p className="form-hint">The {form.plan} plan allows up to {createLimit} tables.</p>
+              )}
             </div>
             <div className="form-group">
               <label>Logo URL (optional)</label>
@@ -41,9 +46,16 @@ export default function CreateRestaurantModal({ onClose, onCreate }) {
             </div>
             <div className="form-group">
               <label>Plan</label>
-              <select value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })}>
-                <option value="saas">SaaS (Shared Platform)</option>
-                <option value="standalone">Standalone (White Label)</option>
+              <select value={form.plan} onChange={(e) => {
+                const plan = e.target.value;
+                const limit = getPlanLimit(plan, null);
+                setForm({ ...form, plan, table_count: limit === null ? form.table_count : Math.min(form.table_count, limit) });
+              }}>
+                {Object.values(PLANS).map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}{p.defaultTableLimit === null ? " (no table limit)" : ` (up to ${p.defaultTableLimit} tables)`}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="form-row">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { subscribeToOrders } from "../config/db";
+import { subscribeToOrders, updateRestaurant, subscribeToPlatformSettings } from "../config/db";
+import { getPlanLimit, getPlanLabel, normalizePlan } from "../config/plans";
 import { formatPrice } from "../utils/currency";
 import { getRestaurant } from "../config/db";
 import { buildQrUrl } from "../config/tenantResolver";
@@ -21,8 +22,15 @@ export default function TableManagementPage() {
   const currency = restaurant?.currency || "$";
   const [orders, setOrders] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
+  const [platformLimits, setPlatformLimits] = useState(null);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [tableMsg, setTableMsg] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const tableCount = restaurant?.table_count || 20;
+  const plan = normalizePlan(restaurant?.plan);
+  const planLimit = getPlanLimit(plan, platformLimits);
+  const atLimit = planLimit !== null && tableCount >= planLimit;
 
   // Wait for the restaurant doc before drawing the floor — otherwise the
   // page briefly shows the wrong fallback count (20) instead of the real one.
@@ -39,6 +47,47 @@ export default function TableManagementPage() {
     const unsub = subscribeToOrders(restaurantId, setOrders);
     return unsub;
   }, [restaurantId]);
+
+  useEffect(() => {
+    const unsub = subscribeToPlatformSettings(setPlatformLimits);
+    return unsub;
+  }, []);
+
+  // Owners may lower the table count anytime, but never raise it above
+  // their plan's limit — at the limit the + button shows the upgrade popup.
+  async function handleAddTable() {
+    if (!restaurant || saving) return;
+    if (atLimit) { setShowUpgrade(true); return; }
+    setSaving(true);
+    try {
+      const next = tableCount + 1;
+      await updateRestaurant(restaurantId, { table_count: next });
+      setRestaurant({ ...restaurant, table_count: next });
+      setTableMsg("");
+    } catch (e) {
+      setTableMsg(e.message || "Could not add a table.");
+    }
+    setSaving(false);
+  }
+
+  async function handleRemoveTable() {
+    if (!restaurant || saving || tableCount <= 1) return;
+    if (getTableOrders(tableCount).length > 0) {
+      setTableMsg(`Table ${tableCount} still has active orders. Clear them first.`);
+      return;
+    }
+    setSaving(true);
+    try {
+      const next = tableCount - 1;
+      await updateRestaurant(restaurantId, { table_count: next });
+      setRestaurant({ ...restaurant, table_count: next });
+      if (selectedTable === tableCount) setSelectedTable(null);
+      setTableMsg("");
+    } catch (e) {
+      setTableMsg(e.message || "Could not remove the table.");
+    }
+    setSaving(false);
+  }
 
   // Build a map of table → status
   function getTableStatus(tableNum) {
@@ -79,6 +128,43 @@ export default function TableManagementPage() {
         <div className="tdp-empty" style={{ padding: 40 }}>Loading tables…</div>
       ) : (
       <>
+      {/* Plan + table controls */}
+      <div className="tables-toolbar">
+        <div className="tables-plan">
+          📋 {getPlanLabel(plan)} plan — {tableCount} / {planLimit === null ? "∞" : planLimit} tables
+        </div>
+        <div className="tables-actions">
+          <button className="btn-secondary" onClick={handleRemoveTable}
+            disabled={saving || tableCount <= 1}>
+            − Remove Table
+          </button>
+          <button className="btn-primary" onClick={handleAddTable} disabled={saving}>
+            + Add Table
+          </button>
+        </div>
+      </div>
+      {tableMsg && <div className="error-banner">{tableMsg}</div>}
+
+      {showUpgrade && (
+        <div className="modal-overlay" onClick={() => setShowUpgrade(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>⬆️ Upgrade Your Plan</h3>
+              <button className="modal-close" onClick={() => setShowUpgrade(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-info">
+                Your {getPlanLabel(plan)} plan allows up to {planLimit} tables.
+                To add more tables, upgrade your plan or contact your administrator.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-primary" onClick={() => setShowUpgrade(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Legend */}
       <div className="table-legend">
         {Object.entries(TABLE_STATUS).map(([key, cfg]) => (
@@ -234,6 +320,15 @@ export default function TableManagementPage() {
         .tdp-order-total { font-weight: 700; font-size: 13px; color: var(--color-primary); }
         .tdp-item { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: var(--color-muted); }
         .tdp-grand-total { font-size: 14px; padding-top: 10px; border-top: 1px solid var(--color-border); margin-top: 4px; }
+
+        .tables-toolbar {
+          display: flex; justify-content: space-between; align-items: center;
+          gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+          padding: 12px 16px; background: var(--color-surface);
+          border: 1px solid var(--color-border); border-radius: var(--radius);
+        }
+        .tables-plan { font-weight: 700; font-size: 14px; }
+        .tables-actions { display: flex; gap: 8px; }
 
         .status-dot {
           font-size: 11px; padding: 3px 8px; border-radius: 10px;

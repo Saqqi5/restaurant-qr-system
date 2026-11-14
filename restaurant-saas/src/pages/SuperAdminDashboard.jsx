@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
-  getAllRestaurants, createRestaurant, updateRestaurant,
+  getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
   getRestaurantUsers, mapDomain
 } from "../config/db";
+import { PLANS, getPlanLimit, normalizePlan } from "../config/plans";
 import { buildQrUrl } from "../config/tenantResolver";
 import AdminLayout from "../components/admin/AdminLayout";
 import RestaurantCard from "../components/admin/RestaurantCard";
@@ -20,6 +21,8 @@ export default function SuperAdminDashboard() {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [modalType, setModalType] = useState(null); // "staff" | "qr" | "edit" | "domain"
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleting, setDeleting] = useState(null); // restaurant awaiting delete confirm
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     getAllRestaurants().then((data) => {
@@ -38,6 +41,18 @@ export default function SuperAdminDashboard() {
     await updateRestaurant(id, data);
     setRestaurants((prev) => prev.map((r) => r.id === id ? { ...r, ...data } : r));
     setModalType(null);
+  }
+
+  async function handleDeleteRestaurant() {
+    if (!deleting || deleteBusy) return;
+    setDeleteBusy(true);
+    try {
+      await deleteRestaurant(deleting.id);
+      setRestaurants((prev) => prev.filter((r) => r.id !== deleting.id));
+      setDeleting(null);
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   async function handleMapDomain(restaurantId, domain) {
@@ -105,6 +120,7 @@ export default function SuperAdminDashboard() {
               onManageStaff={() => openModal(restaurant, "staff")}
               onViewQR={() => openModal(restaurant, "qr")}
               onMapDomain={() => openModal(restaurant, "domain")}
+              onDelete={() => setDeleting(restaurant)}
             />
           ))}
           {filtered.length === 0 && (
@@ -144,6 +160,31 @@ export default function SuperAdminDashboard() {
         />
       )}
 
+      {deleting && (
+        <div className="modal-overlay" onClick={() => setDeleting(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>🗑️ Delete Restaurant</h3>
+              <button className="modal-close" onClick={() => setDeleting(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-info">
+                Delete <strong>{deleting.name}</strong>? This permanently removes the
+                restaurant, its menu, orders and payments. Staff accounts are not
+                deleted. This cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setDeleting(null)}>Cancel</button>
+              <button className="btn-primary" onClick={handleDeleteRestaurant} disabled={deleteBusy}
+                style={{ background: "#c0392b" }}>
+                {deleteBusy ? "Deleting..." : "🗑️ Delete Restaurant"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalType === "domain" && selectedRestaurant && (
         <DomainModal
           restaurant={selectedRestaurant}
@@ -161,7 +202,9 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
     table_count: restaurant.table_count || 10,
     logo_url: restaurant.logo_url || "",
     active: restaurant.active !== false,
+    plan: normalizePlan(restaurant.plan),
   });
+  const editLimit = getPlanLimit(form.plan, null);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -174,6 +217,23 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
           <div className="form-group">
             <label>Restaurant Name</label>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>Plan</label>
+            <select value={form.plan}
+              onChange={(e) => setForm({ ...form, plan: e.target.value })}>
+              {Object.values(PLANS).map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}{p.defaultTableLimit === null ? " (no table limit)" : ` (up to ${p.defaultTableLimit} tables)`}
+                </option>
+              ))}
+            </select>
+            {editLimit !== null && form.table_count > editLimit && (
+              <p className="form-hint">
+                This restaurant has {form.table_count} tables, above the {form.plan} limit of {editLimit}.
+                Existing tables stay, but no new tables can be added until the plan is upgraded.
+              </p>
+            )}
           </div>
           <div className="form-group">
             <label>Table Count</label>

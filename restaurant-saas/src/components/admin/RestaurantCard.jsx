@@ -1,4 +1,4 @@
-export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain }) {
+export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain, onDelete }) {
   return (
     <div className={`restaurant-card ${!restaurant.active ? "inactive" : ""}`}>
       <div className="rc-header">
@@ -25,6 +25,9 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
         <div className="rc-meta-item">
           <span>📋</span> /{restaurant.slug || restaurant.id?.slice(0, 8)}
         </div>
+        <div className="rc-meta-item">
+          <span>💳</span> {restaurant.plan === "basic" ? "Basic" : restaurant.plan === "unlimited" ? "Unlimited" : "Standard"} plan
+        </div>
       </div>
 
       <div className="rc-actions">
@@ -32,6 +35,8 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
         <button className="rc-btn" onClick={onManageStaff} title="Staff">👥 Staff</button>
         <button className="rc-btn" onClick={onViewQR} title="QR Codes">📱 QR</button>
         <button className="rc-btn" onClick={onMapDomain} title="Domain">🌐 Domain</button>
+        <button className="rc-btn" onClick={onDelete} title="Delete restaurant"
+          style={{ color: "#ff6b6b" }}>🗑️ Delete</button>
       </div>
     </div>
   );

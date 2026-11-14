@@ -64,7 +64,7 @@ export async function createRestaurant(data) {
     theme: data.theme || { primary: "#20C997", accent: "#0F3D3E", font: "modern" },
     created_at: serverTimestamp(),
     active: true,
-    plan: data.plan || "saas",
+    plan: data.plan || "basic",
   };
   await setDoc(ref, restaurant);
   return { id: ref.id, ...restaurant };
@@ -72,6 +72,46 @@ export async function createRestaurant(data) {
 
 export async function updateRestaurant(restaurantId, data) {
   await updateDoc(restaurantDoc(restaurantId), { ...data, updated_at: serverTimestamp() });
+}
+
+// ── Platform Settings (super admin) ────────────────────────────────────────
+// Doc `platform_settings/platform`: { basic, standard, unlimited } — the
+// table cap per plan (unlimited stored as 0 = no cap). Absent doc = defaults.
+export const platformSettingsDoc = () => doc(db, "platform_settings", "platform");
+
+export async function getPlatformSettings() {
+  const snap = await getDoc(platformSettingsDoc());
+  return snap.exists() ? snap.data() : null;
+}
+
+export function subscribeToPlatformSettings(callback) {
+  return onSnapshot(platformSettingsDoc(), (snap) => {
+    callback(snap.exists() ? snap.data() : null);
+  });
+}
+
+export async function updatePlatformSettings(data) {
+  await setDoc(platformSettingsDoc(), { ...data, updated_at: serverTimestamp() }, { merge: true });
+}
+
+// ── Delete Restaurant (super admin) ────────────────────────────────────────
+// The client SDK has no recursive delete, so the menu + orders
+// subcollections, the restaurant's payments and its domain mapping are
+// removed explicitly before the restaurant doc itself. Staff Auth accounts
+// and their `users` records are left alone (the super admin can remove
+// them from Staff if needed).
+export async function deleteRestaurant(restaurantId) {
+  const restaurant = await getRestaurant(restaurantId);
+  for (const colFn of [menuCol, ordersCol]) {
+    const snap = await getDocs(colFn(restaurantId));
+    for (const d of snap.docs) await deleteDoc(d.ref);
+  }
+  const pays = await getDocs(query(paymentsCol(), where("restaurantId", "==", restaurantId)));
+  for (const d of pays.docs) await deleteDoc(d.ref);
+  if (restaurant?.custom_domain) {
+    await deleteDoc(doc(domainMappingsCol(), restaurant.custom_domain));
+  }
+  await deleteDoc(restaurantDoc(restaurantId));
 }
 
 export async function getRestaurant(restaurantId) {

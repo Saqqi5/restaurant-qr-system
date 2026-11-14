@@ -15,6 +15,7 @@ import LandingPage from "./pages/LandingPage";
 import CustomerMenu from "./pages/CustomerMenu";
 import LoginPage from "./pages/LoginPage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import PlatformSettingsPage from "./pages/PlatformSettingsPage";
 import GeneralAdminDashboard from "./pages/GeneralAdminDashboard";
 import KitchenDashboard from "./pages/KitchenDashboard";
 import CashCounterDashboard from "./pages/CashCounterDashboard";
@@ -70,6 +71,13 @@ export default function App() {
             <WithAdminTenant>
               <ProtectedRoute role="super_admin">
                 <SuperAdminDashboard />
+              </ProtectedRoute>
+            </WithAdminTenant>
+          } />
+          <Route path="/admin/super/settings" element={
+            <WithAdminTenant>
+              <ProtectedRoute role="super_admin">
+                <PlatformSettingsPage />
               </ProtectedRoute>
             </WithAdminTenant>
           } />
