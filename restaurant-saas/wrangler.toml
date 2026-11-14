@@ -1,0 +1,9 @@
+# TableQR — Cloudflare Workers Static Assets
+# Serves the Vite production build (dist/) instead of the raw source tree.
+# SPA fallback: all unknown routes serve /index.html (React Router).
+name = "restaurant-qr-system"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
