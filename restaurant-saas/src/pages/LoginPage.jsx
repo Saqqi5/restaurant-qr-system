@@ -27,7 +27,7 @@ export default function LoginPage() {
       const { profile } = await login(email, password);
       const redirect = location.state?.from?.pathname || ROLE_REDIRECTS[profile?.role] || "/";
       navigate(redirect, { replace: true });
-    } catch (err) {
+    } catch {
       setError("Invalid email or password. Please try again.");
     }
     setLoading(false);
@@ -37,8 +37,8 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <span className="logo-icon">🍽️</span>
-          <h1>TableQR</h1>
+          <span className="logo-icon">⬡</span>
+          <div className="logo-brand">SAQL<span>YN</span></div>
           <p>Restaurant Management Platform</p>
         </div>
 
@@ -81,10 +81,6 @@ export default function LoginPage() {
         <div className="login-footer">
           <a href="/">← Back to home</a>
         </div>
-      </div>
-
-      <div className="login-bg">
-        <div className="login-bg-pattern" />
       </div>
     </div>
   );

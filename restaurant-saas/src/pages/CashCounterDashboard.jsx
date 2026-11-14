@@ -1,20 +1,28 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { subscribeToOrders, updatePaymentStatus } from "../config/db";
+import {
+  subscribeToOrders, updatePaymentStatus,
+  subscribeToRestaurantPayments, verifyPayment
+} from "../config/db";
 import AdminLayout from "../components/admin/AdminLayout";
 
 export default function CashCounterDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [processing, setProcessing] = useState(false);
-  const [filter, setFilter] = useState("unpaid"); // "unpaid" | "paid" | "all"
+  const [verifying, setVerifying] = useState(null);
+  const [filter, setFilter] = useState("unpaid");
+  const [mainTab, setMainTab] = useState("orders"); // "orders" | "proofs"
+  const [expandedProof, setExpandedProof] = useState(null);
 
   useEffect(() => {
     if (!restaurantId) return;
-    const unsub = subscribeToOrders(restaurantId, setOrders);
-    return unsub;
+    const unsubOrders = subscribeToOrders(restaurantId, setOrders);
+    const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
+    return () => { unsubOrders(); unsubPayments(); };
   }, [restaurantId]);
 
   async function handlePayment(orderId) {
@@ -24,9 +32,23 @@ export default function CashCounterDashboard() {
     setProcessing(false);
   }
 
+  async function handleVerifyPayment(paymentId) {
+    setVerifying(paymentId);
+    await verifyPayment(paymentId);
+    setVerifying(null);
+  }
+
   function formatTime(ts) {
     if (!ts?.toDate) return "—";
     return ts.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function formatDate(ts) {
+    if (!ts?.toDate) return "—";
+    return ts.toDate().toLocaleString([], {
+      month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
   }
 
   const filteredOrders = orders.filter((o) => {
@@ -43,10 +65,12 @@ export default function CashCounterDashboard() {
 
   const todayRevenue = todayPaid.reduce((s, o) => s + (o.total || 0), 0);
   const unpaidCount = orders.filter((o) => o.payment_status === "unpaid" && o.status !== "pending").length;
+  const pendingProofs = payments.filter(p => p.status === "pending");
+  const verifiedProofs = payments.filter(p => p.status === "verified");
 
   return (
     <AdminLayout
-      title="💳 Cash Counter"
+      title="Cash Counter"
       subtitle="Payment Management"
       onLogout={logout}
       userProfile={userProfile}
@@ -54,101 +78,227 @@ export default function CashCounterDashboard() {
       {/* Stats */}
       <div className="stats-row">
         <div className="stat-card">
-          <span className="stat-label">Today's Revenue</span>
-          <span className="stat-value">${todayRevenue.toFixed(2)}</span>
+          <span className="stat-icon">💰</span>
+          <div>
+            <div className="stat-value">${todayRevenue.toFixed(2)}</div>
+            <div className="stat-label">Today's Revenue</div>
+          </div>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Paid Orders</span>
-          <span className="stat-value">{todayPaid.length}</span>
-        </div>
-        <div className={`stat-card ${unpaidCount > 0 ? "alert" : ""}`}>
-          <span className="stat-label">Awaiting Payment</span>
-          <span className="stat-value">{unpaidCount}</span>
-        </div>
-      </div>
-
-      {/* Filter */}
-      <div className="filter-tabs">
-        {["unpaid", "paid", "all"].map((f) => (
-          <button
-            key={f}
-            className={`filter-tab ${filter === f ? "active" : ""}`}
-            onClick={() => setFilter(f)}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Orders List */}
-      <div className="orders-list">
-        {filteredOrders.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-icon">💰</div>
-            <p>No {filter} orders</p>
+          <span className="stat-icon">✅</span>
+          <div>
+            <div className="stat-value">{todayPaid.length}</div>
+            <div className="stat-label">Paid Orders</div>
           </div>
-        )}
-        {filteredOrders.map((order) => (
-          <div
-            key={order.id}
-            className={`order-card ${selectedOrder?.id === order.id ? "selected" : ""}`}
-            onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
-          >
-            <div className="order-card-header">
-              <div>
-                <span className="table-label">Table {order.table_number}</span>
-                <span className="order-time">{formatTime(order.created_at)}</span>
-              </div>
-              <div className="order-header-right">
-                <span className="order-total">${order.total?.toFixed(2)}</span>
-                <span className={`payment-badge ${order.payment_status}`}>
-                  {order.payment_status === "paid" ? `✅ ${order.payment_method}` : "⏳ Unpaid"}
-                </span>
-              </div>
-            </div>
+        </div>
+        <div className={`stat-card ${(unpaidCount + pendingProofs.length) > 0 ? "alert" : ""}`}>
+          <span className="stat-icon">⏳</span>
+          <div>
+            <div className="stat-value">{unpaidCount + pendingProofs.length}</div>
+            <div className="stat-label">Awaiting Action</div>
+          </div>
+        </div>
+      </div>
 
-            {selectedOrder?.id === order.id && (
-              <div className="order-detail">
-                <div className="order-items-detail">
-                  {order.items?.map((item, i) => (
-                    <div key={i} className="detail-item">
-                      <span>{item.name} ×{item.quantity}</span>
-                      <span>${(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                  <div className="detail-total">
-                    <span>Total</span>
-                    <span>${order.total?.toFixed(2)}</span>
+      {/* Main Tabs */}
+      <div className="tab-nav" style={{ marginBottom: 20 }}>
+        <button
+          className={`tab-btn ${mainTab === "orders" ? "active" : ""}`}
+          onClick={() => setMainTab("orders")}
+          style={{ position: "relative" }}
+        >
+          Counter Orders
+          {unpaidCount > 0 && <span className="badge-alert">{unpaidCount}</span>}
+        </button>
+        <button
+          className={`tab-btn ${mainTab === "proofs" ? "active" : ""}`}
+          onClick={() => setMainTab("proofs")}
+          style={{ position: "relative" }}
+        >
+          Payment Proofs
+          {pendingProofs.length > 0 && (
+            <span className="badge-alert">{pendingProofs.length}</span>
+          )}
+        </button>
+      </div>
+
+      {/* Counter Orders Tab */}
+      {mainTab === "orders" && (
+        <>
+          <div className="filter-tabs">
+            {["unpaid", "paid", "all"].map((f) => (
+              <button
+                key={f}
+                className={`filter-tab ${filter === f ? "active" : ""}`}
+                onClick={() => setFilter(f)}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <div className="orders-list">
+            {filteredOrders.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">💰</div>
+                <p>No {filter} orders</p>
+              </div>
+            )}
+            {filteredOrders.map((order) => (
+              <div
+                key={order.id}
+                className={`order-card ${selectedOrder?.id === order.id ? "selected" : ""}`}
+                onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
+              >
+                <div className="order-card-header">
+                  <div>
+                    <span className="table-label">Table {order.table_number}</span>
+                    <span className="order-time">{formatTime(order.created_at)}</span>
+                  </div>
+                  <div className="order-header-right">
+                    <span className="order-total">${order.total?.toFixed(2)}</span>
+                    <span className={`payment-badge ${order.payment_status}`}>
+                      {order.payment_status === "paid"
+                        ? `✅ ${order.payment_method || "paid"}`
+                        : "⏳ Unpaid"}
+                    </span>
                   </div>
                 </div>
 
-                {order.payment_status === "unpaid" && (
-                  <div className="payment-actions">
-                    <div className="payment-method-select">
-                      {["cash", "card", "upi"].map((m) => (
-                        <button
-                          key={m}
-                          className={`method-btn ${paymentMethod === m ? "active" : ""}`}
-                          onClick={(e) => { e.stopPropagation(); setPaymentMethod(m); }}
-                        >
-                          {m === "cash" ? "💵 Cash" : m === "card" ? "💳 Card" : "📱 UPI"}
-                        </button>
+                {selectedOrder?.id === order.id && (
+                  <div className="order-detail">
+                    <div className="order-items-detail">
+                      {order.items?.map((item, i) => (
+                        <div key={i} className="detail-item">
+                          <span>{item.name} ×{item.quantity}</span>
+                          <span>${(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
                       ))}
+                      <div className="detail-total">
+                        <span>Total</span>
+                        <span>${order.total?.toFixed(2)}</span>
+                      </div>
                     </div>
-                    <button
-                      className="btn-pay"
-                      onClick={(e) => { e.stopPropagation(); handlePayment(order.id); }}
-                      disabled={processing}
-                    >
-                      {processing ? "Processing..." : `Mark Paid — ${paymentMethod.toUpperCase()}`}
-                    </button>
+
+                    {order.payment_status === "unpaid" && (
+                      <div className="payment-actions">
+                        <div className="payment-method-select">
+                          {[
+                            { key: "cash", label: "💵 Cash" },
+                            { key: "easypaisa", label: "📱 EasyPaisa" },
+                            { key: "jazzcash", label: "💜 JazzCash" },
+                          ].map((m) => (
+                            <button
+                              key={m.key}
+                              className={`method-btn ${paymentMethod === m.key ? "active" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); setPaymentMethod(m.key); }}
+                            >
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          className="btn-pay"
+                          onClick={(e) => { e.stopPropagation(); handlePayment(order.id); }}
+                          disabled={processing}
+                        >
+                          {processing
+                            ? "Processing..."
+                            : `Mark Paid — ${paymentMethod.toUpperCase()}`}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
+
+      {/* Payment Proofs Tab */}
+      {mainTab === "proofs" && (
+        <div>
+          {/* Pending proofs */}
+          <h3 style={{ fontFamily: "var(--font)", fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
+            Pending Verification ({pendingProofs.length})
+          </h3>
+          {pendingProofs.length === 0 && (
+            <div className="empty-state" style={{ minHeight: 150 }}>
+              <div className="empty-icon">✅</div>
+              <p>All payments verified</p>
+            </div>
+          )}
+          <div className="pending-payments-list" style={{ marginBottom: 28 }}>
+            {pendingProofs.map((payment) => (
+              <div key={payment.id} className="payment-proof-card">
+                <div className="payment-proof-header">
+                  <div>
+                    <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                    <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
+                  </div>
+                  <div className="payment-proof-amount">${payment.amount?.toFixed(2)}</div>
+                </div>
+
+                {/* Order items */}
+                <div style={{ marginBottom: 10 }}>
+                  {payment.items?.slice(0, 3).map((item, i) => (
+                    <span key={i} className="track-item" style={{ marginRight: 6, marginBottom: 4, display: "inline-block" }}>
+                      {item.name} ×{item.quantity}
+                    </span>
+                  ))}
+                  {(payment.items?.length || 0) > 3 && (
+                    <span className="track-item">+{payment.items.length - 3} more</span>
+                  )}
+                </div>
+
+                {/* Screenshot */}
+                {payment.screenshotUrl ? (
+                  <img
+                    src={payment.screenshotUrl}
+                    alt="Payment proof"
+                    className="payment-proof-img"
+                    onClick={() => setExpandedProof(expandedProof === payment.id ? null : payment.id)}
+                  />
+                ) : (
+                  <div className="payment-proof-placeholder">📷 No screenshot uploaded</div>
+                )}
+
+                <button
+                  className="btn-verify"
+                  onClick={() => handleVerifyPayment(payment.id)}
+                  disabled={verifying === payment.id}
+                >
+                  {verifying === payment.id ? "Verifying..." : "✓ Mark as Verified"}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Verified proofs */}
+          {verifiedProofs.length > 0 && (
+            <>
+              <h3 style={{ fontFamily: "var(--font)", fontSize: 15, fontWeight: 700, marginBottom: 12, color: "var(--color-primary)" }}>
+                Verified ({verifiedProofs.length})
+              </h3>
+              <div className="pending-payments-list">
+                {verifiedProofs.map((payment) => (
+                  <div key={payment.id} className="payment-proof-card" style={{ opacity: 0.7 }}>
+                    <div className="payment-proof-header">
+                      <div>
+                        <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                        <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
+                      </div>
+                      <div className="payment-proof-amount">${payment.amount?.toFixed(2)}</div>
+                    </div>
+                    <div className="verified-label">✅ Payment Verified — {formatDate(payment.verifiedAt)}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </AdminLayout>
   );
 }

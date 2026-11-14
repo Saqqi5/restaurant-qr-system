@@ -1,11 +1,3 @@
-/**
- * FIREBASE CONFIGURATION
- * ======================
- * Replace the firebaseConfig values with your Firebase project credentials.
- * For white-label deployments, you can use the same Firebase project
- * or provide separate VITE_FIREBASE_* env vars per restaurant.
- */
-
 import { initializeApp } from "firebase/app";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
@@ -26,7 +18,6 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 
-// Enable offline persistence for real-time kitchen/order views
 enableIndexedDbPersistence(db).catch((err) => {
   if (err.code === "failed-precondition") {
     console.warn("Firestore persistence: multiple tabs open");

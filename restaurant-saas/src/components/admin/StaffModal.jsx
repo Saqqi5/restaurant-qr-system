@@ -3,7 +3,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getRestaurantUsers } from "../../config/db";
 
 const STAFF_ROLES = [
-  { value: "general_admin", label: "General Admin", icon: "🏪", desc: "Menu management & orders overview" },
+  { value: "general_admin", label: "Admin", icon: "🏪", desc: "Menu management & orders overview" },
   { value: "kitchen", label: "Kitchen Operator", icon: "👨‍🍳", desc: "Manage order preparation status" },
   { value: "cash_counter", label: "Cash Counter", icon: "💳", desc: "Process payments" },
   { value: "server", label: "Server / Order Taker", icon: "🛎️", desc: "Create manual orders" },

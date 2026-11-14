@@ -34,9 +34,16 @@ export function TenantProvider({ children, initialConfig }) {
 
   function applyTheme(theme) {
     const root = document.documentElement;
-    if (theme.primary) root.style.setProperty("--color-primary", theme.primary);
-    if (theme.accent)  root.style.setProperty("--color-accent",  theme.accent);
-    if (theme.bg)      root.style.setProperty("--color-bg",      theme.bg);
+    // Only apply explicit overrides; fall back to Saqlyn defaults
+    const SAQLYN_PRIMARY = "#20C997";
+    const SAQLYN_GREEN   = "#0F3D3E";
+    const primary = (theme.primary && theme.primary !== "#e85d04" && theme.primary !== "#E85D04")
+      ? theme.primary : SAQLYN_PRIMARY;
+    const accent  = (theme.accent && theme.accent !== "#e85d04" && theme.accent !== "#E85D04")
+      ? theme.accent : SAQLYN_GREEN;
+    root.style.setProperty("--color-primary", primary);
+    root.style.setProperty("--color-primary-dark", primary);
+    root.style.setProperty("--color-accent", accent);
   }
 
   const value = {

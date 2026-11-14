@@ -1,5 +1,24 @@
 import { useState } from "react";
 
+const CATEGORY_EMOJIS = {
+  pizza: "🍕", pasta: "🍝", salad: "🥗", soup: "🍲",
+  burger: "🍔", chicken: "🍗", beef: "🥩", fish: "🐟",
+  seafood: "🦐", sushi: "🍱", rice: "🍚", noodles: "🍜",
+  sandwich: "🥪", wrap: "🌯", taco: "🌮", curry: "🍛",
+  dessert: "🍰", cake: "🎂", ice: "🍨", chocolate: "🍫",
+  coffee: "☕", tea: "🍵", juice: "🥤", drinks: "🥤",
+  appetizer: "🥨", starter: "🥗", side: "🥔", bread: "🥖",
+  vegetarian: "🥦", vegan: "🌱", grill: "🔥", bbq: "🍖",
+};
+
+function getCategoryEmoji(category = "") {
+  const lower = category.toLowerCase();
+  for (const [key, emoji] of Object.entries(CATEGORY_EMOJIS)) {
+    if (lower.includes(key)) return emoji;
+  }
+  return "🍽️";
+}
+
 export default function MenuGrid({ items, categories, cart, onAdd, onRemove }) {
   const [activeCategory, setActiveCategory] = useState(categories[0] || "");
 
@@ -26,10 +45,14 @@ export default function MenuGrid({ items, categories, cart, onAdd, onRemove }) {
           const qty = getCartQty(item.id);
           return (
             <div key={item.id} className={`menu-card ${!item.available ? "unavailable" : ""}`}>
-              {item.image_url && (
+              {item.image_url ? (
                 <div className="menu-card-image">
                   <img src={item.image_url} alt={item.name} loading="lazy" />
                   {!item.available && <div className="sold-out-overlay">Sold Out</div>}
+                </div>
+              ) : (
+                <div className="menu-card-emoji">
+                  {getCategoryEmoji(item.category)}
                 </div>
               )}
               <div className="menu-card-body">

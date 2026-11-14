@@ -5,56 +5,33 @@
  * Firestore Structure:
  *
  * restaurants/{restaurantId}
- *   - name: string
- *   - slug: string (URL-safe unique identifier)
- *   - logo_url: string
- *   - table_count: number
- *   - custom_domain: string | null
- *   - theme: { primary, accent, font }
- *   - created_at: timestamp
- *   - active: boolean
- *   - plan: "saas" | "standalone"
+ *   - name, slug, logo_url, table_count, custom_domain,
+ *     theme, created_at, active, plan
  *
  * restaurants/{restaurantId}/menu/{itemId}
- *   - name: string
- *   - description: string
- *   - price: number
- *   - category: string
- *   - image_url: string
- *   - available: boolean
- *   - prep_time_minutes: number
- *   - sort_order: number
- *   - created_at: timestamp
+ *   - name, description, price, category, image_url,
+ *     available, prep_time_minutes, sort_order, created_at
  *
  * restaurants/{restaurantId}/orders/{orderId}
- *   - table_number: number
- *   - items: [{ item_id, name, price, quantity, notes, prep_time_minutes }]
- *   - status: "pending" | "confirmed" | "preparing" | "ready" | "served" | "paid" | "cancelled"
- *   - total: number
- *   - payment_status: "unpaid" | "paid"
- *   - payment_method: "cash" | "card" | "upi"
- *   - created_at: timestamp
- *   - updated_at: timestamp
- *   - estimated_ready: timestamp
- *   - notes: string
- *   - created_by: userId | "customer"
+ *   - table_number, items, status, total, payment_status,
+ *     payment_method, created_at, updated_at, estimated_ready,
+ *     notes, created_by
  *
  * users/{userId}
- *   - email: string
- *   - name: string
- *   - role: "super_admin" | "general_admin" | "kitchen" | "cash_counter" | "server"
- *   - restaurant_id: string | null  (null for super_admin)
- *   - created_at: timestamp
- *   - active: boolean
+ *   - email, name, role, restaurant_id, created_at, active
  *
- * domain_mappings/{domain}  (top-level for quick lookup)
- *   - restaurant_id: string
- *   - verified: boolean
+ * payments/{paymentId}           ← top-level collection
+ *   - restaurantId, tableNumber, orderId, amount, items,
+ *     status ("pending" | "verified"), screenshotUrl,
+ *     createdAt, verifiedAt
+ *
+ * domain_mappings/{domain}
+ *   - restaurant_id, verified, created_at
  */
 
 import {
   collection, doc, setDoc, updateDoc, deleteDoc,
-  getDoc, getDocs, query, where, orderBy, onSnapshot,
+  getDoc, getDocs, query, where, onSnapshot,
   serverTimestamp, Timestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -69,6 +46,8 @@ export const ordersCol = (restaurantId) => collection(db, "restaurants", restaur
 export const orderDoc = (restaurantId, orderId) => doc(db, "restaurants", restaurantId, "orders", orderId);
 export const usersCol = () => collection(db, "users");
 export const userDoc = (userId) => doc(db, "users", userId);
+export const paymentsCol = () => collection(db, "payments");
+export const paymentDoc = (paymentId) => doc(db, "payments", paymentId);
 export const domainMappingsCol = () => collection(db, "domain_mappings");
 
 // ── Restaurant Operations ──────────────────────────────────────────────────
@@ -82,7 +61,7 @@ export async function createRestaurant(data) {
     logo_url: data.logo_url || null,
     table_count: data.table_count || 10,
     custom_domain: data.custom_domain || null,
-    theme: data.theme || { primary: "#e85d04", accent: "#f48c06", font: "modern" },
+    theme: data.theme || { primary: "#20C997", accent: "#0F3D3E", font: "modern" },
     created_at: serverTimestamp(),
     active: true,
     plan: data.plan || "saas",
@@ -140,9 +119,14 @@ export async function deleteMenuItem(restaurantId, itemId) {
 }
 
 export function subscribeToMenu(restaurantId, callback) {
-  const q = query(menuCol(restaurantId), orderBy("category"), orderBy("sort_order"));
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  return onSnapshot(menuCol(restaurantId), (snap) => {
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    items.sort((a, b) => {
+      if (a.category < b.category) return -1;
+      if (a.category > b.category) return 1;
+      return (a.sort_order || 0) - (b.sort_order || 0);
+    });
+    callback(items);
   });
 }
 
@@ -194,25 +178,77 @@ export async function updatePaymentStatus(restaurantId, orderId, paymentMethod) 
 }
 
 export function subscribeToOrders(restaurantId, callback, filters = {}) {
-  let q = query(ordersCol(restaurantId), orderBy("created_at", "desc"));
-  if (filters.status) {
-    q = query(ordersCol(restaurantId), where("status", "in", filters.status), orderBy("created_at", "desc"));
-  }
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  return onSnapshot(ordersCol(restaurantId), (snap) => {
+    let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (filters.status) {
+      items = items.filter(o => filters.status.includes(o.status));
+    }
+    items.sort((a, b) => {
+      const ta = a.created_at?.seconds ?? 0;
+      const tb = b.created_at?.seconds ?? 0;
+      return tb - ta;
+    });
+    callback(items);
   });
 }
 
 export function subscribeToTableOrders(restaurantId, tableNumber, callback) {
-  const q = query(
-    ordersCol(restaurantId),
-    where("table_number", "==", parseInt(tableNumber, 10)),
-    where("payment_status", "==", "unpaid"),
-    orderBy("created_at", "desc")
-  );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  const tableNum = parseInt(tableNumber, 10);
+  return onSnapshot(ordersCol(restaurantId), (snap) => {
+    const items = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(o => o.table_number === tableNum && o.payment_status === "unpaid")
+      .sort((a, b) => {
+        const ta = a.created_at?.seconds ?? 0;
+        const tb = b.created_at?.seconds ?? 0;
+        return tb - ta;
+      });
+    callback(items);
   });
+}
+
+// ── Payment Operations ─────────────────────────────────────────────────────
+
+export async function createPayment(data) {
+  const ref = doc(paymentsCol());
+  const payment = {
+    id: ref.id,
+    restaurantId: data.restaurantId,
+    tableNumber: parseInt(data.tableNumber, 10),
+    orderId: data.orderId || null,
+    amount: parseFloat(data.amount),
+    items: data.items || [],
+    status: "pending",
+    screenshotUrl: data.screenshotUrl || null,
+    createdAt: serverTimestamp(),
+    verifiedAt: null,
+  };
+  await setDoc(ref, payment);
+  return payment;
+}
+
+export async function verifyPayment(paymentId) {
+  await updateDoc(paymentDoc(paymentId), {
+    status: "verified",
+    verifiedAt: serverTimestamp(),
+  });
+}
+
+export function subscribeToPayment(paymentId, callback) {
+  return onSnapshot(paymentDoc(paymentId), (snap) => {
+    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+  });
+}
+
+export function subscribeToRestaurantPayments(restaurantId, callback) {
+  return onSnapshot(
+    query(paymentsCol(), where("restaurantId", "==", restaurantId)),
+    (snap) => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      items.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+      callback(items);
+    }
+  );
 }
 
 // ── User Operations ────────────────────────────────────────────────────────

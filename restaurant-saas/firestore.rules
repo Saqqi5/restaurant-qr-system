@@ -1,6 +1,6 @@
 // firestore.rules
 // ═══════════════════════════════════════════════════════════════
-// FIRESTORE SECURITY RULES — TableQR
+// FIRESTORE SECURITY RULES — Saqlyn
 // ═══════════════════════════════════════════════════════════════
 
 rules_version = '2';
@@ -46,6 +46,11 @@ service cloud.firestore {
       return isAuthenticated() &&
         getUserData().role == 'cash_counter' &&
         getUserData().restaurant_id == restaurantId;
+    }
+
+    function isPaymentStaff() {
+      return isAuthenticated() &&
+        getUserData().role in ['general_admin', 'cash_counter', 'server', 'super_admin'];
     }
 
     function isOrderStatusValid(status) {
@@ -132,6 +137,42 @@ service cloud.firestore {
         // Only super admin can delete orders
         allow delete: if isSuperAdmin();
       }
+    }
+
+    // ── Payments (top-level collection) ───────────────────────
+    // Customers create payment proof records (unauthenticated allowed)
+    // Staff can read and verify payments for their restaurant
+    match /payments/{paymentId} {
+      // Anyone can create a payment record (unauthenticated customers)
+      allow create: if request.resource.data.keys().hasAll([
+          'id', 'restaurantId', 'tableNumber', 'amount',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount is number
+        && request.resource.data.amount >= 0
+        && request.resource.data.tableNumber is int
+        && request.resource.data.tableNumber >= 1;
+
+      // Authenticated staff can read payments
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        (isPaymentStaff() && getUserData().restaurant_id == resource.data.restaurantId)
+      );
+
+      // Cash counter and admin can verify (update) payments
+      allow update: if isAuthenticated() && (
+        isSuperAdmin() ||
+        (
+          getUserData().role in ['general_admin', 'cash_counter'] &&
+          getUserData().restaurant_id == resource.data.restaurantId &&
+          request.resource.data.status == 'verified' &&
+          resource.data.status == 'pending'
+        )
+      );
+
+      // Only super admin can delete payment records
+      allow delete: if isSuperAdmin();
     }
 
     // ── Domain Mappings ───────────────────────────────────────

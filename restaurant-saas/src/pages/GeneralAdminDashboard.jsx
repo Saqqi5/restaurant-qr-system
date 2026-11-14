@@ -3,7 +3,8 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders,
   createMenuItem, updateMenuItem, deleteMenuItem,
-  getRestaurantUsers
+  getRestaurantUsers,
+  subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { storage } from "../config/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -15,19 +16,21 @@ import StaffModal from "../components/admin/StaffModal";
 import QRModal from "../components/admin/QRModal";
 import AnalyticsPanel from "../components/admin/AnalyticsPanel";
 
-const TABS = ["menu", "orders", "analytics", "staff", "qr"];
+const TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
 
 export default function GeneralAdminDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("menu");
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [verifyingId, setVerifyingId] = useState(null);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -38,9 +41,21 @@ export default function GeneralAdminDashboard() {
     const unsubOrders = subscribeToOrders(restaurantId, (data) => {
       setOrders(data);
     });
+    const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
     getRestaurantUsers(restaurantId).then(setStaff);
-    return () => { unsubMenu(); unsubOrders(); };
+    return () => { unsubMenu(); unsubOrders(); unsubPayments(); };
   }, [restaurantId]);
+
+  async function handleVerifyPayment(paymentId) {
+    setVerifyingId(paymentId);
+    await verifyPayment(paymentId);
+    setVerifyingId(null);
+  }
+
+  function formatDate(ts) {
+    if (!ts?.toDate) return "—";
+    return ts.toDate().toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
 
   async function handleSaveItem(formData, imageFile) {
     let image_url = formData.image_url;
@@ -92,7 +107,7 @@ export default function GeneralAdminDashboard() {
   return (
     <AdminLayout
       title="Restaurant Admin"
-      subtitle={userProfile?.name || "General Admin"}
+      subtitle={userProfile?.name || "Admin"}
       onLogout={logout}
       userProfile={userProfile}
     >
@@ -105,18 +120,24 @@ export default function GeneralAdminDashboard() {
 
       {/* Tab Navigation */}
       <div className="tab-nav">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            className={`tab-btn ${activeTab === tab ? "active" : ""}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            {tab === "orders" && pendingOrders > 0 && (
-              <span className="badge-alert">{pendingOrders}</span>
-            )}
-          </button>
-        ))}
+        {TABS.map((tab) => {
+          const pendingPayments = payments.filter(p => p.status === "pending").length;
+          const badge =
+            tab === "orders" && pendingOrders > 0 ? pendingOrders :
+            tab === "payments" && pendingPayments > 0 ? pendingPayments :
+            0;
+          return (
+            <button
+              key={tab}
+              className={`tab-btn ${activeTab === tab ? "active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+              style={{ position: "relative" }}
+            >
+              {tab === "payments" ? "Payments" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {badge > 0 && <span className="badge-alert">{badge}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* Menu Tab */}
@@ -176,6 +197,86 @@ export default function GeneralAdminDashboard() {
       {activeTab === "orders" && (
         <div className="tab-content">
           <OrdersTable orders={orders} restaurantId={restaurantId} showActions={false} />
+        </div>
+      )}
+
+      {/* Payments Tab */}
+      {activeTab === "payments" && (
+        <div className="tab-content">
+          {(() => {
+            const pendingProofs = payments.filter(p => p.status === "pending");
+            const verifiedProofs = payments.filter(p => p.status === "verified");
+            return (
+              <>
+                <h3 style={{ fontFamily: "var(--font)", fontWeight: 700, marginBottom: 16, fontSize: 16 }}>
+                  Pending Verification ({pendingProofs.length})
+                </h3>
+                {pendingProofs.length === 0 && (
+                  <div className="empty-state" style={{ minHeight: 120 }}>
+                    <div className="empty-icon">✅</div>
+                    <p>No pending payment proofs</p>
+                  </div>
+                )}
+                <div className="pending-payments-list" style={{ marginBottom: 28 }}>
+                  {pendingProofs.map((payment) => (
+                    <div key={payment.id} className="payment-proof-card">
+                      <div className="payment-proof-header">
+                        <div>
+                          <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                          <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
+                        </div>
+                        <div className="payment-proof-amount">${payment.amount?.toFixed(2)}</div>
+                      </div>
+                      <div style={{ marginBottom: 10 }}>
+                        {payment.items?.slice(0, 3).map((item, i) => (
+                          <span key={i} className="track-item" style={{ marginRight: 6, display: "inline-block", marginBottom: 4 }}>
+                            {item.name} ×{item.quantity}
+                          </span>
+                        ))}
+                        {(payment.items?.length || 0) > 3 && (
+                          <span className="track-item">+{payment.items.length - 3} more</span>
+                        )}
+                      </div>
+                      {payment.screenshotUrl ? (
+                        <img src={payment.screenshotUrl} alt="Payment proof" className="payment-proof-img" />
+                      ) : (
+                        <div className="payment-proof-placeholder">📷 No screenshot uploaded</div>
+                      )}
+                      <button
+                        className="btn-verify"
+                        onClick={() => handleVerifyPayment(payment.id)}
+                        disabled={verifyingId === payment.id}
+                      >
+                        {verifyingId === payment.id ? "Verifying..." : "✓ Mark as Verified"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {verifiedProofs.length > 0 && (
+                  <>
+                    <h3 style={{ fontFamily: "var(--font)", fontWeight: 700, marginBottom: 12, fontSize: 15, color: "var(--color-primary)" }}>
+                      Verified ({verifiedProofs.length})
+                    </h3>
+                    <div className="pending-payments-list">
+                      {verifiedProofs.map((payment) => (
+                        <div key={payment.id} className="payment-proof-card" style={{ opacity: 0.65 }}>
+                          <div className="payment-proof-header">
+                            <div>
+                              <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                              <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
+                            </div>
+                            <div className="payment-proof-amount">${payment.amount?.toFixed(2)}</div>
+                          </div>
+                          <div className="verified-label">✅ Verified — {formatDate(payment.verifiedAt)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -248,7 +349,7 @@ export default function GeneralAdminDashboard() {
 }
 
 const ROLE_LABELS = {
-  general_admin: "General Admin",
+  general_admin: "Admin",
   kitchen: "Kitchen",
   cash_counter: "Cash Counter",
   server: "Server",

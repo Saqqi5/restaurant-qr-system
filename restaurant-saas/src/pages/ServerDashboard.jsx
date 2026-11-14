@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { subscribeToMenu, subscribeToOrders, createOrder, updateOrderStatus } from "../config/db";
+import {
+  subscribeToMenu, subscribeToOrders, createOrder,
+  subscribeToRestaurantPayments
+} from "../config/db";
 import AdminLayout from "../components/admin/AdminLayout";
 
 export default function ServerDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [view, setView] = useState("orders"); // "orders" | "new_order"
+  const [payments, setPayments] = useState([]);
+  const [view, setView] = useState("orders");
   const [cart, setCart] = useState([]);
   const [selectedTable, setSelectedTable] = useState(1);
   const [tableCount] = useState(20);
@@ -19,8 +23,18 @@ export default function ServerDashboard() {
     if (!restaurantId) return;
     const unsubMenu = subscribeToMenu(restaurantId, setMenuItems);
     const unsubOrders = subscribeToOrders(restaurantId, setOrders);
-    return () => { unsubMenu(); unsubOrders(); };
+    const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
+    return () => { unsubMenu(); unsubOrders(); unsubPayments(); };
   }, [restaurantId]);
+
+  // Map tableNumber → latest payment status
+  const tablePaymentStatus = {};
+  payments.forEach((p) => {
+    const existing = tablePaymentStatus[p.tableNumber];
+    if (!existing || (p.createdAt?.seconds || 0) > (existing.createdAt?.seconds || 0)) {
+      tablePaymentStatus[p.tableNumber] = p;
+    }
+  });
 
   function addToCart(item) {
     setCart((prev) => {
@@ -57,31 +71,44 @@ export default function ServerDashboard() {
     setPlacing(false);
   }
 
-  const activeOrders = orders.filter((o) =>
-    !["served", "paid"].includes(o.status)
-  );
-
+  const activeOrders = orders.filter((o) => !["served", "paid"].includes(o.status));
   const filteredMenu = menuItems.filter((i) =>
     i.name.toLowerCase().includes(searchTerm.toLowerCase()) && i.available
   );
-
   const categories = [...new Set(filteredMenu.map((i) => i.category))];
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
+  function getPaymentPill(order) {
+    const tableNum = order.table_number;
+    const pay = tablePaymentStatus[tableNum];
+    if (!pay) return null;
+    if (pay.status === "verified") {
+      return <span className="pay-status-pill pay-verified">💳 Verified</span>;
+    }
+    if (pay.status === "pending") {
+      return <span className="pay-status-pill pay-pending">💳 Pending</span>;
+    }
+    return null;
+  }
+
   return (
     <AdminLayout
-      title="🛎️ Server"
+      title="Server"
       subtitle={userProfile?.name || "Order Taker"}
       onLogout={logout}
       userProfile={userProfile}
     >
       <div className="server-tabs">
-        <button className={`tab-btn ${view === "orders" ? "active" : ""}`}
-          onClick={() => setView("orders")}>
+        <button
+          className={`tab-btn ${view === "orders" ? "active" : ""}`}
+          onClick={() => setView("orders")}
+        >
           Active Orders ({activeOrders.length})
         </button>
-        <button className={`tab-btn ${view === "new_order" ? "active" : ""}`}
-          onClick={() => setView("new_order")}>
+        <button
+          className={`tab-btn ${view === "new_order" ? "active" : ""}`}
+          onClick={() => setView("new_order")}
+        >
           + New Order
         </button>
       </div>
@@ -91,7 +118,7 @@ export default function ServerDashboard() {
           {activeOrders.length === 0 && (
             <div className="empty-state">
               <div className="empty-icon">🛎️</div>
-              <p>No active orders</p>
+              <p>No active orders right now</p>
             </div>
           )}
           {activeOrders.map((order) => (
@@ -99,7 +126,8 @@ export default function ServerDashboard() {
               <div className="server-order-header">
                 <span className="table-badge">Table {order.table_number}</span>
                 <span className={`status-pill status-${order.status}`}>{order.status}</span>
-                <span className="order-total">${order.total?.toFixed(2)}</span>
+                <span className="order-total-display">${order.total?.toFixed(2)}</span>
+                {getPaymentPill(order)}
               </div>
               <div className="server-order-items">
                 {order.items?.map((item, i) => (
@@ -115,7 +143,6 @@ export default function ServerDashboard() {
 
       {view === "new_order" && (
         <div className="new-order-layout">
-          {/* Left: Menu */}
           <div className="menu-panel">
             <div className="table-selector">
               <label>Table:</label>
@@ -125,14 +152,12 @@ export default function ServerDashboard() {
                 ))}
               </select>
             </div>
-
             <input
               className="menu-search"
               placeholder="Search menu..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-
             {categories.map((cat) => (
               <div key={cat}>
                 <h4 className="category-label">{cat}</h4>
@@ -140,8 +165,11 @@ export default function ServerDashboard() {
                   {filteredMenu.filter((i) => i.category === cat).map((item) => {
                     const inCart = cart.find((c) => c.id === item.id);
                     return (
-                      <div key={item.id} className="menu-item-compact"
-                        onClick={() => addToCart(item)}>
+                      <div
+                        key={item.id}
+                        className="menu-item-compact"
+                        onClick={() => addToCart(item)}
+                      >
                         <span className="item-name">{item.name}</span>
                         <span className="item-price">${item.price?.toFixed(2)}</span>
                         {inCart && <span className="in-cart-badge">{inCart.quantity}</span>}
@@ -153,12 +181,9 @@ export default function ServerDashboard() {
             ))}
           </div>
 
-          {/* Right: Cart */}
           <div className="cart-panel">
-            <h3>Order Summary — Table {selectedTable}</h3>
-            {cart.length === 0 && (
-              <div className="empty-cart">Tap items to add</div>
-            )}
+            <h3>Order — Table {selectedTable}</h3>
+            {cart.length === 0 && <div className="empty-cart">Tap items to add</div>}
             {cart.map((item) => (
               <div key={item.id} className="cart-item">
                 <div className="cart-item-info">
