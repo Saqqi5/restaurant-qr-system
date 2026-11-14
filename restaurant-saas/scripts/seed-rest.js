@@ -37,20 +37,20 @@ const STAFF = [
 ];
 
 const MENU = [
-  { name: "Bruschetta al Pomodoro", description: "Toasted bread with fresh tomatoes, garlic, and basil",    price: 7.50,  category: "Starters",  prep_time_minutes: 8,  available: true,  sort_order: 1 },
-  { name: "Arancini",               description: "Crispy fried risotto balls stuffed with mozzarella",       price: 8.50,  category: "Starters",  prep_time_minutes: 10, available: true,  sort_order: 2 },
-  { name: "Caprese Salad",          description: "Fresh mozzarella, tomatoes, basil, and olive oil",         price: 9.00,  category: "Starters",  prep_time_minutes: 5,  available: true,  sort_order: 3 },
-  { name: "Spaghetti Carbonara",    description: "Classic Roman pasta with egg, pecorino, and guanciale",    price: 14.50, category: "Pasta",     prep_time_minutes: 15, available: true,  sort_order: 1 },
-  { name: "Penne Arrabbiata",       description: "Penne with spicy tomato sauce, garlic, and parsley",       price: 12.50, category: "Pasta",     prep_time_minutes: 15, available: true,  sort_order: 2 },
-  { name: "Tagliatelle al Ragù",    description: "Hand-rolled pasta with slow-cooked Bolognese sauce",       price: 15.00, category: "Pasta",     prep_time_minutes: 18, available: true,  sort_order: 3 },
-  { name: "Margherita Pizza",       description: "San Marzano tomatoes, fior di latte, fresh basil",         price: 13.00, category: "Pizza",     prep_time_minutes: 20, available: true,  sort_order: 1 },
-  { name: "Diavola Pizza",          description: "Spicy salami, tomato, mozzarella, chili oil",              price: 15.00, category: "Pizza",     prep_time_minutes: 20, available: true,  sort_order: 2 },
-  { name: "Quattro Formaggi",       description: "Mozzarella, gorgonzola, parmesan, and taleggio",           price: 16.00, category: "Pizza",     prep_time_minutes: 20, available: false, sort_order: 3 },
-  { name: "Tiramisu",               description: "Classic Italian dessert with mascarpone and espresso",      price: 6.50,  category: "Desserts",  prep_time_minutes: 5,  available: true,  sort_order: 1 },
-  { name: "Panna Cotta",            description: "Silky vanilla cream with wild berry coulis",                price: 6.00,  category: "Desserts",  prep_time_minutes: 5,  available: true,  sort_order: 2 },
-  { name: "San Pellegrino",         description: "Sparkling mineral water 500ml",                             price: 3.50,  category: "Beverages", prep_time_minutes: 2,  available: true,  sort_order: 1 },
-  { name: "House Red Wine (glass)", description: "Chianti Classico DOC",                                      price: 7.00,  category: "Beverages", prep_time_minutes: 2,  available: true,  sort_order: 2 },
-  { name: "Espresso",               description: "Double shot Italian espresso",                               price: 2.50,  category: "Beverages", prep_time_minutes: 3,  available: true,  sort_order: 3 },
+  { name: "Bruschetta al Pomodoro", description: "Toasted bread with fresh tomatoes, garlic, and basil",    price: 7.50,  category: "Starters", image_url: "/images/bruschetta.jpg",  prep_time_minutes: 8,  available: true,  sort_order: 1 },
+  { name: "Arancini",               description: "Crispy fried risotto balls stuffed with mozzarella",       price: 8.50,  category: "Starters", image_url: "/images/arancini.jpg",  prep_time_minutes: 10, available: true,  sort_order: 2 },
+  { name: "Caprese Salad",          description: "Fresh mozzarella, tomatoes, basil, and olive oil",         price: 9.00,  category: "Starters", image_url: "/images/caprese.jpg",  prep_time_minutes: 5,  available: true,  sort_order: 3 },
+  { name: "Spaghetti Carbonara",    description: "Classic Roman pasta with egg, pecorino, and guanciale",    price: 14.50, category: "Pasta", image_url: "/images/carbonara.jpg",     prep_time_minutes: 15, available: true,  sort_order: 1 },
+  { name: "Penne Arrabbiata",       description: "Penne with spicy tomato sauce, garlic, and parsley",       price: 12.50, category: "Pasta", image_url: "/images/arrabbiata.jpg",     prep_time_minutes: 15, available: true,  sort_order: 2 },
+  { name: "Tagliatelle al Ragù",    description: "Hand-rolled pasta with slow-cooked Bolognese sauce",       price: 15.00, category: "Pasta", image_url: "/images/ragu.jpg",     prep_time_minutes: 18, available: true,  sort_order: 3 },
+  { name: "Margherita Pizza",       description: "San Marzano tomatoes, fior di latte, fresh basil",         price: 13.00, category: "Pizza", image_url: "/images/margherita.jpg",     prep_time_minutes: 20, available: true,  sort_order: 1 },
+  { name: "Diavola Pizza",          description: "Spicy salami, tomato, mozzarella, chili oil",              price: 15.00, category: "Pizza", image_url: "/images/diavola.jpg",     prep_time_minutes: 20, available: true,  sort_order: 2 },
+  { name: "Quattro Formaggi",       description: "Mozzarella, gorgonzola, parmesan, and taleggio",           price: 16.00, category: "Pizza", image_url: "/images/quattro-formaggi.jpg",     prep_time_minutes: 20, available: false, sort_order: 3 },
+  { name: "Tiramisu",               description: "Classic Italian dessert with mascarpone and espresso",      price: 6.50,  category: "Desserts", image_url: "/images/tiramisu.jpg",  prep_time_minutes: 5,  available: true,  sort_order: 1 },
+  { name: "Panna Cotta",            description: "Silky vanilla cream with wild berry coulis",                price: 6.00,  category: "Desserts", image_url: "/images/panna-cotta.jpg",  prep_time_minutes: 5,  available: true,  sort_order: 2 },
+  { name: "San Pellegrino",         description: "Sparkling mineral water 500ml",                             price: 3.50,  category: "Beverages", image_url: "/images/san-pellegrino.jpg", prep_time_minutes: 2,  available: true,  sort_order: 1 },
+  { name: "House Red Wine (glass)", description: "Chianti Classico DOC",                                      price: 7.00,  category: "Beverages", image_url: "/images/red-wine.jpg", prep_time_minutes: 2,  available: true,  sort_order: 2 },
+  { name: "Espresso",               description: "Double shot Italian espresso",                               price: 2.50,  category: "Beverages", image_url: "/images/espresso.jpg", prep_time_minutes: 3,  available: true,  sort_order: 3 },
 ];
 
 
@@ -78,35 +78,35 @@ const STAFF2 = [
 
 const MENU2 = [
   // Starters
-  { name: "Samosa Chaat",       description: "Crispy samosa topped with chana, yogurt, chutneys and sev", price: 250,  category: "Starters", prep_time_minutes: 8,  available: true,  sort_order: 1 },
-  { name: "Dahi Bhalla",        description: "Soft lentil dumplings in yogurt with tamarind chutney",     price: 300,  category: "Starters", prep_time_minutes: 8,  available: true,  sort_order: 2 },
+  { name: "Samosa Chaat",       description: "Crispy samosa topped with chana, yogurt, chutneys and sev", price: 250,  category: "Starters", image_url: "/images/samosa-chaat.jpg", prep_time_minutes: 8,  available: true,  sort_order: 1 },
+  { name: "Dahi Bhalla",        description: "Soft lentil dumplings in yogurt with tamarind chutney",     price: 300,  category: "Starters", image_url: "/images/dahi-bhalla.jpg", prep_time_minutes: 8,  available: true,  sort_order: 2 },
   // BBQ
-  { name: "Chicken Tikka (Leg)", description: "Charcoal-grilled chicken leg, desi masala, lemon and onion", price: 550, category: "BBQ",      prep_time_minutes: 20, available: true,  sort_order: 1 },
-  { name: "Seekh Kabab (4 pc)",  description: "Hand-minced beef kabab, smoky, with naan and raita",       price: 500,  category: "BBQ",      prep_time_minutes: 15, available: true,  sort_order: 2 },
-  { name: "Chapli Kabab (2 pc)", description: "Peshawari-style flat kabab, tomato, onion, green chilli",   price: 350,  category: "BBQ",      prep_time_minutes: 12, available: true,  sort_order: 3 },
-  { name: "Malai Boti",          description: "Creamy, mild chicken boti, grilled over charcoal",           price: 650,  category: "BBQ",      prep_time_minutes: 18, available: true,  sort_order: 4 },
+  { name: "Chicken Tikka (Leg)", description: "Charcoal-grilled chicken leg, desi masala, lemon and onion", price: 550, category: "BBQ", image_url: "/images/tikka.jpg",      prep_time_minutes: 20, available: true,  sort_order: 1 },
+  { name: "Seekh Kabab (4 pc)",  description: "Hand-minced beef kabab, smoky, with naan and raita",       price: 500,  category: "BBQ", image_url: "/images/seekh-kabab.jpg",      prep_time_minutes: 15, available: true,  sort_order: 2 },
+  { name: "Chapli Kabab (2 pc)", description: "Peshawari-style flat kabab, tomato, onion, green chilli",   price: 350,  category: "BBQ", image_url: "/images/chapli-kabab.jpg",      prep_time_minutes: 12, available: true,  sort_order: 3 },
+  { name: "Malai Boti",          description: "Creamy, mild chicken boti, grilled over charcoal",           price: 650,  category: "BBQ", image_url: "/images/malai-boti.jpg",      prep_time_minutes: 18, available: true,  sort_order: 4 },
   // Desi
-  { name: "Chicken Biryani",     description: "Fragrant basmati, chicken, aloo bukhara, raita and salad",   price: 450,  category: "Desi",     prep_time_minutes: 15, available: true,  sort_order: 1 },
-  { name: "Beef Nihari",         description: "Slow-cooked beef shank stew, ginger, lemon, green chilli",   price: 850,  category: "Desi",     prep_time_minutes: 25, available: true,  sort_order: 2 },
-  { name: "Chicken Karahi (Half)", description: "Desi ghee karahi, tomato, ginger, green chilli",          price: 900,  category: "Desi",     prep_time_minutes: 20, available: true,  sort_order: 3 },
-  { name: "Chicken Karahi (Full)", description: "Desi ghee karahi, tomato, ginger, green chilli",          price: 1650, category: "Desi",     prep_time_minutes: 25, available: true,  sort_order: 4 },
-  { name: "Daal Fry",            description: "Yellow daal with garlic tarka, rice or naan",                price: 300,  category: "Desi",     prep_time_minutes: 12, available: true,  sort_order: 5 },
-  { name: "Tawa Qeema",          description: "Spiced minced beef on tawa, green chilli and coriander",     price: 700,  category: "Desi",     prep_time_minutes: 18, available: true,  sort_order: 6 },
-  { name: "Mix Sabzi",           description: "Seasonal vegetables, light masala",                          price: 350,  category: "Desi",     prep_time_minutes: 12, available: true,  sort_order: 7 },
+  { name: "Chicken Biryani",     description: "Fragrant basmati, chicken, aloo bukhara, raita and salad",   price: 450,  category: "Desi", image_url: "/images/biryani.jpg",     prep_time_minutes: 15, available: true,  sort_order: 1 },
+  { name: "Beef Nihari",         description: "Slow-cooked beef shank stew, ginger, lemon, green chilli",   price: 850,  category: "Desi", image_url: "/images/nihari.jpg",     prep_time_minutes: 25, available: true,  sort_order: 2 },
+  { name: "Chicken Karahi (Half)", description: "Desi ghee karahi, tomato, ginger, green chilli",          price: 900,  category: "Desi", image_url: "/images/karahi.jpg",     prep_time_minutes: 20, available: true,  sort_order: 3 },
+  { name: "Chicken Karahi (Full)", description: "Desi ghee karahi, tomato, ginger, green chilli",          price: 1650, category: "Desi", image_url: "/images/karahi.jpg",     prep_time_minutes: 25, available: true,  sort_order: 4 },
+  { name: "Daal Fry",            description: "Yellow daal with garlic tarka, rice or naan",                price: 300,  category: "Desi", image_url: "/images/daal-fry.jpg",     prep_time_minutes: 12, available: true,  sort_order: 5 },
+  { name: "Tawa Qeema",          description: "Spiced minced beef on tawa, green chilli and coriander",     price: 700,  category: "Desi", image_url: "/images/tawa-qeema.jpg",     prep_time_minutes: 18, available: true,  sort_order: 6 },
+  { name: "Mix Sabzi",           description: "Seasonal vegetables, light masala",                          price: 350,  category: "Desi", image_url: "/images/mix-sabzi.jpg",     prep_time_minutes: 12, available: true,  sort_order: 7 },
   // Breads
-  { name: "Naan",                description: "Tandoor-baked plain naan",                                   price: 40,   category: "Breads",   prep_time_minutes: 5,  available: true,  sort_order: 1 },
-  { name: "Roghni Naan",         description: "Sesame-topped soft naan",                                    price: 80,   category: "Breads",   prep_time_minutes: 5,  available: true,  sort_order: 2 },
-  { name: "Garlic Naan",         description: "Naan brushed with garlic butter",                            price: 120,  category: "Breads",   prep_time_minutes: 5,  available: true,  sort_order: 3 },
+  { name: "Naan",                description: "Tandoor-baked plain naan",                                   price: 40,   category: "Breads", image_url: "/images/naan.jpg",   prep_time_minutes: 5,  available: true,  sort_order: 1 },
+  { name: "Roghni Naan",         description: "Sesame-topped soft naan",                                    price: 80,   category: "Breads", image_url: "/images/naan.jpg",   prep_time_minutes: 5,  available: true,  sort_order: 2 },
+  { name: "Garlic Naan",         description: "Naan brushed with garlic butter",                            price: 120,  category: "Breads", image_url: "/images/naan.jpg",   prep_time_minutes: 5,  available: true,  sort_order: 3 },
   // Desserts
-  { name: "Gulab Jamun (2 pc)",  description: "Warm syrup-soaked jamun",                                    price: 150,  category: "Desserts", prep_time_minutes: 5,  available: true,  sort_order: 1 },
-  { name: "Kheer",               description: "Slow-cooked rice pudding, cardamom and pistachio",            price: 180,  category: "Desserts", prep_time_minutes: 5,  available: true,  sort_order: 2 },
-  { name: "Rasmalai",            description: "Soft cheese discs in chilled saffron milk",                   price: 200,  category: "Desserts", prep_time_minutes: 5,  available: true,  sort_order: 3 },
+  { name: "Gulab Jamun (2 pc)",  description: "Warm syrup-soaked jamun",                                    price: 150,  category: "Desserts", image_url: "/images/gulab-jamun.jpg", prep_time_minutes: 5,  available: true,  sort_order: 1 },
+  { name: "Kheer",               description: "Slow-cooked rice pudding, cardamom and pistachio",            price: 180,  category: "Desserts", image_url: "/images/kheer.jpg", prep_time_minutes: 5,  available: true,  sort_order: 2 },
+  { name: "Rasmalai",            description: "Soft cheese discs in chilled saffron milk",                   price: 200,  category: "Desserts", image_url: "/images/rasmalai.jpg", prep_time_minutes: 5,  available: true,  sort_order: 3 },
   // Beverages
-  { name: "Sweet Lassi",         description: "Thick yogurt lassi, sweetened",                               price: 150,  category: "Beverages", prep_time_minutes: 3,  available: true,  sort_order: 1 },
-  { name: "Kashmiri Chai",       description: "Pink tea with crushed nuts",                                   price: 120,  category: "Beverages", prep_time_minutes: 8,  available: true,  sort_order: 2 },
-  { name: "Doodh Patti",         description: "Slow-brewed milky chai",                                       price: 100,  category: "Beverages", prep_time_minutes: 8,  available: true,  sort_order: 3 },
-  { name: "Soft Drink",          description: "Chilled soft drink 345ml",                                     price: 120,  category: "Beverages", prep_time_minutes: 2,  available: true,  sort_order: 4 },
-  { name: "Mineral Water",       description: "Mineral water 500ml",                                          price: 60,   category: "Beverages", prep_time_minutes: 2,  available: true,  sort_order: 5 },
+  { name: "Sweet Lassi",         description: "Thick yogurt lassi, sweetened",                               price: 150,  category: "Beverages", image_url: "/images/sweet-lassi.jpg", prep_time_minutes: 3,  available: true,  sort_order: 1 },
+  { name: "Kashmiri Chai",       description: "Pink tea with crushed nuts",                                   price: 120,  category: "Beverages", image_url: "/images/kashmiri-chai.jpg", prep_time_minutes: 8,  available: true,  sort_order: 2 },
+  { name: "Doodh Patti",         description: "Slow-brewed milky chai",                                       price: 100,  category: "Beverages", image_url: "/images/doodh-patti.jpg", prep_time_minutes: 8,  available: true,  sort_order: 3 },
+  { name: "Soft Drink",          description: "Chilled soft drink 345ml",                                     price: 120,  category: "Beverages", image_url: "/images/soft-drink.jpg", prep_time_minutes: 2,  available: true,  sort_order: 4 },
+  { name: "Mineral Water",       description: "Mineral water 500ml",                                          price: 60,   category: "Beverages", image_url: "/images/mineral-water.jpg", prep_time_minutes: 2,  available: true,  sort_order: 5 },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────

@@ -32,3 +32,4 @@ ui-debug.log
 # OS
 .DS_Store
 Thumbs.db
+public/images/*.jpg

@@ -1,0 +1,177 @@
+{
+ "biryani": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/biryani.jpg",
+  "source": "https://video.xx.fbcdn.net/o1/v/t2/f2/m343/AQMgFslTSHSKepbseU2YPcGa_bPp_KqqzlLse8H-SzV2yMtGUKZ2PX7UvydP329D1HRH7LlDdz-8ffArs0rdIvcQheBc?_nc_ht=video.xx.fbcdn.net&_nc_sid=d0ad10&ccb=9-4&oh=00_AQSOlmfj8DwIklbD378l68QDyX03Bbd_19XVBvFX3MMt7Q&oe=6AFA20F9",
+  "page": "https://mytownkitchen.com/irresistible-chicken-biryani-recipe-for-flavor-lovers/"
+ },
+ "nihari": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/nihari.jpg",
+  "source": "https://i0.wp.com/dubaitechnical.com/wp-content/uploads/2024/03/Authentic-Beef-Nihari.jpg?resize=1600%2C1066&ssl=1",
+  "page": "https://dubaitechnical.com/an-honest-review-of-daily-express-restaurant/"
+ },
+ "karahi": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/karahi.jpg",
+  "source": "https://www.mirchitales.com/wp-content/uploads/2019/01/Chicken-Karahi-1.jpg",
+  "page": "https://www.mirchitales.com/pakistani-karahi-chicken-recipe/"
+ },
+ "tikka": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/tikka.jpg",
+  "source": "https://www.eastathome.com/cdn/shop/files/chicken-tikka-bbq1.jpg?v=1710815635&width=1680",
+  "page": "https://www.eastathome.com/products/tikka-marinade-spices"
+ },
+ "seekh-kabab": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/seekh-kabab.jpg",
+  "source": "https://masalaatwist.com/wp-content/uploads/2026/07/Seekh-kabab.webp",
+  "page": null
+ },
+ "chapli-kabab": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/chapli-kabab.jpg",
+  "source": "https://cookingwithnelo.com/wp-content/uploads/2026/04/chapli-kabab-2.jpg",
+  "page": "https://cookingwithnelo.com/chapli-kabab/"
+ },
+ "malai-boti": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/malai-boti.jpg",
+  "source": "https://recipeguideworld.com/wp-content/uploads/2024/09/Malai-Boti.png.webp",
+  "page": "https://recipeguideworld.com/malai-boti-creamy-tender-and-packed-with-flavor/"
+ },
+ "daal-fry": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/daal-fry.jpg",
+  "source": "https://img.myloview.com/murals/dal-tadka-daal-fry-indian-lentil-curry-with-jeera-rice-700-215556563.jpg",
+  "page": "https://myloview.com/murals/theme/dal/36/"
+ },
+ "tawa-qeema": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/tawa-qeema.jpg",
+  "source": "https://video.xx.fbcdn.net/o1/v/t2/f2/m343/AQO9iI5rAA9Hf12IcG4FsAhnwZEqD429gKTSzmvnkNyXiEinq6SmSodRobxe3fsN4Sm1-gCWd3C0fftvcMhOQOHQjQZ9?_nc_ht=video.xx.fbcdn.net&_nc_sid=d0ad10&ccb=9-4&oh=00_AQRn4ErFQsluidFE1O4xfaqOMzlQ8brB9uvGNJMnGu7KCg&oe=6AFA185C",
+  "page": "https://www.easypeasyfoodie.com/beef-mince-curry/"
+ },
+ "mix-sabzi": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/mix-sabzi.jpg",
+  "source": "https://images.deliveryhero.io/image/talabat/MenuItems/Mix_Vegetable_636984708943339877.jpg",
+  "page": null
+ },
+ "naan": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/naan.jpg",
+  "source": "https://tandoormorni.com/wp-content/uploads/2026/08/naan-bread-tandoor-oven-hero-plated.jpg",
+  "page": "https://tandoormorni.com/how-to-make-naan-bread-in-a-tandoor-oven/"
+ },
+ "samosa-chaat": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/samosa-chaat.jpg",
+  "source": "https://www.cookwithmanali.com/wp-content/uploads/2019/09/Samosa-Chaat.jpg",
+  "page": "https://www.cookwithmanali.com/samosa-chaat/"
+ },
+ "dahi-bhalla": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/dahi-bhalla.jpg",
+  "source": "https://www.cookwithnabeela.com/wp-content/uploads/2026/06/DahiBhalla-768x768-1-500x500.webp",
+  "page": "https://www.cookwithnabeela.com/recipe/dahi-ki-kadhi"
+ },
+ "gulab-jamun": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/gulab-jamun.jpg",
+  "source": "https://www.isiricafe.com/gall/gulab-jamun.jpg",
+  "page": "http://www.isiricafe.com/"
+ },
+ "kheer": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/kheer.jpg",
+  "source": "https://masalaandchai.com/wp-content/uploads/2021/08/Kheer.jpg",
+  "page": "https://masalaandchai.com/rice-kheer-indian-rice-pudding/"
+ },
+ "rasmalai": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/rasmalai.jpg",
+  "source": "https://bazaari-bites.netlify.app//images/rasmalai.jpg",
+  "page": "https://bazaari-bites.netlify.app/"
+ },
+ "sweet-lassi": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/sweet-lassi.jpg",
+  "source": "https://www.indianveggiedelight.com/wp-content/uploads/2023/01/sweet-lassi-recipe-2.jpg",
+  "page": "https://www.indianveggiedelight.com/lassi-recipe/"
+ },
+ "kashmiri-chai": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/kashmiri-chai.jpg",
+  "source": "https://snackonmeat.com/wp-content/uploads/2025/07/u9552142339_httpss.mj_.runXWa4Fj4TOzw_Kashmiri_Pink_Chai_-ar__1734d7c5-0a17-4753-be64-e81409c115aa_3-847x1024.png",
+  "page": "https://snackonmeat.com/kashmiri-pink-chai-noon-chai-a-stunning-spiced-tea/"
+ },
+ "doodh-patti": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/doodh-patti.jpg",
+  "source": "https://images.deliveryhero.io/image/talabat/Menuitems/Doodh_Pati638684088705589351.jpg",
+  "page": null
+ },
+ "soft-drink": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/soft-drink.jpg",
+  "source": "https://i.pinimg.com/736x/cf/be/77/cfbe77bcfaac97e6bb623b4c65560c1a.jpg",
+  "page": "https://es.pinterest.com/pin/278589926951831624/"
+ },
+ "mineral-water": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/mineral-water.jpg",
+  "source": "https://hajifreshjuice.vercel.app/assets/Mineral%20Water.webp",
+  "page": "https://hajifreshjuice.com"
+ },
+ "bruschetta": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/bruschetta.jpg",
+  "source": "https://images.arla.com/recordid/78FFE0F9-49A2-416C-8BE42F8718AA5E78/bruschetta.jpg?width=556&height=696&mode=crop&crop=(425,0,-273,0)&format=jpg",
+  "page": "https://edit.arla.fi/"
+ },
+ "arancini": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/arancini.jpg",
+  "source": "https://cdn.shopify.com/s/files/1/0647/8410/5716/files/20250515190458-arancini-italian-risotto-recipe-lifestyle.jpg?v=1747335900",
+  "page": "https://shop.themediterraneandish.com/blogs/recipes/arancini-italian-fried-risotto"
+ },
+ "caprese": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/caprese.jpg",
+  "source": "https://video.xx.fbcdn.net/o1/v/t2/f2/m343/AQNGyqs8ZoH0lBpertglKbySdxtKARIQMaDuTILGZ5VRzL0l0YBFj5cq99AjX_mZJF4Lj6-W-NnO8fzA4J40bbuSoouM?_nc_ht=video.xx.fbcdn.net&_nc_sid=d0ad10&ccb=9-4&oh=00_AQRQLt-EjWv9A8pzozAWRErRCBBymiUMXLzhSo_yUi1BtQ&oe=6AFA0826",
+  "page": null
+ },
+ "carbonara": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/carbonara.jpg",
+  "source": "https://dma0ixu6zshxu.cloudfront.net/wp-content/uploads/20260214063159/Spaghetti-carbonara-1-720x405.jpg?w=720&h=405",
+  "page": null
+ },
+ "arrabbiata": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/arrabbiata.jpg",
+  "source": "https://www.pizza-pasta.de/_astro/penne-arrabbiata.Vk7LeB2t_Z1Q9ezK.webp",
+  "page": "https://www.pizza-pasta.de/de/rezepte/"
+ },
+ "ragu": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/ragu.jpg",
+  "source": "https://ovensource.com/wp-content/uploads/2024/01/Tagliatelle-al-Ragu-Bolognese-768x515.jpg",
+  "page": "https://ovensource.com/2024/01/"
+ },
+ "margherita": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/margherita.jpg",
+  "source": "https://www.acouplecooks.com/wp-content/uploads/2022/10/Margherita-Pizza-082.jpg",
+  "page": "https://www.acouplecooks.com/margherita-pizza-recipe/"
+ },
+ "diavola": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/diavola.jpg",
+  "source": "https://i.etsystatic.com/27457935/r/il/c72fd8/7945252749/il_1080xN.7945252749_ck6q.jpg",
+  "page": "https://www.etsy.com/it/listing/4486323543/spicy-diavola-pizza-recipe-with-dough?utm_source=OpenGraph&utm_medium=PageTools&utm_campaign=Share"
+ },
+ "quattro-formaggi": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/quattro-formaggi.jpg",
+  "source": "https://tazz-images.akamaized.net/product/32937265/92e0103f26b807b13704aedadafe847fbf039d3c7817f04754e5775c14a79299/pizza-quattro-formaggi.webp",
+  "page": "https://tazz.ro/constanta/rich-food/21437/restaurant"
+ },
+ "tiramisu": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/tiramisu.jpg",
+  "source": "https://i.postimg.cc/kG3wwVKV/tiramisu.jpg",
+  "page": "https://glovoapp.com/it/ru/bitonto/pietrantica-btt/"
+ },
+ "panna-cotta": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/panna-cotta.jpg",
+  "source": "https://video.xx.fbcdn.net/o1/v/t2/f2/m343/AQN5YI5P45rHg1_Z4GCjdW0mENPDZkVD9PP1I0jBBr5vvvj0xtyQN3A37_QEwLhysu4y0skONg7TNv41rG2ZYln1ZUm4?_nc_ht=video.xx.fbcdn.net&_nc_sid=d0ad10&ccb=9-4&oh=00_AQSb7v2OjzCSjzQ1ooHJbVhJXMz-PtSTMCPVQVpdazDv5w&oe=6AFA377A",
+  "page": "https://myawesomerecipes.com/irresistible-panna-cotta-a-luxurious-dessert-delight/"
+ },
+ "san-pellegrino": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/san-pellegrino.jpg",
+  "source": "https://photos.tryotter.com/menu-photos/2c16487a-9af0-4779-a39d-07238f322ed4.png",
+  "page": "https://mrbuns.co/menu?item=sprite-rdWj"
+ },
+ "red-wine": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/red-wine.jpg",
+  "source": "https://images.squarespace-cdn.com/content/v1/617b0830575c1e5c340bded9/e5701b68-60b2-43ab-8c65-3da353769130/red-wine-feature-square.jpg?format=2500w",
+  "page": "https://www.amyrothphoto.com/shop/p/red-wine-swirl"
+ },
+ "espresso": {
+  "file": "/home/hatch/workspace/restaurant-qr-system/restaurant-saas/public/images/espresso.jpg",
+  "source": "https://video.xx.fbcdn.net/o1/v/t2/f2/m343/AQM_occyd8JZyjJQBgBBt7TpQR3PBukScVHFOCe5lf2UPxhZrRbfChWtIizRP96DOG6Yz3xhBnZlqiS8rFKkt-trYnld?_nc_ht=video.xx.fbcdn.net&_nc_sid=d0ad10&ccb=9-4&oh=00_AQTdSlPin8bEK9UzcDNmwS1D64jQ9Qqh-Mf0B5XYmk8z7A&oe=6AFA1219",
+  "page": "https://rajrestro.com/menu"
+ }
+}
