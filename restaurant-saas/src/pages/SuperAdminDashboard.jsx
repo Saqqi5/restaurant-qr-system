@@ -15,7 +15,7 @@ import QRModal from "../components/admin/QRModal";
 import StatsBar from "../components/admin/StatsBar";
 
 export default function SuperAdminDashboard() {
-  const { userProfile, logout } = useAuth();
+  const { userProfile, logout, createDefaultStaff } = useAuth();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -26,6 +26,7 @@ export default function SuperAdminDashboard() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [planPayments, setPlanPayments] = useState([]);
   const [planActionId, setPlanActionId] = useState(null);
+  const [staffNotice, setStaffNotice] = useState(null); // { restaurantName, results } after a create
 
   useEffect(() => {
     getAllRestaurants().then((data) => {
@@ -67,6 +68,11 @@ export default function SuperAdminDashboard() {
     const newRestaurant = await createRestaurant(formData);
     setRestaurants((prev) => [newRestaurant, ...prev]);
     setShowCreate(false);
+    // Auto-create the 4 default staff logins (admin / kitchen / cashier /
+    // waiter) exactly like the demo restaurants. One failure never blocks
+    // the others — the notice lists what was created and what failed.
+    const results = await createDefaultStaff(newRestaurant.id, newRestaurant.slug);
+    setStaffNotice({ restaurantName: newRestaurant.name, results });
   }
 
   async function handleUpdateRestaurant(id, data) {
@@ -122,6 +128,23 @@ export default function SuperAdminDashboard() {
         { label: "Active", value: stats.active, icon: "✅" },
         { label: "Custom Domains", value: stats.withCustomDomain, icon: "🌐" },
       ]} />
+
+      {/* ── Default staff logins created with a new restaurant ── */}
+      {staffNotice && (
+        <div className="settings-section" style={{ marginBottom: 24, borderColor: "var(--color-primary)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2 className="settings-section-title">👥 Staff logins created for {staffNotice.restaurantName}</h2>
+            <button className="modal-close" onClick={() => setStaffNotice(null)}>✕</button>
+          </div>
+          {staffNotice.results.map((r) => (
+            <div key={r.role} className="form-hint" style={{ marginBottom: 4 }}>
+              {r.ok ? "✅" : "❌"} {r.name} ({r.role}) — {r.email} / {r.password}
+              {!r.ok && ` — ${r.error === "auth/email-already-in-use" ? "email already in use (the account may belong to a deleted restaurant — remove it or create the staff manually)" : r.error}`}
+            </div>
+          ))}
+          <p className="form-hint">Default passwords — share them with the restaurant owner and ask them to change the passwords.</p>
+        </div>
+      )}
 
       <div className="dashboard-actions">
         <div className="search-bar">

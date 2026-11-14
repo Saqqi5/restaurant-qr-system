@@ -95,6 +95,32 @@ export function AuthProvider({ children }) {
     return result.user;
   }
 
+  // New restaurants get the same 4 staff logins the demo restaurants have
+  // (admin / kitchen / cashier / waiter) with the same default passwords.
+  // Each account is attempted independently — one failure never blocks the
+  // others or the restaurant creation. Returns per-role results.
+  const DEFAULT_STAFF = [
+    { prefix: "admin", password: "Admin@123", name: "Restaurant Admin", role: "general_admin" },
+    { prefix: "kitchen", password: "Kitchen@123", name: "Chef", role: "kitchen" },
+    { prefix: "cash", password: "Cash@123", name: "Cashier", role: "cash_counter" },
+    { prefix: "server", password: "Server@123", name: "Waiter", role: "server" },
+  ];
+
+  async function createDefaultStaff(restaurantId, slug) {
+    const domain = `${String(slug || "").replace(/-/g, "")}.com`;
+    const results = [];
+    for (const s of DEFAULT_STAFF) {
+      const email = `${s.prefix}@${domain}`;
+      try {
+        await registerStaff(email, s.password, s.name, s.role, restaurantId);
+        results.push({ ...s, email, ok: true });
+      } catch (e) {
+        results.push({ ...s, email, ok: false, error: e?.code || e?.message || "failed" });
+      }
+    }
+    return results;
+  }
+
   async function resetPassword(email) {
     return sendPasswordResetEmail(auth, email);
   }
@@ -116,6 +142,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     registerStaff,
+    createDefaultStaff,
     resetPassword,
     hasRole,
     canAccessRestaurant,
