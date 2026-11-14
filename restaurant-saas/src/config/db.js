@@ -355,6 +355,10 @@ export async function getUser(userId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+export async function deleteUser(userId) {
+  await deleteDoc(userDoc(userId));
+}
+
 export async function getRestaurantUsers(restaurantId) {
   const q = query(usersCol(), where("restaurant_id", "==", restaurantId));
   const snap = await getDocs(q);

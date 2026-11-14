@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { getRestaurantUsers, subscribeToPlatformSettings } from "../../config/db";
+import { getRestaurantUsers, subscribeToPlatformSettings, deleteUser } from "../../config/db";
 import { getStaffLimit, getPlanLabel, normalizePlan } from "../../config/plans";
 
 const STAFF_ROLES = [
@@ -11,7 +11,7 @@ const STAFF_ROLES = [
 ];
 
 export default function StaffModal({ restaurant, onClose }) {
-  const { registerStaff } = useAuth();
+  const { registerStaff, currentUser } = useAuth();
   const [staff, setStaff] = useState([]);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "kitchen" });
   const [loading, setLoading] = useState(false);
@@ -54,6 +54,18 @@ export default function StaffModal({ restaurant, onClose }) {
       setError(err.message || "Failed to create staff member");
     }
     setLoading(false);
+  }
+
+  async function handleRemove(member) {
+    if (!window.confirm(`Remove ${member.name}? Their login will stop working for ${restaurant?.name}.`)) return;
+    setError("");
+    try {
+      await deleteUser(member.id);
+      setStaff(await getRestaurantUsers(restaurant.id));
+      setSuccess(`${member.name} removed.`);
+    } catch (err) {
+      setError(err.message || "Failed to remove staff member");
+    }
   }
 
   const getRoleLabel = (role) => STAFF_ROLES.find((r) => r.value === role)?.label || role;
@@ -100,6 +112,16 @@ export default function StaffModal({ restaurant, onClose }) {
                   <span className={`role-badge role-${member.role}`}>
                     {getRoleIcon(member.role)} {getRoleLabel(member.role)}
                   </span>
+                  {member.id !== currentUser?.uid && (
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      title="Remove staff member"
+                      onClick={() => handleRemove(member)}
+                    >
+                      🗑️
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -119,7 +141,7 @@ export default function StaffModal({ restaurant, onClose }) {
                 <label>Full Name</label>
                 <input
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="John Doe"
                   required
                 />
@@ -130,7 +152,7 @@ export default function StaffModal({ restaurant, onClose }) {
                 <input
                   type="email"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   placeholder="john@restaurant.com"
                   required
                 />
@@ -141,7 +163,7 @@ export default function StaffModal({ restaurant, onClose }) {
                 <input
                   type="password"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                   placeholder="Min 6 characters"
                   minLength={6}
                   required
@@ -155,7 +177,7 @@ export default function StaffModal({ restaurant, onClose }) {
                     <div
                       key={role.value}
                       className={`role-option ${form.role === role.value ? "selected" : ""}`}
-                      onClick={() => setForm({ ...form, role: role.value })}
+                      onClick={() => setForm((f) => ({ ...f, role: role.value }))}
                     >
                       <span className="role-option-icon">{role.icon}</span>
                       <div>

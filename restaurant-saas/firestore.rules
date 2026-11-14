@@ -108,6 +108,14 @@ service cloud.firestore {
         && request.resource.data.restaurant_id == getUserData().restaurant_id
         && request.resource.data.role in ['general_admin', 'kitchen', 'cash_counter', 'server'];
     }
+    // Same, for removing a staff member: the EXISTING record must belong to
+    // the caller's own restaurant and be a staff role (never super admin).
+    function isStaffDeleteAllowed() {
+      return isAuthenticated()
+        && getUserData().role == 'general_admin'
+        && resource.data.restaurant_id == getUserData().restaurant_id
+        && resource.data.role in ['general_admin', 'kitchen', 'cash_counter', 'server'];
+    }
     function planUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan']);
     }
@@ -125,7 +133,7 @@ service cloud.firestore {
       );
       allow create: if isSuperAdmin() || isStaffCreateAllowed();
       allow update: if isSuperAdmin() || request.auth.uid == userId;
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() || isStaffDeleteAllowed();
     }
 
     // ── Restaurants ───────────────────────────────────────────
