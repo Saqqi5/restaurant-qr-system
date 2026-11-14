@@ -73,11 +73,15 @@ export function getStaffLimit(plan, overrides) {
 }
 
 // ── Trial / subscription period ──────────────────────────────────────────
-// A new restaurant starts on a 7-day period (the Premium trial for a new
-// customer). At expiry the login is blocked until the super admin continues
-// the plan (one click, +30 days — a paid month). A restaurant with no
-// plan_expires_at (older data) never expires.
+// A new restaurant starts on a 7-day period (the Basic trial — the trial
+// exists ONLY on Basic). At expiry the login is blocked until the super
+// admin continues the plan (one click, +30 days — a paid month). A
+// restaurant with no plan_expires_at (older data) never expires.
+// Paid periods (Continue, verified plan payment, a Standard/Premium
+// restaurant created after payment) are always 30 days — they must NOT
+// follow TRIAL_DAYS.
 export const TRIAL_DAYS = 7;
+export const PAID_PERIOD_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Demo handout: a prospect gets the demo restaurant accounts for 7 days
@@ -94,6 +98,11 @@ export function demoExpiryDateFrom(date) {
 export function expiryDateFrom(date) {
   const base = date instanceof Date ? date.getTime() : Date.now();
   return new Date(base + TRIAL_DAYS * DAY_MS);
+}
+
+export function paidExpiryDateFrom(date) {
+  const base = date instanceof Date ? date.getTime() : Date.now();
+  return new Date(base + PAID_PERIOD_DAYS * DAY_MS);
 }
 
 function toDate(v) {

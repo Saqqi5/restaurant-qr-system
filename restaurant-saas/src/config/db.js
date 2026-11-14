@@ -29,7 +29,7 @@
  *   - restaurant_id, verified, created_at
  */
 
-import { expiryDateFrom, demoExpiryDateFrom } from "./plans";
+import { expiryDateFrom, demoExpiryDateFrom, paidExpiryDateFrom, normalizePlan } from "./plans";
 
 import {
   collection, doc, setDoc, updateDoc, deleteDoc,
@@ -68,10 +68,16 @@ export async function createRestaurant(data) {
     theme: data.theme || { primary: "#20C997", accent: "#0F3D3E", font: "modern" },
     created_at: serverTimestamp(),
     active: true,
-    plan: data.plan || "premium",
-    // 7-day period (Premium trial) — at expiry the login is blocked until
-    // the super admin continues the plan (see continuePlan).
-    plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
+    plan: data.plan || "basic",
+    // The 7-day trial exists ONLY on Basic. A Standard/Premium restaurant
+    // is created after payment, so it starts a paid 30-day period instead.
+    // At expiry the login is blocked until the super admin continues the
+    // plan (see continuePlan).
+    plan_expires_at: Timestamp.fromDate(
+      normalizePlan(data.plan) === "basic"
+        ? expiryDateFrom(new Date())
+        : paidExpiryDateFrom(new Date())
+    ),
   };
   await setDoc(ref, restaurant);
   return { id: ref.id, ...restaurant };
@@ -81,7 +87,7 @@ export async function createRestaurant(data) {
 // any expiry block (the new plan_expires_at is what unblocks the login).
 export async function continuePlan(restaurantId) {
   await updateDoc(restaurantDoc(restaurantId), {
-    plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
+    plan_expires_at: Timestamp.fromDate(paidExpiryDateFrom(new Date())),
     updated_at: serverTimestamp(),
   });
 }
@@ -433,7 +439,7 @@ export async function verifyPlanPayment(payment) {
   });
   await updateDoc(restaurantDoc(payment.restaurantId), {
     plan: payment.plan,
-    plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
+    plan_expires_at: Timestamp.fromDate(paidExpiryDateFrom(new Date())),
     updated_at: serverTimestamp(),
   });
 }

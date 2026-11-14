@@ -3,7 +3,7 @@ import { PLANS, getPlanLimit, normalizePlan } from "../../config/plans";
 
 export default function CreateRestaurantModal({ onClose, onCreate }) {
   const [form, setForm] = useState({
-    name: "", table_count: 10, logo_url: "", plan: "premium",
+    name: "", table_count: 10, logo_url: "", plan: "basic",
     theme: { primary: "#20C997", accent: "#17A884" }
   });
   const createLimit = getPlanLimit(normalizePlan(form.plan), null);
@@ -37,7 +37,9 @@ export default function CreateRestaurantModal({ onClose, onCreate }) {
               {createLimit !== null && (
                 <p className="form-hint">The {form.plan} plan allows up to {createLimit} tables.</p>
               )}
-              <p className="form-hint">New restaurants start on a 7-day period (Premium trial). After expiry the login is blocked until the super admin continues the plan.</p>
+              <p className="form-hint">{form.plan === "basic"
+                ? "Basic starts a 7-day trial. After expiry the login is blocked until the super admin continues the plan."
+                : "Standard and Premium start a paid 30-day period. After expiry the login is blocked until the super admin continues the plan."}</p>
               <p className="form-hint">4 staff logins (Admin, Kitchen, Cashier, Waiter) are created automatically with the default passwords.</p>
             </div>
             <div className="form-group">
