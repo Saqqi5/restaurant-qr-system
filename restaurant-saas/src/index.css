@@ -1330,3 +1330,14 @@ a { color: var(--color-primary); text-decoration: none; }
   .receipt-print-area, .receipt-print-area * { visibility: visible; }
   .receipt-print-area { position: absolute; left: 0; top: 0; width: 100%; }
 }
+
+.order-paid-badge {
+  display: inline-block;
+  margin-top: 8px;
+  background: #27ae60;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}

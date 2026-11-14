@@ -193,10 +193,12 @@ export async function updateOrderStatus(restaurantId, orderId, status) {
 }
 
 export async function updatePaymentStatus(restaurantId, orderId, paymentMethod) {
+  // Payment state and kitchen stage are separate: only the payment fields
+  // change here. Setting status: "paid" used to drop the order out of the
+  // kitchen kanban and the server's active list, so paid food never got made.
   await updateDoc(orderDoc(restaurantId, orderId), {
     payment_status: "paid",
     payment_method: paymentMethod,
-    status: "paid",
     updated_at: serverTimestamp(),
   });
 }
@@ -218,10 +220,17 @@ export function subscribeToOrders(restaurantId, callback, filters = {}) {
 
 export function subscribeToTableOrders(restaurantId, tableNumber, callback) {
   const tableNum = parseInt(tableNumber, 10);
+  // Today's orders for this table, any payment status — a paid order must
+  // stay visible to the customer (with its receipt); only unpaid ones are
+  // payable. A missing created_at (pending server write) counts as today,
+  // so a just-placed order never flickers out of the list.
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const dayStartSec = Math.floor(dayStart.getTime() / 1000);
   return onSnapshot(ordersCol(restaurantId), (snap) => {
     const items = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
-      .filter(o => o.table_number === tableNum && o.payment_status === "unpaid")
+      .filter(o => o.table_number === tableNum && (o.created_at?.seconds ?? dayStartSec) >= dayStartSec)
       .sort((a, b) => {
         const ta = a.created_at?.seconds ?? 0;
         const tb = b.created_at?.seconds ?? 0;

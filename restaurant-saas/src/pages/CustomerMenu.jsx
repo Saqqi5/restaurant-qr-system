@@ -45,7 +45,9 @@ export default function CustomerMenu() {
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [activeOrders, setActiveOrders] = useState([]);
+  const [tableOrders, setTableOrders] = useState([]);
+  // Unpaid ones only — used for the bill total, the badge and Pay Bill.
+  const activeOrders = tableOrders.filter((o) => o.payment_status === "unpaid");
   const [view, setView] = useState("menu");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [placedOrder, setPlacedOrder] = useState(null);
@@ -69,7 +71,7 @@ export default function CustomerMenu() {
 
   useEffect(() => {
     if (!restaurantId || !tableNumber) return;
-    const unsub = subscribeToTableOrders(restaurantId, tableNumber, setActiveOrders);
+    const unsub = subscribeToTableOrders(restaurantId, tableNumber, setTableOrders);
     return unsub;
   }, [restaurantId, tableNumber]);
 
@@ -277,7 +279,7 @@ export default function CustomerMenu() {
 
       {view === "orders" && (
         <>
-          <OrderTracker orders={activeOrders} currency={currency} restaurantId={restaurantId} />
+          <OrderTracker orders={tableOrders} currency={currency} restaurantId={restaurantId} />
           {activeOrders.length > 0 && (
             <div className="pay-now-section">
               <button

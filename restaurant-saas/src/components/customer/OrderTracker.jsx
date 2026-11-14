@@ -57,7 +57,11 @@ export default function OrderTracker({ orders, currency, restaurantId }) {
               ))}
             </div>
 
-            {eta && order.status !== "served" && order.status !== "ready" && (
+            {order.payment_status === "paid" && (
+              <div className="order-paid-badge">✅ Paid — thank you!</div>
+            )}
+
+            {eta && order.payment_status !== "paid" && order.status !== "served" && order.status !== "ready" && (
               <div className="eta-badge">⏱ {eta}</div>
             )}
 
