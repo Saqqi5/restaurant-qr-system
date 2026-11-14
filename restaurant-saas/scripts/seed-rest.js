@@ -3,7 +3,7 @@
  * Uses Firebase Auth REST API + Firestore REST API (no SDK needed)
  */
 
-const API_KEY     = "AIzaSyAvdJV2q7SPYElZ9uZNcUgJlBeThw3IqMg";
+const API_KEY     = "YOUR_FIREBASE_API_KEY";
 const PROJECT_ID  = "restaurant-system-d74b1";
 const AUTH_URL    = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`;
 const FS_BASE     = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
