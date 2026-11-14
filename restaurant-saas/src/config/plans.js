@@ -73,7 +73,7 @@ export function getStaffLimit(plan, overrides) {
 }
 
 // ── Trial / subscription period ──────────────────────────────────────────
-// A new restaurant starts on a 30-day period (the Basic trial for a new
+// A new restaurant starts on a 30-day period (the Premium trial for a new
 // customer, the first billing period for a paid plan). At expiry the login
 // is blocked until the super admin continues the plan (one click, +30 days).
 // A restaurant with no plan_expires_at (older data) never expires.

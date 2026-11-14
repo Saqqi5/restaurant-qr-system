@@ -68,8 +68,8 @@ export async function createRestaurant(data) {
     theme: data.theme || { primary: "#20C997", accent: "#0F3D3E", font: "modern" },
     created_at: serverTimestamp(),
     active: true,
-    plan: data.plan || "basic",
-    // 30-day period (Basic trial) — at expiry the login is blocked until
+    plan: data.plan || "premium",
+    // 30-day period (Premium trial) — at expiry the login is blocked until
     // the super admin continues the plan (see continuePlan).
     plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
   };
