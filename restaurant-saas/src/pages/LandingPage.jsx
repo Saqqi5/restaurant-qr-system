@@ -1,6 +1,30 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getDocs } from "firebase/firestore";
+import { getAllRestaurants, menuCol } from "../config/db";
+import { formatPrice } from "../utils/currency";
 
 export default function LandingPage() {
+  const [demos, setDemos] = useState({});
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const restaurants = await getAllRestaurants();
+        const byId = {};
+        for (const r of restaurants) {
+          const snap = await getDocs(menuCol(r.id));
+          const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          items.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          byId[r.id] = items.filter((i) => i.available !== false).slice(0, 4);
+        }
+        if (!cancelled) setDemos(byId);
+      } catch {
+        // Public reads not available yet — cards still show, menu preview stays hidden
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   return (
     <div className="landing">
       {/* Nav */}
@@ -9,6 +33,7 @@ export default function LandingPage() {
           SAQL<span className="nav-brand-dot">YN</span>
         </div>
         <div className="nav-links">
+          <a href="#demos" className="nav-link">Demo Restaurants</a>
           <a href="#features" className="nav-link">Features</a>
           <a href="#pricing" className="nav-link">Pricing</a>
           <Link to="/login" className="nav-login">Staff Login</Link>
@@ -70,6 +95,45 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Demo Restaurants */}
+      <section id="demos" className="demos">
+        <p className="section-label">Try It Live</p>
+        <h2 className="section-title">Our demo restaurants</h2>
+        <div className="demos-grid">
+          {DEMO_RESTAURANTS.map((r) => {
+            const items = demos[r.id] || [];
+            return (
+              <div key={r.id} className="demo-card">
+                <div className="demo-card-head" style={{ background: r.theme }}>
+                  <div className="demo-card-name">{r.name}</div>
+                  <div className="demo-card-cuisine">{r.cuisine}</div>
+                  <div className="demo-card-tag">{r.tagline}</div>
+                </div>
+                {items.length > 0 && (
+                  <div className="demo-items">
+                    {items.map((item) => (
+                      <div key={item.id} className="demo-item">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} className="demo-item-img" loading="lazy" />
+                        ) : (
+                          <div className="demo-item-emoji">{CATEGORY_EMOJI[item.category] || "🍽️"}</div>
+                        )}
+                        <div className="demo-item-info">
+                          <div className="demo-item-name">{item.name}</div>
+                          <div className="demo-item-price">{formatPrice(item.price, r.currency)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Link to={`/r/${r.id}?table=1`} className="demo-cta">View Full Menu →</Link>
+              </div>
+            );
+          })}
+        </div>
+        <p className="demo-note">Scan any table QR in the restaurant to order — no app needed.</p>
       </section>
 
       {/* Features */}
@@ -138,6 +202,30 @@ export default function LandingPage() {
     </div>
   );
 }
+
+const DEMO_RESTAURANTS = [
+  {
+    id: "demo_restaurant_002",
+    name: "Lahori Dastarkhwan",
+    cuisine: "Pakistani • Desi",
+    theme: "#2d6a4f",
+    currency: "Rs.",
+    tagline: "Biryani, Nihari, Karahi — asli Lahori zaiqa, Rs. prices.",
+  },
+  {
+    id: "demo_restaurant_001",
+    name: "Bella Italia",
+    cuisine: "Italian",
+    theme: "#e85d04",
+    currency: "$",
+    tagline: "Pasta, Pizza aur Tiramisu — classic Italian flavours.",
+  },
+];
+
+const CATEGORY_EMOJI = {
+  Desi: "🍛", BBQ: "🍖", Breads: "🥖", Starters: "🥗", Desserts: "🍰",
+  Beverages: "🥤", Pasta: "🍝", Pizza: "🍕",
+};
 
 const FEATURES = [
   {
