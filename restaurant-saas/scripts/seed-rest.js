@@ -20,7 +20,7 @@ const RESTAURANT = {
   id:                RESTAURANT_ID,
   name:              "Bella Italia",
   slug:              "bella-italia",
-  table_count:       12,
+  table_count:       10,
   logo_url:          null,
   custom_domain:     null,
   theme:             { primary: "#e85d04", accent: "#f48c06" },
@@ -40,7 +40,7 @@ const RESTAURANT = {
   payment_bank_iban: "PK12 HABB 0000 0012 3456 7890",
   payment_bank_name: "Saqlyn Restaurant Ltd",
   active:            true,
-  plan:              "standard",
+  plan:              "basic",
 };
 
 const STAFF = [
@@ -74,7 +74,7 @@ const RESTAURANT2 = {
   id:                RESTAURANT2_ID,
   name:              "Lahori Dastarkhwan",
   slug:              "lahori-dastarkhwan",
-  table_count:       12,
+  table_count:       10,
   logo_url:          null,
   custom_domain:     null,
   theme:             { primary: "#2d6a4f", accent: "#52b788" },
@@ -82,7 +82,7 @@ const RESTAURANT2 = {
   tax_rate:     16,
   discount_rate: 0,
   active:            true,
-  plan:              "standard",
+  plan:              "basic",
 };
 
 const STAFF2 = [
