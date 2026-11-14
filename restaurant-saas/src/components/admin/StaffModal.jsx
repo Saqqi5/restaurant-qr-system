@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { getRestaurantUsers } from "../../config/db";
+import { getRestaurantUsers, subscribeToPlatformSettings } from "../../config/db";
+import { getStaffLimit, getPlanLabel, normalizePlan } from "../../config/plans";
 
 const STAFF_ROLES = [
   { value: "general_admin", label: "Admin", icon: "🏪", desc: "Menu management & orders overview" },
@@ -17,6 +18,11 @@ export default function StaffModal({ restaurant, onClose }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [view, setView] = useState("list"); // "list" | "create"
+  const [platformLimits, setPlatformLimits] = useState(null);
+
+  const plan = normalizePlan(restaurant?.plan);
+  const staffLimit = getStaffLimit(plan, platformLimits);
+  const atLimit = staff.length >= staffLimit;
 
   useEffect(() => {
     if (restaurant?.id) {
@@ -24,8 +30,17 @@ export default function StaffModal({ restaurant, onClose }) {
     }
   }, [restaurant?.id]);
 
+  useEffect(() => {
+    const unsub = subscribeToPlatformSettings(setPlatformLimits);
+    return unsub;
+  }, []);
+
   async function handleCreate(e) {
     e.preventDefault();
+    if (atLimit) {
+      setError(`Your ${getPlanLabel(plan)} plan allows up to ${staffLimit} staff logins. To add more staff, upgrade your plan or contact your administrator.`);
+      return;
+    }
     setError("");
     setLoading(true);
     try {
@@ -51,6 +66,10 @@ export default function StaffModal({ restaurant, onClose }) {
           <h3>Staff Management — {restaurant?.name}</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
+
+        <p className="form-hint" style={{ margin: "0 0 12px" }}>
+          📋 {getPlanLabel(plan)} plan — {staff.length} / {staffLimit} staff logins
+        </p>
 
         <div className="modal-tabs">
           <button className={`modal-tab ${view === "list" ? "active" : ""}`}
@@ -87,6 +106,12 @@ export default function StaffModal({ restaurant, onClose }) {
           )}
 
           {view === "create" && (
+            atLimit ? (
+              <div className="modal-info">
+                ⬆️ Your {getPlanLabel(plan)} plan allows up to {staffLimit} staff logins.
+                To add more staff, upgrade your plan or contact your administrator.
+              </div>
+            ) : (
             <form onSubmit={handleCreate} className="staff-form">
               {error && <div className="error-banner">{error}</div>}
 
@@ -146,6 +171,7 @@ export default function StaffModal({ restaurant, onClose }) {
                 {loading ? "Creating..." : "Create Staff Account"}
               </button>
             </form>
+            )
           )}
         </div>
       </div>

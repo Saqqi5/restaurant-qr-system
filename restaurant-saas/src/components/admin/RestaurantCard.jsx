@@ -1,3 +1,5 @@
+import { getPlanLabel } from "../../config/plans";
+
 export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain, onDelete }) {
   return (
     <div className={`restaurant-card ${!restaurant.active ? "inactive" : ""}`}>
@@ -26,7 +28,7 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
           <span>📋</span> /{restaurant.slug || restaurant.id?.slice(0, 8)}
         </div>
         <div className="rc-meta-item">
-          <span>💳</span> {restaurant.plan === "basic" ? "Basic" : restaurant.plan === "unlimited" ? "Unlimited" : "Standard"} plan
+          <span>💳</span> {getPlanLabel(restaurant.plan)} plan
         </div>
       </div>
 

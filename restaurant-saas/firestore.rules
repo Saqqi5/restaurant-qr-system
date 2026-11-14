@@ -95,8 +95,18 @@ service cloud.firestore {
     // may change a restaurant's plan.
     function planTableLimit(plan) {
       return plan == 'basic' ? 10
-        : plan == 'unlimited' ? 1000000
+        : (plan == 'premium' || plan == 'unlimited') ? 1000000
         : 20;
+    }
+    // A restaurant's general admin may create staff accounts for their OWN
+    // restaurant (kitchen / cash / server / admin) — never a super admin.
+    // (The staff-login cap itself is enforced in the app; rules cannot count
+    // documents in a collection.)
+    function isStaffCreateAllowed() {
+      return isAuthenticated()
+        && getUserData().role == 'general_admin'
+        && request.resource.data.restaurant_id == getUserData().restaurant_id
+        && request.resource.data.role in ['general_admin', 'kitchen', 'cash_counter', 'server'];
     }
     function planUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan']);
@@ -113,7 +123,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         request.auth.uid == userId || isSuperAdmin()
       );
-      allow create: if isSuperAdmin();
+      allow create: if isSuperAdmin() || isStaffCreateAllowed();
       allow update: if isSuperAdmin() || request.auth.uid == userId;
       allow delete: if isSuperAdmin();
     }

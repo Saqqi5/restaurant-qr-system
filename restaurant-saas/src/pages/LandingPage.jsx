@@ -6,6 +6,7 @@ import { formatPrice } from "../utils/currency";
 
 export default function LandingPage() {
   const [demos, setDemos] = useState({});
+  const [liveRestaurants, setLiveRestaurants] = useState(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -18,13 +19,38 @@ export default function LandingPage() {
           items.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
           byId[r.id] = items.filter((i) => i.available !== false).slice(0, 4);
         }
-        if (!cancelled) setDemos(byId);
+        if (!cancelled) {
+          setDemos(byId);
+          // Newest first, so a newly added restaurant shows up at the top.
+          setLiveRestaurants([...restaurants].sort((a, b) =>
+            (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0)));
+        }
       } catch {
         // Public reads not available yet — cards still show, menu preview stays hidden
       }
     })();
     return () => { cancelled = true; };
   }, []);
+  // The demo cards keep their hand-written taglines; any other live
+  // restaurant gets a generic card. A demo whose restaurant no longer
+  // exists is hidden. Before the live list loads, the demos show as before.
+  const demoIds = DEMO_RESTAURANTS.map((d) => d.id);
+  const listed = liveRestaurants === null
+    ? DEMO_RESTAURANTS
+    : [
+        ...DEMO_RESTAURANTS.filter((d) =>
+          liveRestaurants.some((r) => r.id === d.id && r.active !== false)),
+        ...liveRestaurants
+          .filter((r) => !demoIds.includes(r.id) && r.active !== false)
+          .map((r) => ({
+            id: r.id,
+            name: r.name,
+            cuisine: `🪑 ${r.table_count || 0} tables`,
+            theme: r.theme?.primary || "#20C997",
+            currency: r.currency || "$",
+            tagline: "Scan the table QR to order — no app needed.",
+          })),
+      ];
   return (
     <div className="landing">
       {/* Nav */}
@@ -102,7 +128,7 @@ export default function LandingPage() {
         <p className="section-label">Try It Live</p>
         <h2 className="section-title">Our demo restaurants</h2>
         <div className="demos-grid">
-          {DEMO_RESTAURANTS.map((r) => {
+          {listed.map((r) => {
             const items = demos[r.id] || [];
             return (
               <div key={r.id} className="demo-card">

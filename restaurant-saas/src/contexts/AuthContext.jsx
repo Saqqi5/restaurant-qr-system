@@ -5,8 +5,10 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  getAuth,
 } from "firebase/auth";
-import { auth } from "../config/firebase";
+import { initializeApp, getApps } from "firebase/app";
+import { auth, firebaseConfig } from "../config/firebase";
 import { getUser, createUser } from "../config/db";
 
 const AuthContext = createContext(null);
@@ -42,9 +44,27 @@ export function AuthProvider({ children }) {
     setUserProfile(null);
   }
 
+  // Staff registration must NOT sign out the admin creating the account.
+  // The old code used the main auth instance, so creating staff signed the
+  // creator out and signed in as the new user — and the profile write then
+  // failed (the new user is not a super admin), leaving an orphaned Auth
+  // account with no staff record. A throwaway second app instance keeps the
+  // creator signed in, and the profile is written with the creator's session.
+  function getSecondaryAuth() {
+    const name = "staff-registration";
+    const existing = getApps().find((a) => a.name === name);
+    const secondaryApp = existing || initializeApp(firebaseConfig, name);
+    return getAuth(secondaryApp);
+  }
+
   async function registerStaff(email, password, name, role, restaurantId) {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    await createUser(result.user.uid, { email, name, role, restaurant_id: restaurantId });
+    const secondaryAuth = getSecondaryAuth();
+    const result = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    try {
+      await createUser(result.user.uid, { email, name, role, restaurant_id: restaurantId });
+    } finally {
+      await signOut(secondaryAuth);
+    }
     return result.user;
   }
 

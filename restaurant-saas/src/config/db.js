@@ -75,8 +75,9 @@ export async function updateRestaurant(restaurantId, data) {
 }
 
 // ── Platform Settings (super admin) ────────────────────────────────────────
-// Doc `platform_settings/platform`: { basic, standard, unlimited } — the
-// table cap per plan (unlimited stored as 0 = no cap). Absent doc = defaults.
+// Doc `platform_settings/platform`: { basic, standard, premium } — the
+// table cap per plan (premium stored as 0 = no cap) plus
+// { *_staff } staff caps. Absent doc = defaults.
 export const platformSettingsDoc = () => doc(db, "platform_settings", "platform");
 
 export async function getPlatformSettings() {

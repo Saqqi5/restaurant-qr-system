@@ -155,7 +155,7 @@ export default function RestaurantSettingsPage() {
             <div className="form-group">
               <label>Number of Tables</label>
               <p className="form-hint" style={{ margin: "0 0 6px" }}>
-                📋 {getPlanLabel(plan)} plan — up to {planLimit === null ? "unlimited" : `${planLimit} tables`}.
+                📋 {getPlanLabel(plan)} plan — {planLimit === null ? "no table limit" : `up to ${planLimit} tables`}.
                 You can lower this anytime, but not raise it above your plan limit.
               </p>
               <input
