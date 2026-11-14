@@ -25,6 +25,8 @@ const RESTAURANT = {
   custom_domain:     null,
   theme:             { primary: "#e85d04", accent: "#f48c06" },
   currency:          "$",
+  tax_rate:     10,
+  discount_rate: 0,
   active:            true,
   plan:              "saas",
 };
@@ -65,6 +67,8 @@ const RESTAURANT2 = {
   custom_domain:     null,
   theme:             { primary: "#2d6a4f", accent: "#52b788" },
   currency:          "Rs.",
+  tax_rate:     16,
+  discount_rate: 0,
   active:            true,
   plan:              "saas",
 };

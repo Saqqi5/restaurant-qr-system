@@ -6,6 +6,7 @@ import {
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
+import ReceiptModal from "../components/ReceiptModal";
 
 export default function CashCounterDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
@@ -19,6 +20,7 @@ export default function CashCounterDashboard() {
   const [filter, setFilter] = useState("unpaid");
   const [mainTab, setMainTab] = useState("orders"); // "orders" | "proofs"
   const [expandedProof, setExpandedProof] = useState(null);
+  const [receiptOrder, setReceiptOrder] = useState(null);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -176,10 +178,38 @@ export default function CashCounterDashboard() {
                           <span>{formatPrice(item.price * item.quantity, currency)}</span>
                         </div>
                       ))}
+                      {order.subtotal != null && (
+                        <>
+                          <div className="detail-item">
+                            <span>Subtotal</span>
+                            <span>{formatPrice(order.subtotal, currency)}</span>
+                          </div>
+                          {order.discount_amount > 0 && (
+                            <div className="detail-item">
+                              <span>Discount{order.discount_rate ? ` (${order.discount_rate}%)` : ""}</span>
+                              <span>−{formatPrice(order.discount_amount, currency)}</span>
+                            </div>
+                          )}
+                          {order.tax_amount > 0 && (
+                            <div className="detail-item">
+                              <span>Tax{order.tax_rate ? ` (${order.tax_rate}%)` : ""}</span>
+                              <span>{formatPrice(order.tax_amount, currency)}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
                       <div className="detail-total">
                         <span>Total</span>
                         <span>{formatPrice(order.total, currency)}</span>
                       </div>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ marginTop: 10, cursor: "pointer" }}
+                        onClick={(e) => { e.stopPropagation(); setReceiptOrder(order); }}
+                      >
+                        🖨️ Print Bill
+                      </button>
                     </div>
 
                     {order.payment_status === "unpaid" && (
@@ -300,6 +330,9 @@ export default function CashCounterDashboard() {
             </>
           )}
         </div>
+      )}
+      {receiptOrder && (
+        <ReceiptModal order={receiptOrder} restaurantId={restaurantId} currency={currency} onClose={() => setReceiptOrder(null)} />
       )}
     </AdminLayout>
   );

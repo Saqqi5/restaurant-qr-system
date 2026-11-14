@@ -138,7 +138,25 @@ export async function createOrder(restaurantId, data) {
     throw new Error("Cannot create an order without at least one valid item.");
   }
 
-  const total = calculateOrderTotal(sanitizedItems);
+  // Billing: tax + discount rates come from the restaurant's settings (0 if unset)
+  let taxRate = 0, discountRate = 0;
+  try {
+    const r = await getRestaurant(restaurantId);
+    taxRate = Number(r?.tax_rate) || 0;
+    discountRate = Number(r?.discount_rate) || 0;
+  } catch { /* keep 0 — bill without tax/discount */ }
+  const bill = calculateBill(sanitizedItems, taxRate, discountRate);
+
+  // Sequential order number for today (KOT / receipt friendly). Falls back
+  // to null when the count query can't run (e.g. rules not yet published).
+  let orderNumber = null;
+  try {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const snap = await getDocs(query(ordersCol(restaurantId), where("created_at", ">=", Timestamp.fromDate(start))));
+    orderNumber = snap.size + 1;
+  } catch { /* leave null */ }
+
   const prepTime = Math.max(...sanitizedItems.map(i => i.prep_time_minutes || 15));
   const estimatedReady = Timestamp.fromDate(new Date(Date.now() + prepTime * 60000));
 
@@ -148,7 +166,13 @@ export async function createOrder(restaurantId, data) {
     table_number: parseInt(data.table_number, 10),
     items: sanitizedItems,
     status: "pending",
-    total,
+    subtotal: bill.subtotal,
+    discount_amount: bill.discount,
+    discount_rate: discountRate,
+    tax_amount: bill.tax,
+    tax_rate: taxRate,
+    total: bill.total,
+    order_number: orderNumber,
     payment_status: "unpaid",
     payment_method: null,
     created_at: serverTimestamp(),
@@ -307,6 +331,16 @@ function sanitizeOrderItems(items = []) {
 
 function calculateOrderTotal(items = []) {
   return Number(items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2));
+}
+
+// Subtotal -> discount -> tax -> total. Rates are percentages (e.g. 16 = 16%).
+function calculateBill(items = [], taxRate = 0, discountRate = 0) {
+  const subtotal = Number(items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2));
+  const discount = Number((subtotal * (discountRate / 100)).toFixed(2));
+  const taxable = subtotal - discount;
+  const tax = Number((taxable * (taxRate / 100)).toFixed(2));
+  const total = Number((taxable + tax).toFixed(2));
+  return { subtotal, discount, tax, total };
 }
 
 function slugify(str) {

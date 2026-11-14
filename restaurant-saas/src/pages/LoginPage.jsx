@@ -35,6 +35,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      <a href="/" className="login-back-link">← Back to home</a>
       <div className="login-card">
         <div className="login-logo">
           <span className="logo-icon">⬡</span>

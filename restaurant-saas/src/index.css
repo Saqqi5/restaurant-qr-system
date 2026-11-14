@@ -1285,3 +1285,48 @@ a { color: var(--color-primary); text-decoration: none; }
   .demos { padding: 64px 20px; }
   .demos-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Back buttons (customer header + login) ── */
+.restaurant-header { position: relative; }
+.header-back-btn {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: rgba(255,255,255,0.08); color: #E2F0F0;
+  font-size: 20px; text-decoration: none; z-index: 5; line-height: 1;
+}
+.header-back-btn:hover { background: rgba(255,255,255,0.18); }
+.login-back-link {
+  position: absolute; top: 18px; left: 18px; color: #E2F0F0;
+  text-decoration: none; font-size: 14px; opacity: 0.85;
+}
+.login-back-link:hover { opacity: 1; }
+
+/* ── Customer menu search ── */
+.menu-search-row { padding: 12px 16px 0; max-width: 1100px; margin: 0 auto; }
+.menu-search-input {
+  width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #2a3a3a;
+  background: #0e1a1a; color: #E2F0F0; font-size: 15px; outline: none; box-sizing: border-box;
+}
+.menu-search-input:focus { border-color: #20C997; }
+
+/* ── Receipt / KOT modal ── */
+.receipt-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 24px 12px; overflow-y: auto;
+}
+.receipt-modal {
+  background: #fff; color: #111; border-radius: 12px; width: min(420px, 100%);
+  padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.receipt-btn {
+  margin-top: 12px; padding: 8px 14px; border-radius: 8px; border: 1px solid #2a3a3a;
+  background: transparent; color: #E2F0F0; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.receipt-btn:hover { border-color: #20C997; color: #20C997; }
+
+@media print {
+  body * { visibility: hidden; }
+  .receipt-print-area, .receipt-print-area * { visibility: visible; }
+  .receipt-print-area { position: absolute; left: 0; top: 0; width: 100%; }
+}

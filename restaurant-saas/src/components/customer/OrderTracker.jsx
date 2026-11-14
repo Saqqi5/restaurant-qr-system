@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { formatPrice } from "../../utils/currency";
+import ReceiptModal from "../ReceiptModal";
 
 const STATUS_STEPS = [
   { key: "pending", label: "Order Received", icon: "📋" },
@@ -10,7 +12,8 @@ const STATUS_STEPS = [
 
 const STATUS_INDEX = STATUS_STEPS.reduce((acc, s, i) => ({ ...acc, [s.key]: i }), {});
 
-export default function OrderTracker({ orders, currency }) {
+export default function OrderTracker({ orders, currency, restaurantId }) {
+  const [receiptOrder, setReceiptOrder] = useState(null);
   if (orders.length === 0) {
     return (
       <div className="order-tracker-empty">
@@ -39,7 +42,7 @@ export default function OrderTracker({ orders, currency }) {
         return (
           <div key={order.id} className="order-track-card">
             <div className="order-track-header">
-              <span className="order-track-id">Order #{order.id?.slice(-6).toUpperCase()}</span>
+              <span className="order-track-id">Order #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
               <span className="order-total-display">{formatPrice(order.total, currency)}</span>
             </div>
 
@@ -69,9 +72,16 @@ export default function OrderTracker({ orders, currency }) {
                 </span>
               ))}
             </div>
+
+            <button className="receipt-btn" onClick={() => setReceiptOrder(order)}>
+              🧾 View Receipt
+            </button>
           </div>
         );
       })}
+      {receiptOrder && (
+        <ReceiptModal order={receiptOrder} restaurantId={restaurantId} currency={currency} onClose={() => setReceiptOrder(null)} />
+      )}
     </div>
   );
 }

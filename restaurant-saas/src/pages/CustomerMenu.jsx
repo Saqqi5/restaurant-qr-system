@@ -48,6 +48,7 @@ export default function CustomerMenu() {
   const [activeOrders, setActiveOrders] = useState([]);
   const [view, setView] = useState("menu");
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Payment flow state
   const [paymentStage, setPaymentStage] = useState(null); // null | "bill" | "pay" | "uploading" | "waiting" | "verified"
@@ -245,19 +246,32 @@ export default function CustomerMenu() {
       )}
 
       {view === "menu" && (
-        <MenuGrid
-          items={menuItems}
-          categories={categories}
-          cart={cart}
-          onAdd={addToCart}
-          onRemove={removeFromCart}
-          currency={currency}
-        />
+        <>
+          <div className="menu-search-row">
+            <input
+              type="search"
+              className="menu-search-input"
+              placeholder="🔍 Search dishes…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <MenuGrid
+            items={searchTerm.trim()
+              ? menuItems.filter((i) => i.name.toLowerCase().includes(searchTerm.trim().toLowerCase()))
+              : menuItems}
+            categories={categories}
+            cart={cart}
+            onAdd={addToCart}
+            onRemove={removeFromCart}
+            currency={currency}
+          />
+        </>
       )}
 
       {view === "orders" && (
         <>
-          <OrderTracker orders={activeOrders} currency={currency} />
+          <OrderTracker orders={activeOrders} currency={currency} restaurantId={restaurantId} />
           {activeOrders.length > 0 && (
             <div className="pay-now-section">
               <button

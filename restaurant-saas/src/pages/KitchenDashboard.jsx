@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { subscribeToOrders, updateOrderStatus } from "../config/db";
 import AdminLayout from "../components/admin/AdminLayout";
+import ReceiptModal from "../components/ReceiptModal";
 import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
 const ORDER_STAGES = [
@@ -30,6 +31,7 @@ export default function KitchenDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(new Set());
+  const [kotOrder, setKotOrder] = useState(null);
   const { toasts, dismiss } = useNotifications(restaurantId);
 
   useEffect(() => {
@@ -107,7 +109,7 @@ export default function KitchenDashboard() {
                     className={`kitchen-card ${isOverdue(order) ? "overdue" : ""}`}
                   >
                     <div className="kitchen-card-header">
-                      <span className="table-badge">Table {order.table_number}</span>
+                      <span className="table-badge">Table {order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
                       <span className="order-age">{getOrderAge(order.created_at)}</span>
                     </div>
 
@@ -143,6 +145,14 @@ export default function KitchenDashboard() {
                         {updating.has(order.id) ? "..." : STATUS_ACTIONS[order.status]}
                       </button>
                     )}
+
+                    <button
+                      className="kitchen-action-btn"
+                      onClick={() => setKotOrder(order)}
+                      style={{ background: "#333", marginTop: 8 }}
+                    >
+                      🖨️ Print KOT
+                    </button>
                   </div>
                 ))}
               </div>
@@ -150,6 +160,9 @@ export default function KitchenDashboard() {
           );
         })}
       </div>
+      {kotOrder && (
+        <ReceiptModal order={kotOrder} restaurantId={restaurantId} mode="kot" onClose={() => setKotOrder(null)} />
+      )}
     </AdminLayout>
   );
 }

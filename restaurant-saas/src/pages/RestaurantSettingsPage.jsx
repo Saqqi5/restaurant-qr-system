@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTenant } from "../contexts/TenantContext";
-import { updateRestaurant } from "../config/db";
+import { updateRestaurant, getRestaurant } from "../config/db";
 import { storage } from "../config/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -20,11 +20,31 @@ export default function RestaurantSettingsPage() {
   const { restaurant } = useTenant();
 
   const [form, setForm] = useState({
-    name:        restaurant?.name        || "",
-    table_count: restaurant?.table_count || 10,
-    logo_url:    restaurant?.logo_url    || "",
-    theme:       restaurant?.theme       || { primary: "#e85d04", accent: "#f48c06" },
+    name: "", table_count: 10, logo_url: "",
+    theme: { primary: "#e85d04", accent: "#f48c06" },
+    tax_rate: 0, discount_rate: 0,
   });
+  const [loaded, setLoaded] = useState(false);
+
+  // TenantContext is empty on /admin/* routes, so load the restaurant doc
+  // directly — without this the form opens blank and saving wipes the name.
+  useEffect(() => {
+    if (!restaurantId) return;
+    getRestaurant(restaurantId).then((r) => {
+      if (r) {
+        setForm({
+          name: r.name || "",
+          table_count: r.table_count || 10,
+          logo_url: r.logo_url || "",
+          theme: r.theme || { primary: "#e85d04", accent: "#f48c06" },
+          tax_rate: Number(r.tax_rate) || 0,
+          discount_rate: Number(r.discount_rate) || 0,
+        });
+        setLogoPreview(r.logo_url || "");
+      }
+      setLoaded(true);
+    });
+  }, [restaurantId]);
   const [logoFile, setLogoFile]   = useState(null);
   const [logoPreview, setLogoPreview] = useState(restaurant?.logo_url || "");
   const [saving, setSaving]       = useState(false);
@@ -60,6 +80,19 @@ export default function RestaurantSettingsPage() {
       setError(err.message || "Failed to save settings.");
     }
     setSaving(false);
+  }
+
+  if (!loaded) {
+    return (
+      <AdminLayout
+        title="⚙️ Settings"
+        subtitle="Restaurant Configuration"
+        onLogout={logout}
+        userProfile={userProfile}
+      >
+        <p style={{ color: "var(--color-muted)", padding: 24 }}>Loading settings…</p>
+      </AdminLayout>
+    );
   }
 
   // Live theme preview on the page
@@ -126,6 +159,31 @@ export default function RestaurantSettingsPage() {
                 </label>
                 <p className="form-hint">PNG, JPG, WebP — recommended 200×200px, max 2MB</p>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Billing ─────────────────────────────────────────────── */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">🧾 Billing & Tax</h2>
+          <div className="settings-grid">
+            <div className="form-group">
+              <label>Tax Rate (%)</label>
+              <input
+                type="number" min="0" max="100" step="0.5"
+                value={form.tax_rate}
+                onChange={(e) => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })}
+              />
+              <p className="form-hint">Added to every bill — e.g. GST / VAT.</p>
+            </div>
+            <div className="form-group">
+              <label>Discount (%)</label>
+              <input
+                type="number" min="0" max="100" step="0.5"
+                value={form.discount_rate}
+                onChange={(e) => setForm({ ...form, discount_rate: parseFloat(e.target.value) || 0 })}
+              />
+              <p className="form-hint">Default discount applied to every bill.</p>
             </div>
           </div>
         </section>
