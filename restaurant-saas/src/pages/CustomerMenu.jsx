@@ -8,6 +8,7 @@ import {
 } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import { downscaleImage } from "../utils/image";
+import { getCustomerSessionId } from "../utils/session";
 import CartDrawer from "../components/customer/CartDrawer";
 import MenuGrid from "../components/customer/MenuGrid";
 import OrderTracker from "../components/customer/OrderTracker";
@@ -50,8 +51,31 @@ export default function CustomerMenu() {
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [tableOrders, setTableOrders] = useState([]);
+  const [tableOrdersLoaded, setTableOrdersLoaded] = useState(false);
+  // This browser's customer identity (localStorage). The customer who
+  // places an order reserves the table until it is paid; another browser
+  // is another customer and sees the table as reserved.
+  const [mySessionId] = useState(() => getCustomerSessionId());
   // Unpaid ones only — used for the bill total, the badge and Pay Bill.
   const activeOrders = tableOrders.filter((o) => o.payment_status === "unpaid");
+
+  // Table reservation: an unpaid order placed by ANOTHER customer (a
+  // different browser session) reserves this table until that customer
+  // pays and the order closes. Staff orders never reserve a table, and
+  // the restaurant's own staff are never blocked from their table.
+  const isStaffOfThisRestaurant =
+    userProfile?.restaurant_id === restaurantId || userProfile?.role === "super_admin";
+  const isTableReserved =
+    tableOrdersLoaded &&
+    !isStaffOfThisRestaurant &&
+    tableOrders.some(
+      (o) =>
+        o.payment_status === "unpaid" &&
+        o.status !== "cancelled" &&
+        typeof o.created_by === "string" &&
+        o.created_by.startsWith("cust_") &&
+        o.created_by !== mySessionId
+    );
   const [view, setView] = useState("menu");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [placedOrder, setPlacedOrder] = useState(null);
@@ -82,7 +106,11 @@ export default function CustomerMenu() {
 
   useEffect(() => {
     if (!restaurantId || !tableNumber) return;
-    const unsub = subscribeToTableOrders(restaurantId, tableNumber, setTableOrders);
+    setTableOrdersLoaded(false);
+    const unsub = subscribeToTableOrders(restaurantId, tableNumber, (orders) => {
+      setTableOrders(orders);
+      setTableOrdersLoaded(true);
+    });
     return unsub;
   }, [restaurantId, tableNumber]);
 
@@ -123,6 +151,8 @@ export default function CustomerMenu() {
 
   async function placeOrder() {
     if (!cart.length || !tableNumber) return;
+    // The table may have been reserved by another customer since the page loaded.
+    if (isTableReserved) return;
     const created = await createOrder(restaurantId, {
       table_number: tableNumber,
       items: cart.map(i => ({
@@ -133,7 +163,7 @@ export default function CustomerMenu() {
         notes: i.notes,
         prep_time_minutes: i.prep_time_minutes,
       })),
-      created_by: "customer",
+      created_by: mySessionId,
     });
     setCart([]);
     setCartOpen(false);
@@ -279,6 +309,19 @@ export default function CustomerMenu() {
         <div className="error-icon">🪑</div>
         <h2>No table assigned</h2>
         <p>Please scan the QR code on your table to start ordering.</p>
+      </div>
+    );
+  }
+
+  // Another customer has an unpaid order on this table — it stays
+  // reserved until they pay and the order closes. The live subscription
+  // clears this screen automatically the moment the table frees up.
+  if (isTableReserved) {
+    return (
+      <div className="error-state">
+        <div className="error-icon">🪑</div>
+        <h2>Table {tableNumber} is reserved</h2>
+        <p>Another customer is currently ordering at this table. It will open again automatically after they pay.</p>
       </div>
     );
   }
