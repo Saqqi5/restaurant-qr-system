@@ -80,6 +80,17 @@ export function getStaffLimit(plan, overrides) {
 export const TRIAL_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Demo handout: a prospect gets the demo restaurant accounts for 7 days
+// only. If they don't take it in their own name, the demo ends — the
+// logins block at expiry, exactly like a trial ending (the super admin
+// re-starts it for the next prospect with one click).
+export const DEMO_DAYS = 7;
+
+export function demoExpiryDateFrom(date) {
+  const base = date instanceof Date ? date.getTime() : Date.now();
+  return new Date(base + DEMO_DAYS * DAY_MS);
+}
+
 export function expiryDateFrom(date) {
   const base = date instanceof Date ? date.getTime() : Date.now();
   return new Date(base + TRIAL_DAYS * DAY_MS);

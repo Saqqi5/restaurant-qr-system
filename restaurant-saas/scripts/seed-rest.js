@@ -39,6 +39,7 @@ const RESTAURANT = {
   active:            true,
   plan:              "basic",
   plan_expires_at: null,
+  is_demo:          true,
 };
 
 const STAFF = [
@@ -88,6 +89,7 @@ const RESTAURANT2 = {
   active:            true,
   plan:              "basic",
   plan_expires_at: null,
+  is_demo:          true,
 };
 
 const STAFF2 = [

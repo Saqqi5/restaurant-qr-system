@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { getPlanLabel, getExpiryInfo, formatExpiryDate } from "../../config/plans";
-import { continuePlan } from "../../config/db";
+import { continuePlan, startDemo } from "../../config/db";
 
 export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain, onDelete }) {
   const [continuing, setContinuing] = useState(false);
   const [continued, setContinued] = useState(false);
+  const [demoing, setDemoing] = useState(false);
+  const [demoStarted, setDemoStarted] = useState(false);
   const expiry = getExpiryInfo(restaurant);
 
   async function handleContinue() {
@@ -15,6 +17,22 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
       setTimeout(() => setContinued(false), 3000);
     } finally {
       setContinuing(false);
+    }
+  }
+
+  // Lend this restaurant as a 7-day demo. Ask first — it puts an expiry
+  // on the restaurant, after which the staff logins block.
+  async function handleStartDemo() {
+    if (!window.confirm(
+      `Start a 7-day demo for ${restaurant.name}? The staff logins will stop working after 7 days unless you continue the plan.`
+    )) return;
+    setDemoing(true);
+    try {
+      await startDemo(restaurant.id);
+      setDemoStarted(true);
+      setTimeout(() => setDemoStarted(false), 3000);
+    } finally {
+      setDemoing(false);
     }
   }
 
@@ -68,6 +86,9 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
       <div className="rc-actions" style={{ marginTop: 8 }}>
         <button className="rc-btn" onClick={handleContinue} disabled={continuing} title="Extend the plan by 30 days">
           ▶️ {continued ? "Continued ✓" : continuing ? "Continuing…" : "Continue plan (30 days)"}
+        </button>
+        <button className="rc-btn" onClick={handleStartDemo} disabled={demoing} title="Lend this restaurant as a 7-day demo — staff logins stop after 7 days">
+          🎁 {demoStarted ? "Demo started ✓" : demoing ? "Starting…" : "7-day demo"}
         </button>
       </div>
     </div>

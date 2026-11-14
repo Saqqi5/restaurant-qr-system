@@ -29,7 +29,7 @@
  *   - restaurant_id, verified, created_at
  */
 
-import { expiryDateFrom } from "./plans";
+import { expiryDateFrom, demoExpiryDateFrom } from "./plans";
 
 import {
   collection, doc, setDoc, updateDoc, deleteDoc,
@@ -82,6 +82,16 @@ export async function createRestaurant(data) {
 export async function continuePlan(restaurantId) {
   await updateDoc(restaurantDoc(restaurantId), {
     plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
+    updated_at: serverTimestamp(),
+  });
+}
+
+// Super admin, one click: lend a restaurant as a 7-day demo. The staff
+// logins work for 7 days; at expiry they block until the super admin
+// continues the plan or re-starts the demo for the next prospect.
+export async function startDemo(restaurantId) {
+  await updateDoc(restaurantDoc(restaurantId), {
+    plan_expires_at: Timestamp.fromDate(demoExpiryDateFrom(new Date())),
     updated_at: serverTimestamp(),
   });
 }
@@ -143,6 +153,14 @@ export async function getRestaurant(restaurantId) {
 
 export async function getAllRestaurants() {
   const snap = await getDocs(restaurantsCol());
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Homepage directory: ONLY the sample demo restaurants (is_demo). Real
+// customer restaurants must never appear on the public homepage — they
+// are reached only through their own QR codes / direct links.
+export async function getDemoRestaurants() {
+  const snap = await getDocs(query(restaurantsCol(), where("is_demo", "==", true)));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 

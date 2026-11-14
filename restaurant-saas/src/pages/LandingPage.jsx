@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getDocs } from "firebase/firestore";
-import { getAllRestaurants, menuCol, sortMenuItems } from "../config/db";
+import { getDemoRestaurants, menuCol, sortMenuItems } from "../config/db";
 import { formatPrice } from "../utils/currency";
 
 // Sales go through Telegram — restaurants contact Saqlain directly,
@@ -15,7 +15,9 @@ export default function LandingPage() {
     let cancelled = false;
     (async () => {
       try {
-        const restaurants = await getAllRestaurants();
+        // Only the sample demo restaurants are listed here. Customer
+        // restaurants (sold the software) never appear on the homepage.
+        const restaurants = await getDemoRestaurants();
         const byId = {};
         for (const r of restaurants) {
           const snap = await getDocs(menuCol(r.id));
@@ -34,26 +36,15 @@ export default function LandingPage() {
     })();
     return () => { cancelled = true; };
   }, []);
-  // The demo cards keep their hand-written taglines; any other live
-  // restaurant gets a generic card. A demo whose restaurant no longer
-  // exists is hidden. Before the live list loads, the demos show as before.
+  // The demo cards keep their hand-written taglines. Only the two sample
+  // demos are ever listed — customer restaurants are never shown here.
+  // A demo whose restaurant no longer exists is hidden. Before the live
+  // list loads, the demos show as before.
   const demoIds = DEMO_RESTAURANTS.map((d) => d.id);
   const listed = liveRestaurants === null
     ? DEMO_RESTAURANTS
-    : [
-        ...DEMO_RESTAURANTS.filter((d) =>
-          liveRestaurants.some((r) => r.id === d.id && r.active !== false)),
-        ...liveRestaurants
-          .filter((r) => !demoIds.includes(r.id) && r.active !== false)
-          .map((r) => ({
-            id: r.id,
-            name: r.name,
-            cuisine: `🪑 ${r.table_count || 0} tables`,
-            theme: r.theme?.primary || "#20C997",
-            currency: r.currency || "$",
-            tagline: "Scan the table QR to order — no app needed.",
-          })),
-      ];
+    : DEMO_RESTAURANTS.filter((d) =>
+        liveRestaurants.some((r) => r.id === d.id && r.active !== false));
   return (
     <div className="landing">
       {/* Nav */}
