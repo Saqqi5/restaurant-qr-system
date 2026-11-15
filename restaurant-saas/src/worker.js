@@ -267,6 +267,22 @@ export default {
         return json({ error: e?.message || "Password reset failed." }, 500);
       }
     }
-    return env.ASSETS.fetch(request);
+    // Serve static assets; fall back to index.html for SPA routes.
+    // The ASSETS binding THROWS for paths with no matching file (it does
+    // not return a 404 and not_found_handling does not cover it), so the
+    // single-page fallback has to happen here — otherwise every deep link
+    // (/demo, /login, /r/...) dies with Error 1101 while / still works.
+    try {
+      return await env.ASSETS.fetch(request);
+    } catch {
+      try {
+        return await env.ASSETS.fetch(new Request(new URL("/", request.url), request));
+      } catch {
+        return new Response("Site unavailable. Please try again.", {
+          status: 500,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
+    }
   },
 };
