@@ -137,17 +137,17 @@ service cloud.firestore {
       // A restaurant's general admin can read the staff of their OWN
       // restaurant (StaffModal list + plan cap). Nobody can read another
       // restaurant's staff — kitchen / cash / server can only read
-      // themselves, and the super admin can read everyone. Platform
-      // accounts are never readable by a restaurant admin: not the
-      // super admin, and not the platform owner's account
-      // (is_platform_owner) — so they can never appear in a staff list
-      // or be removed from it.
+      // themselves, and the super admin can read everyone.
+      // NOTE: do NOT add per-document conditions (role / is_platform_owner)
+      // to this read rule — a list query is rejected wholesale when the
+      // query cannot prove every returned doc satisfies the rule, and
+      // that broke the staff list (403). The hiding is done in the app
+      // (getRestaurantUsers filters super_admin + is_platform_owner);
+      // the rules below still block DELETING a platform account.
       allow read: if isAuthenticated() && (
         request.auth.uid == userId || isSuperAdmin()
         || (getUserData().role == 'general_admin'
-            && getUserData().restaurant_id == resource.data.restaurant_id
-            && resource.data.role != 'super_admin'
-            && resource.data.get('is_platform_owner', false) != true)
+            && getUserData().restaurant_id == resource.data.restaurant_id)
       );
       allow create: if isSuperAdmin() || isStaffCreateAllowed();
       allow update: if isSuperAdmin() || request.auth.uid == userId;
