@@ -56,6 +56,7 @@ export default function LandingPage() {
         </div>
         <div className="nav-links">
           <a href="#demos" className="nav-link">Demo Restaurants</a>
+          <Link to="/demo" className="nav-link">Try Demo</Link>
           <a href="#features" className="nav-link">Features</a>
           <a href="#pricing" className="nav-link">Pricing</a>
           <Link to="/login" className="nav-login">Staff Login</Link>
@@ -81,7 +82,7 @@ export default function LandingPage() {
             <Link to="/get-started" className="btn-hero-primary">
               Get Started →
             </Link>
-            <a href={`/r/demo_restaurant_001?table=1`} className="btn-hero-secondary">Try Demo</a>
+            <Link to="/demo" className="btn-hero-secondary">Try Demo</Link>
           </div>
           <div className="hero-trust">
             <span>💬 Questions? Chat with us on Telegram — two live demo restaurants below, try the full flow right now.</span>

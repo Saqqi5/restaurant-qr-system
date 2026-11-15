@@ -1,0 +1,48 @@
+// Original demo menus (Bella Italia + Lahori Dastarkhwan), snapshotted
+// from live Firestore on 2026-11-15. resetDemoRestaurant() restores a
+// demo restaurant's menu from this file after visitors have edited it.
+// Do not edit by hand — regenerate from Firestore if the seed menu changes.
+export const DEMO_MENU_SEED = {
+  demo_restaurant_001: [
+    { category: "Starters", description: "Toasted bread with fresh tomatoes, garlic, and basil", price: 7.5, image_url: "/images/bruschetta.jpg", name: "Bruschetta al Pomodoro", id: "BwYVkdYVq7cWuWlOxPoy", prep_time_minutes: 8, sort_order: 1, available: true },
+    { name: "Margherita Pizza", price: 13, description: "San Marzano tomatoes, fior di latte, fresh basil", available: true, category: "Pizza", id: "5hUSBbIDIEnrd3oshnW4", sort_order: 1, prep_time_minutes: 20, image_url: "/images/margherita.jpg" },
+    { available: true, category: "Beverages", id: "ypF2qZI4oiBubVXXK8nx", description: "Sparkling mineral water 500ml", prep_time_minutes: 2, image_url: "/images/san-pellegrino.jpg", price: 3.5, name: "San Pellegrino", sort_order: 1 },
+    { available: true, price: 14.5, category: "Pasta", prep_time_minutes: 15, sort_order: 1, image_url: "/images/carbonara.jpg", name: "Spaghetti Carbonara", description: "Classic Roman pasta with egg, pecorino, and guanciale", id: "XKv3oFUxRevIlQhC7SSL" },
+    { available: true, description: "Classic Italian dessert with mascarpone and espresso", sort_order: 1, id: "TGwA4wHHpxhN9qtHpvMg", prep_time_minutes: 5, price: 6.5, image_url: "/images/tiramisu.jpg", name: "Tiramisu", category: "Desserts" },
+    { price: 8.5, available: true, sort_order: 2, name: "Arancini", description: "Crispy fried risotto balls stuffed with mozzarella", category: "Starters", image_url: "/images/arancini.jpg", id: "Jg03aa9Tyb3blQV9cJG4", prep_time_minutes: 10 },
+    { image_url: "/images/diavola.jpg", prep_time_minutes: 20, id: "zg9dX3wYVxAIHiHZAMjs", sort_order: 2, price: 15, category: "Pizza", description: "Spicy salami, tomato, mozzarella, chili oil", name: "Diavola Pizza", available: true },
+    { name: "House Red Wine (glass)", category: "Beverages", prep_time_minutes: 2, image_url: "/images/red-wine.jpg", description: "Chianti Classico DOC", sort_order: 2, available: true, price: 7, id: "XconEedI751Ndfrkric0" },
+    { category: "Desserts", sort_order: 2, available: true, description: "Silky vanilla cream with wild berry coulis", price: 6, id: "wBVBE6sdecBo5mfNr7LT", name: "Panna Cotta", prep_time_minutes: 5, image_url: "/images/panna-cotta.jpg" },
+    { category: "Pasta", image_url: "/images/arrabbiata.jpg", sort_order: 2, id: "XNHqa58hjtwQ2CnJTrYw", available: true, description: "Penne with spicy tomato sauce, garlic, and parsley", price: 12.5, name: "Penne Arrabbiata", prep_time_minutes: 15 },
+    { available: true, name: "Caprese Salad", price: 9, prep_time_minutes: 5, sort_order: 3, category: "Starters", description: "Fresh mozzarella, tomatoes, basil, and olive oil", image_url: "/images/caprese.jpg", id: "3hy2EdM7EjvUrStpzsqZ" },
+    { image_url: "/images/espresso.jpg", name: "Espresso", price: 2.5, description: "Double shot Italian espresso", id: "ykNM3ydAmRTeeNfNkkxi", prep_time_minutes: 3, sort_order: 3, available: true, category: "Beverages" },
+    { name: "Quattro Formaggi", image_url: "/images/quattro-formaggi.jpg", description: "Mozzarella, gorgonzola, parmesan, and taleggio", sort_order: 3, prep_time_minutes: 20, available: true, price: 16, category: "Pizza", id: "X4kcfWBpc1IWYKuc8DCL" },
+    { price: 15, image_url: "/images/ragu.jpg", id: "fxwXu3aRlnQvnPHUZu2B", sort_order: 3, prep_time_minutes: 18, name: "Tagliatelle al Ragù", description: "Hand-rolled pasta with slow-cooked Bolognese sauce", available: true, category: "Pasta" },
+  ],
+  demo_restaurant_002: [
+    { description: "Fragrant basmati, chicken, aloo bukhara, raita and salad", id: "XtY3uI9kQcGuZiTM1g3D", price: 450, sort_order: 1, name: "Chicken Biryani", image_url: "/images/biryani.jpg", available: true, category: "Desi", prep_time_minutes: 15 },
+    { description: "Charcoal-grilled chicken leg, desi masala, lemon and onion", category: "BBQ", id: "v0Wh977ReeM904K4RXyW", prep_time_minutes: 20, price: 550, name: "Chicken Tikka (Leg)", sort_order: 1, image_url: "/images/tikka.jpg", available: true },
+    { sort_order: 1, category: "Desserts", name: "Gulab Jamun (2 pc)", id: "X7whNpXNVOgfsQ0JZMmt", image_url: "/images/gulab-jamun.jpg", price: 150, prep_time_minutes: 5, available: true, description: "Warm syrup-soaked jamun" },
+    { description: "Tandoor-baked plain naan", image_url: "/images/naan.jpg", sort_order: 1, id: "biy09RYTZ6uj4jexuET3", available: true, price: 40, prep_time_minutes: 5, name: "Naan", category: "Breads" },
+    { category: "Starters", id: "sPueGLlLdUnSMkhh5fg7", prep_time_minutes: 8, price: 250, sort_order: 1, available: true, description: "Crispy samosa topped with chana, yogurt, chutneys and sev", name: "Samosa Chaat", image_url: "/images/samosa-chaat.jpg" },
+    { image_url: "/images/sweet-lassi.jpg", prep_time_minutes: 3, sort_order: 1, name: "Sweet Lassi", available: true, price: 150, description: "Thick yogurt lassi, sweetened", category: "Beverages", id: "JRVulSEjz39kPfMydhPD" },
+    { sort_order: 2, description: "Slow-cooked beef shank stew, ginger, lemon, green chilli", category: "Desi", prep_time_minutes: 25, available: true, name: "Beef Nihari", image_url: "/images/nihari.jpg", id: "vEZCX6Kqt8ncWrVI64G0", price: 850 },
+    { sort_order: 2, description: "Soft lentil dumplings in yogurt with tamarind chutney", prep_time_minutes: 8, available: true, category: "Starters", name: "Dahi Bhalla", id: "8nIphuK4SM6wDiE4qoR2", price: 300, image_url: "/images/dahi-bhalla.jpg" },
+    { category: "Beverages", name: "Kashmiri Chai", prep_time_minutes: 8, price: 120, available: true, description: "Pink tea with crushed nuts", id: "RbagryZFO072QQFxKvBq", sort_order: 2, image_url: "/images/kashmiri-chai.jpg" },
+    { description: "Slow-cooked rice pudding, cardamom and pistachio", name: "Kheer", id: "8jYGKg4UP5lScGsUNKtK", image_url: "/images/kheer.jpg", prep_time_minutes: 5, price: 180, sort_order: 2, category: "Desserts", available: true },
+    { available: true, prep_time_minutes: 5, price: 80, image_url: "/images/naan.jpg", category: "Breads", description: "Sesame-topped soft naan", id: "SDuZ9wCWmlhCpmCkWKIa", sort_order: 2, name: "Roghni Naan" },
+    { category: "BBQ", description: "Hand-minced beef kabab, smoky, with naan and raita", image_url: "/images/seekh-kabab.jpg", sort_order: 2, name: "Seekh Kabab (4 pc)", prep_time_minutes: 15, price: 500, id: "M7zQ4xWFvXYSARaoj5FB", available: true },
+    { image_url: "/images/chapli-kabab.jpg", description: "Peshawari-style flat kabab, tomato, onion, green chilli", available: true, prep_time_minutes: 12, name: "Chapli Kabab (2 pc)", category: "BBQ", price: 350, sort_order: 3, id: "namB6jzav0AK85GPJX5D" },
+    { price: 900, category: "Desi", description: "Desi ghee karahi, tomato, ginger, green chilli", prep_time_minutes: 20, available: true, image_url: "/images/karahi.jpg", sort_order: 3, id: "cgwni3OqDjMJzFZNEQ03", name: "Chicken Karahi (Half)" },
+    { sort_order: 3, category: "Beverages", prep_time_minutes: 8, price: 100, description: "Slow-brewed milky chai", available: true, name: "Doodh Patti", id: "dj0YL310JaCcmqQ1Im1L", image_url: "/images/doodh-patti.jpg" },
+    { prep_time_minutes: 5, sort_order: 3, category: "Breads", image_url: "/images/naan.jpg", name: "Garlic Naan", id: "vP8KQNQAHIHcWgb4V4L6", available: true, price: 120, description: "Naan brushed with garlic butter" },
+    { available: true, name: "Rasmalai", sort_order: 3, image_url: "/images/rasmalai.jpg", prep_time_minutes: 5, price: 200, id: "aUTYfgwpAo79MhbDC7hb", description: "Soft cheese discs in chilled saffron milk", category: "Desserts" },
+    { price: 1650, description: "Desi ghee karahi, tomato, ginger, green chilli", prep_time_minutes: 25, id: "JjCUfXKQCvwcUb3cqrjv", name: "Chicken Karahi (Full)", category: "Desi", image_url: "/images/karahi.jpg", sort_order: 4, available: true },
+    { sort_order: 4, prep_time_minutes: 18, description: "Creamy, mild chicken boti, grilled over charcoal", id: "fdSlx78DG8cS468mSA3z", image_url: "/images/malai-boti.jpg", category: "BBQ", name: "Malai Boti", price: 650, available: true },
+    { sort_order: 4, prep_time_minutes: 2, id: "Tls64vM2AMAGnkLcTeUY", image_url: "/images/soft-drink.jpg", price: 120, available: true, category: "Beverages", name: "Soft Drink", description: "Chilled soft drink 345ml" },
+    { sort_order: 5, available: true, name: "Daal Fry", description: "Yellow daal with garlic tarka, rice or naan", image_url: "/images/daal-fry.jpg", prep_time_minutes: 12, category: "Desi", price: 300, id: "q2ZkaAKEJj6uaisdQF8e" },
+    { description: "Mineral water 500ml", sort_order: 5, prep_time_minutes: 2, available: true, name: "Mineral Water", image_url: "/images/mineral-water.jpg", id: "IUIAs8XPAveD7XmPaZUo", category: "Beverages", price: 60 },
+    { name: "Tawa Qeema", id: "asoarbFdyNA2dPogehrz", available: true, image_url: "/images/tawa-qeema.jpg", sort_order: 6, category: "Desi", prep_time_minutes: 18, price: 700, description: "Spiced minced beef on tawa, green chilli and coriander" },
+    { category: "Desi", available: true, price: 350, prep_time_minutes: 12, description: "Seasonal vegetables, light masala", image_url: "/images/mix-sabzi.jpg", sort_order: 7, name: "Mix Sabzi", id: "FHRdEKuXIPwCRrVVxYwS" },
+  ],
+};

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { getPlanLabel, getExpiryInfo, formatExpiryDate } from "../../config/plans";
-import { continuePlan, startDemo } from "../../config/db";
+import { continuePlan, startDemo, resetDemoRestaurant } from "../../config/db";
 
 export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain, onDelete }) {
   const [continuing, setContinuing] = useState(false);
   const [continued, setContinued] = useState(false);
   const [demoing, setDemoing] = useState(false);
   const [demoStarted, setDemoStarted] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
   const expiry = getExpiryInfo(restaurant);
 
   async function handleContinue() {
@@ -33,6 +35,23 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
       setTimeout(() => setDemoStarted(false), 3000);
     } finally {
       setDemoing(false);
+    }
+  }
+
+  // Wipe a demo restaurant clean after visitors have played with it:
+  // all orders, payment proofs and plan payments go, and the menu is
+  // restored to the original seed. Plan, tables and settings are kept.
+  async function handleResetDemo() {
+    if (!window.confirm(
+      `Reset the ${restaurant.name} demo? This deletes ALL its orders and payment proofs and restores the original menu. The plan, tables and settings stay as they are.`
+    )) return;
+    setResetting(true);
+    try {
+      await resetDemoRestaurant(restaurant.id);
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 3000);
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -90,6 +109,11 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
         <button className="rc-btn" onClick={handleStartDemo} disabled={demoing} title="Lend this restaurant as a 7-day demo — staff logins stop after 7 days">
           🎁 {demoStarted ? "Demo started ✓" : demoing ? "Starting…" : "7-day demo"}
         </button>
+        {restaurant.is_demo && (
+          <button className="rc-btn" onClick={handleResetDemo} disabled={resetting} title="Delete all demo orders & payment proofs and restore the original menu">
+            ↺ {resetDone ? "Demo reset ✓" : resetting ? "Resetting…" : "Reset demo"}
+          </button>
+        )}
       </div>
     </div>
   );

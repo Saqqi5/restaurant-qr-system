@@ -30,6 +30,7 @@
  */
 
 import { expiryDateFrom, demoExpiryDateFrom, paidExpiryDateFrom } from "./plans";
+import { DEMO_MENU_SEED } from "./demoMenuSeed";
 
 import {
   collection, doc, setDoc, updateDoc, deleteDoc,
@@ -147,6 +148,27 @@ export async function deleteRestaurant(restaurantId) {
     await deleteDoc(doc(domainMappingsCol(), restaurant.custom_domain));
   }
   await deleteDoc(restaurantDoc(restaurantId));
+}
+
+// Reset a DEMO restaurant after visitors have played with it: delete all
+// its orders, payment proofs and plan payments, then restore its menu to
+// the original seed (DEMO_MENU_SEED). The restaurant doc itself is NOT
+// touched — plan, tables, settings and any demo expiry stay as they are.
+// Super-admin only (enforced by the caller's dashboard, not by rules).
+export async function resetDemoRestaurant(restaurantId) {
+  const seed = DEMO_MENU_SEED[restaurantId];
+  if (!seed) throw new Error("No demo menu snapshot for this restaurant.");
+  for (const colFn of [menuCol, ordersCol]) {
+    const snap = await getDocs(colFn(restaurantId));
+    for (const d of snap.docs) await deleteDoc(d.ref);
+  }
+  const pays = await getDocs(query(paymentsCol(), where("restaurantId", "==", restaurantId)));
+  for (const d of pays.docs) await deleteDoc(d.ref);
+  const planPays = await getDocs(query(planPaymentsCol(), where("restaurantId", "==", restaurantId)));
+  for (const d of planPays.docs) await deleteDoc(d.ref);
+  for (const item of seed) {
+    await setDoc(menuItemDoc(restaurantId, item.id), item);
+  }
 }
 
 export async function getRestaurant(restaurantId) {
