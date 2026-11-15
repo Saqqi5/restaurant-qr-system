@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 
 // Public live demo — a REAL restaurant running on SAQLYN, not a video.
 // Visitors scan the Lahori Dastarkhwan QR, place an order, then log in
-// with the demo staff accounts below and watch the order move through
-// the kitchen and the cash counter. The demo logins are the same ones in
-// the public seed data, so showing them here adds no new exposure. The
-// super admin resets the demo (RestaurantCard "Reset demo") whenever it
-// gets messy — orders, payment proofs and the menu go back to original.
+// with the separate demo-only accounts below (demoadmin@ etc.) and watch
+// the order move through the kitchen and the cash counter. Demo accounts
+// are flagged is_demo_user: they never appear in staff lists and can never
+// remove staff. Anything a visitor adds is deleted automatically after 24
+// hours (cleanup script + cron). The super admin resets the demo
+// (RestaurantCard "Reset demo") whenever it gets messy — orders, payment
+// proofs and the menu go back to original.
 const APP_URL = "https://restaurant-qr-system.saqlainmushtaq555.workers.dev";
 const DEMO_MENU_URL = `${APP_URL}/r/demo_restaurant_002?table=1`;
 const QR_SRC = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(DEMO_MENU_URL)}&format=png&qzone=2`;
@@ -22,14 +24,15 @@ const STEPS = [
 ];
 
 const DEMO_LOGINS = [
-  { role: "Restaurant Admin", desc: "Menu, staff, settings & revenue", email: "admin@lahoridastarkhwan.com", password: "Admin@123", to: "/admin/restaurant" },
-  { role: "Kitchen", desc: "See orders & confirm them", email: "kitchen@lahoridastarkhwan.com", password: "Kitchen@123", to: "/admin/kitchen" },
-  { role: "Cashier", desc: "Verify payments & mark paid", email: "cash@lahoridastarkhwan.com", password: "Cash@123", to: "/admin/cash" },
-  { role: "Waiter", desc: "Take orders for a table", email: "server@lahoridastarkhwan.com", password: "Server@123", to: "/admin/server" },
+  { role: "Restaurant Admin", desc: "Menu, staff, settings & revenue", email: "demoadmin@lahoridastarkhwan.com", password: "Admin@123", to: "/admin/restaurant" },
+  { role: "Kitchen", desc: "See orders & confirm them", email: "demokitchen@lahoridastarkhwan.com", password: "Kitchen@123", to: "/admin/kitchen" },
+  { role: "Cashier", desc: "Verify payments & mark paid", email: "democash@lahoridastarkhwan.com", password: "Cash@123", to: "/admin/cash" },
+  { role: "Waiter", desc: "Take orders for a table", email: "demoserver@lahoridastarkhwan.com", password: "Server@123", to: "/admin/server" },
 ];
 
 export default function DemoPage() {
   const [copied, setCopied] = useState("");
+  const [shownPass, setShownPass] = useState("");
 
   async function copy(text, key) {
     try {
@@ -86,6 +89,9 @@ export default function DemoPage() {
           <div className="demo-card">
             <h2>👨‍🍳 Restaurant manager — run the restaurant</h2>
             <p className="demo-card-sub">Log in with any demo account and try its dashboard.</p>
+            <p className="form-hint" style={{ marginBottom: 12 }}>
+              ⏰ Anything you add or change here is deleted automatically after 24 hours.
+            </p>
             {DEMO_LOGINS.map((l) => (
               <div className="demo-login" key={l.role}>
                 <div className="demo-login-head">
@@ -99,7 +105,10 @@ export default function DemoPage() {
                   </button>
                 </div>
                 <div className="demo-cred">
-                  <code>{l.password}</code>
+                  <code>{shownPass === l.role ? l.password : "••••••••"}</code>
+                  <button type="button" className="demo-copy" onClick={() => setShownPass(shownPass === l.role ? "" : l.role)}>
+                    {shownPass === l.role ? "Hide" : "Show"}
+                  </button>
                   <button type="button" className="demo-copy" onClick={() => copy(l.password, `${l.role}-pass`)}>
                     {copied === `${l.role}-pass` ? "Copied ✓" : "Copy"}
                   </button>
@@ -111,8 +120,12 @@ export default function DemoPage() {
               Tip: pay at the counter — the cashier marks the order paid, so no
               screenshot is needed for the demo. Want to add your own dishes?
               Log in as Admin — we&apos;ll ask for your email &amp; WhatsApp first
-              so we can follow up. We reset the demo regularly, so don&apos;t
-              worry about breaking anything.
+              so we can follow up. Your dishes are deleted automatically after 24 hours.
+            </p>
+            <p className="form-hint" style={{ marginTop: 12 }}>
+              Have your own restaurant and want SAQLYN for it?{" "}
+              <Link to="/get-started">Buy a plan →</Link> or{" "}
+              <a href={TELEGRAM} target="_blank" rel="noreferrer">contact the administrator</a>.
             </p>
           </div>
         </div>

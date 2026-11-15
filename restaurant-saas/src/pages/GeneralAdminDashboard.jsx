@@ -468,6 +468,7 @@ export default function GeneralAdminDashboard() {
               <p className="form-hint" style={{ marginBottom: 16 }}>
                 This is the public demo — before you add your own menu item, tell us
                 where to reach you. If you want SAQLYN for your own restaurant, we will follow up.
+                Your dish will be visible for 24 hours — demo data is deleted automatically after 24 hours.
               </p>
               <form onSubmit={handleLeadSubmit}>
                 <div className="form-group">

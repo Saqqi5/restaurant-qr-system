@@ -11,7 +11,11 @@ const STAFF_ROLES = [
 ];
 
 export default function StaffModal({ restaurant, onClose }) {
-  const { registerStaff, currentUser } = useAuth();
+  const { registerStaff, currentUser, userProfile } = useAuth();
+  // Demo-only logins (demoadmin@ etc.) may USE the dashboards but never
+  // manage staff: no adding, no removing. Real staff and the super admin
+  // are unaffected (their userProfile has no is_demo_user flag).
+  const isDemoUser = userProfile?.is_demo_user === true;
   const [staff, setStaff] = useState([]);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "kitchen" });
   const [loading, setLoading] = useState(false);
@@ -88,10 +92,12 @@ export default function StaffModal({ restaurant, onClose }) {
             onClick={() => setView("list")}>
             Current Staff ({staff.length})
           </button>
+          {!isDemoUser && (
           <button className={`modal-tab ${view === "create" ? "active" : ""}`}
             onClick={() => setView("create")}>
             + Add Staff
           </button>
+          )}
         </div>
 
         <div className="modal-body">
@@ -112,7 +118,7 @@ export default function StaffModal({ restaurant, onClose }) {
                   <span className={`role-badge role-${member.role}`}>
                     {getRoleIcon(member.role)} {getRoleLabel(member.role)}
                   </span>
-                  {member.id !== currentUser?.uid && (
+                  {member.id !== currentUser?.uid && !isDemoUser && (
                     <button
                       type="button"
                       className="icon-btn"
