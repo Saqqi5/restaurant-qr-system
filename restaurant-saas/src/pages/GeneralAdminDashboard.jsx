@@ -7,6 +7,7 @@ import {
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
+import { hideDemoDish, unhideDemoDish, getDemoHiddenDishes } from "../utils/session";
 import { formatExpiryDate, getPlanLabel, getMenuItemLimit } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -33,6 +34,9 @@ export default function GeneralAdminDashboard() {
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [restaurant, setRestaurant] = useState(null);
+  // Bump to re-render after a per-browser demo hide/restore (localStorage
+  // changes don't re-render on their own).
+  const [, setDemoHiddenTick] = useState(0);
   // Demo lead gate: a visitor adding their own dish to a DEMO restaurant
   // first leaves their contact details (saved as a demo lead for the
   // super admin). Asked EVERY time a dish is added, so each dish carries
@@ -161,12 +165,25 @@ export default function GeneralAdminDashboard() {
   // Soft delete: the dish is only hidden from the customer menu. It stays
   // in the backend and shows in the "Hidden dishes" section below, where
   // it can be restored. The live menu subscription refreshes the list.
+  // On a DEMO restaurant the hide is per-browser only (localStorage, 24h):
+  // another visitor elsewhere still sees the dish, and it returns on its
+  // own after 24 hours. Nothing is written to the backend for demos.
   async function handleDeleteItem(itemId) {
     if (!confirm("Hide this dish? It will disappear from the customer menu, but it stays saved — you can restore it anytime from Hidden dishes below.")) return;
+    if (restaurant?.is_demo) {
+      hideDemoDish(restaurantId, itemId);
+      setDemoHiddenTick((t) => t + 1);
+      return;
+    }
     await deleteMenuItem(restaurantId, itemId);
   }
 
   async function handleRestoreItem(itemId) {
+    if (restaurant?.is_demo && getDemoHiddenDishes(restaurantId).has(itemId)) {
+      unhideDemoDish(restaurantId, itemId);
+      setDemoHiddenTick((t) => t + 1);
+      return;
+    }
     await restoreMenuItem(restaurantId, itemId);
   }
 
@@ -191,8 +208,11 @@ export default function GeneralAdminDashboard() {
 
   const categories = [...new Set(menuItems.map((i) => i.category))];
   // Soft-deleted dishes: hidden from customers, visible only to the admin.
-  const visibleItems = menuItems.filter((i) => !i.deleted);
-  const hiddenItems = menuItems.filter((i) => i.deleted);
+  // On a demo restaurant, dishes hidden in THIS browser (localStorage, 24h)
+  // are hidden here too — another browser still sees them.
+  const demoHidden = restaurant?.is_demo ? getDemoHiddenDishes(restaurantId) : new Set();
+  const visibleItems = menuItems.filter((i) => !i.deleted && !demoHidden.has(i.id));
+  const hiddenItems = menuItems.filter((i) => i.deleted || demoHidden.has(i.id));
   const visibleCategories = [...new Set(visibleItems.map((i) => i.category))];
 
   return (

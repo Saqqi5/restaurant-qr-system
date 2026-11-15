@@ -5,6 +5,7 @@ import {
   subscribeToRestaurantPayments
 , getRestaurant } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
+import { getDemoHiddenDishes } from "../utils/session";
 import AdminLayout from "../components/admin/AdminLayout";
 
 export default function ServerDashboard() {
@@ -17,12 +18,16 @@ export default function ServerDashboard() {
   const [cart, setCart] = useState([]);
   const [selectedTable, setSelectedTable] = useState(1);
   const [tableCount, setTableCount] = useState(20);
+  const [isDemo, setIsDemo] = useState(false);
   const [notes, setNotes] = useState("");
   const [placing, setPlacing] = useState(false);
 
   useEffect(() => {
     if (!restaurantId) return;
-    getRestaurant(restaurantId).then((r) => r?.table_count && setTableCount(r.table_count));
+    getRestaurant(restaurantId).then((r) => {
+      if (r?.table_count) setTableCount(r.table_count);
+      setIsDemo(r?.is_demo === true);
+    });
   }, [restaurantId]);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -81,6 +86,9 @@ export default function ServerDashboard() {
   const activeOrders = orders.filter((o) => !["served", "paid"].includes(o.status));
   const filteredMenu = menuItems.filter((i) =>
     i.name.toLowerCase().includes(searchTerm.toLowerCase()) && i.available && !i.deleted
+    // On a demo restaurant, dishes hidden in THIS browser (localStorage, 24h)
+    // are hidden here too — another browser still sees them.
+    && !(isDemo && getDemoHiddenDishes(restaurantId).has(i.id))
   );
   const categories = [...new Set(filteredMenu.map((i) => i.category))];
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);

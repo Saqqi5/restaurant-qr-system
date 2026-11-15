@@ -8,7 +8,7 @@ import {
 } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import { downscaleImage } from "../utils/image";
-import { getCustomerSessionId } from "../utils/session";
+import { getCustomerSessionId, getDemoHiddenDishes } from "../utils/session";
 import CartDrawer from "../components/customer/CartDrawer";
 import MenuGrid from "../components/customer/MenuGrid";
 import OrderTracker from "../components/customer/OrderTracker";
@@ -100,10 +100,13 @@ export default function CustomerMenu() {
 
   useEffect(() => {
     if (!restaurantId) return;
-    // Hidden (soft-deleted) dishes never reach the customer menu.
-    const unsub = subscribeToMenu(restaurantId, (items) => setMenuItems(items.filter((i) => !i.deleted)));
+    // Hidden (soft-deleted) dishes never reach the customer menu. On a demo
+    // restaurant, dishes hidden in THIS browser (localStorage, 24h) are
+    // hidden here too — another browser still sees them.
+    const isDemo = restaurant?.is_demo === true;
+    const unsub = subscribeToMenu(restaurantId, (items) => setMenuItems(items.filter((i) => !i.deleted && !(isDemo && getDemoHiddenDishes(restaurantId).has(i.id)))));
     return unsub;
-  }, [restaurantId]);
+  }, [restaurantId, restaurant?.is_demo]);
 
   useEffect(() => {
     if (!restaurantId || !tableNumber) return;
