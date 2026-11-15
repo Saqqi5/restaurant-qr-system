@@ -51,9 +51,9 @@ export default function LandingPage() {
     <div className="landing">
       {/* Nav */}
       <nav className="landing-nav">
-        <div className="nav-brand">
+        <Link to="/" className="nav-brand">
           SAQL<span className="nav-brand-dot">YN</span>
-        </div>
+        </Link>
         <div className="nav-links">
           <a href="#demos" className="nav-link">Demo Restaurants</a>
           <Link to="/demo" className="nav-link">Try Demo</Link>

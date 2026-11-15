@@ -123,9 +123,9 @@ export default function GetStarted() {
         <div className="nav-links">
           <Link to="/" className="nav-link">← Back to homepage</Link>
         </div>
-        <div className="nav-brand">
+        <Link to="/" className="nav-brand">
           SAQL<span className="nav-brand-dot">YN</span>
-        </div>
+        </Link>
       </nav>
 
       <div className="gs-wrap">

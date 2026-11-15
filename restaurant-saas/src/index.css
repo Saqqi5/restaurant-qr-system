@@ -240,6 +240,7 @@ a { color: var(--color-primary); text-decoration: none; }
   display: flex; align-items: center; gap: 10px;
   font-family: var(--font); font-size: 22px; font-weight: 800;
   color: var(--color-text); letter-spacing: -0.02em;
+  text-decoration: none;
 }
 .nav-brand-dot { color: var(--color-primary); }
 .nav-links { display: flex; align-items: center; gap: 24px; }
