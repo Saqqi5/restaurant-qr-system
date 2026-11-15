@@ -9,7 +9,6 @@
 //   FIREBASE_SERVICE_ACCOUNT_KEY   — private_key from the service-account JSON
 
 const FIREBASE_PROJECT_ID = "restaurant-system-d74b1";
-const TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo";
 const IDENTITY_TOOLKIT = "https://identitytoolkit.googleapis.com/v1";
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
@@ -44,15 +43,71 @@ const b64url = (bytes) => {
   return btoa(s).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 };
 
-// Verify a Firebase ID token via Google's tokeninfo endpoint (no API key needed).
+// Firebase ID tokens are signed by securetoken.google.com — Google's
+// tokeninfo endpoint does NOT accept them (it returns invalid_token).
+// Verify the RS256 signature against Google's public keys (JWKS) instead.
+const JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
+let cachedJwks = null; // { keys, fetchedAtMs }
+
+function b64urlToBytes(s) {
+  s = s.replaceAll("-", "+").replaceAll("_", "/");
+  while (s.length % 4) s += "=";
+  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+}
+
+async function getJwks() {
+  if (cachedJwks && Date.now() - cachedJwks.fetchedAtMs < 3600_000) return cachedJwks.keys;
+  const res = await fetch(JWKS_URL);
+  if (!res.ok) throw new Error("Could not fetch signing keys.");
+  const data = await res.json();
+  cachedJwks = { keys: data.keys || [], fetchedAtMs: Date.now() };
+  return cachedJwks.keys;
+}
+
+// Verify a Firebase ID token: signature (JWKS) + iss/aud/exp checks.
 async function verifyIdToken(idToken) {
-  const res = await fetch(`${TOKEN_INFO_URL}?id_token=${encodeURIComponent(idToken)}`);
-  if (!res.ok) return null;
-  const info = await res.json();
-  if (info.aud !== FIREBASE_PROJECT_ID) return null;
-  if (info.iss !== `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`) return null;
-  if (!info.user_id || (info.exp * 1000) < Date.now()) return null;
-  return info; // { user_id, email, ... }
+  const parts = idToken.split(".");
+  if (parts.length !== 3) return null;
+  let header;
+  try {
+    header = JSON.parse(new TextDecoder().decode(b64urlToBytes(parts[0])));
+  } catch {
+    return null;
+  }
+  if (header.alg !== "RS256" || !header.kid) return null;
+  let keys = await getJwks();
+  let jwk = keys.find((k) => k.kid === header.kid);
+  if (!jwk) {
+    // Keys rotate — refetch once before giving up.
+    cachedJwks = null;
+    keys = await getJwks();
+    jwk = keys.find((k) => k.kid === header.kid);
+    if (!jwk) return null;
+  }
+  const cryptoKey = await crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["verify"],
+  );
+  const valid = await crypto.subtle.verify(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    b64urlToBytes(parts[2]),
+    new TextEncoder().encode(parts[0] + "." + parts[1]),
+  );
+  if (!valid) return null;
+  let payload;
+  try {
+    payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(parts[1])));
+  } catch {
+    return null;
+  }
+  if (payload.iss !== `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`) return null;
+  if (payload.aud !== FIREBASE_PROJECT_ID) return null;
+  if (!payload.sub || (payload.exp * 1000) < Date.now()) return null;
+  return { user_id: payload.sub, email: payload.email || null };
 }
 
 async function getUserDoc(uid, callerToken) {
