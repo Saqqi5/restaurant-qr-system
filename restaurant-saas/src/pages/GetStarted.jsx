@@ -119,12 +119,12 @@ export default function GetStarted() {
 
   return (
     <div className="landing">
-      <nav className="landing-nav">
-        <div className="nav-brand">
-          SAQL<span className="nav-brand-dot">YN</span>
-        </div>
+      <nav className="landing-nav gs-nav">
         <div className="nav-links">
           <Link to="/" className="nav-link">← Back to homepage</Link>
+        </div>
+        <div className="nav-brand">
+          SAQL<span className="nav-brand-dot">YN</span>
         </div>
       </nav>
 
