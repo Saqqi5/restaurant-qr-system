@@ -583,7 +583,12 @@ export async function deleteUser(userId) {
 export async function getRestaurantUsers(restaurantId) {
   const q = query(usersCol(), where("restaurant_id", "==", restaurantId));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    // Platform accounts never appear in a restaurant's staff list: the
+    // super admin, and the platform owner's own account (flagged
+    // is_platform_owner). A restaurant admin sees only their own login
+    // and their staff — and can never remove the owner's login.
+    .filter(u => u.role !== "super_admin" && !u.is_platform_owner);
 }
 
 // ── Domain Mapping ─────────────────────────────────────────────────────────
