@@ -502,7 +502,7 @@ export default function GeneralAdminDashboard() {
 
       {showStaffModal && (
         <StaffModal
-          restaurant={{ id: restaurantId }}
+          restaurant={restaurant || { id: restaurantId }}
           onClose={() => setShowStaffModal(false)}
         />
       )}
