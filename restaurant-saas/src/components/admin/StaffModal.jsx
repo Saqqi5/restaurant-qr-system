@@ -13,7 +13,8 @@ const STAFF_ROLES = [
 ];
 
 export default function StaffModal({ restaurant, onClose }) {
-  const { registerStaff, currentUser } = useAuth();
+  const { registerStaff, resetStaffPassword, currentUser, userProfile } = useAuth();
+  const isSuperAdmin = userProfile?.role === "super_admin";
   const [staff, setStaff] = useState([]);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "kitchen" });
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,10 @@ export default function StaffModal({ restaurant, onClose }) {
   const [view, setView] = useState("list"); // "list" | "create"
   const [platformLimits, setPlatformLimits] = useState(null);
   const [pendingRemove, setPendingRemove] = useState(null); // staff member awaiting remove/hide confirm
+  const [pendingReset, setPendingReset] = useState(null); // staff member awaiting password reset
+  const [resetResult, setResetResult] = useState(null); // { name, password } after a reset
+  const [resetting, setResetting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const plan = normalizePlan(restaurant?.plan);
   const staffLimit = getStaffLimit(plan, platformLimits);
@@ -62,6 +67,38 @@ export default function StaffModal({ restaurant, onClose }) {
   function handleRemove(member) {
     // Ask in the styled in-app dialog (not the browser's plain popup).
     setPendingRemove(member);
+  }
+
+  // One-click password reset (super admin only): the Worker sets a new
+  // password for the staff member and returns it once, so the super admin
+  // can share it. The staff member's old sessions stop working at once.
+  function handleReset(member) {
+    setPendingReset(member);
+  }
+
+  async function confirmReset() {
+    const member = pendingReset;
+    setPendingReset(null);
+    if (!member) return;
+    setError("");
+    setResetting(true);
+    try {
+      const password = await resetStaffPassword(member.id);
+      setResetResult({ name: member.name, password });
+      setSuccess("");
+    } catch (err) {
+      setError(err.message || "Password reset failed.");
+    }
+    setResetting(false);
+  }
+
+  async function copyResetPassword() {
+    if (!resetResult) return;
+    try {
+      await navigator.clipboard.writeText(resetResult.password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable — the password can still be selected */ }
   }
 
   async function confirmRemove() {
@@ -129,6 +166,20 @@ export default function StaffModal({ restaurant, onClose }) {
         <div className="modal-body">
           {success && <div className="success-banner">✅ {success}</div>}
 
+          {resetResult && (
+            <div className="reset-result">
+              <div><strong>New password for {resetResult.name}:</strong></div>
+              <div className="reset-result-row">
+                <code>{resetResult.password}</code>
+                <button type="button" className="btn-secondary btn-sm" onClick={copyResetPassword}>
+                  {copied ? "Copied ✓" : "Copy"}
+                </button>
+                <button type="button" className="icon-btn" onClick={() => setResetResult(null)}>✕</button>
+              </div>
+              <div className="form-hint">Share it with them — ask them to change it after they log in (🔒 Password button).</div>
+            </div>
+          )}
+
           {view === "list" && (
             <>
             <div className="staff-list">
@@ -145,6 +196,16 @@ export default function StaffModal({ restaurant, onClose }) {
                   <span className={`role-badge role-${member.role}`}>
                     {getRoleIcon(member.role)} {getRoleLabel(member.role)}
                   </span>
+                  {isSuperAdmin && member.id !== currentUser?.uid && (
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      title="Reset password"
+                      onClick={() => handleReset(member)}
+                    >
+                      🔑
+                    </button>
+                  )}
                   {member.id !== currentUser?.uid && (
                     <button
                       type="button"
@@ -268,6 +329,15 @@ export default function StaffModal({ restaurant, onClose }) {
           danger={!restaurant?.is_demo}
           onConfirm={confirmRemove}
           onCancel={() => setPendingRemove(null)}
+        />
+      )}
+      {pendingReset && (
+        <ConfirmModal
+          title="Reset password?"
+          message={`Reset the password for ${pendingReset.name}? They will get a new password — share it with them and ask them to change it after they log in.`}
+          confirmLabel={resetting ? "Resetting…" : "Reset password"}
+          onConfirm={confirmReset}
+          onCancel={() => setPendingReset(null)}
         />
       )}
     </div>

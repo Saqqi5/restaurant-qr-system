@@ -134,6 +134,22 @@ export function AuthProvider({ children }) {
     await updatePassword(currentUser, newPassword);
   }
 
+  // One-click staff password reset (super admin only). The browser SDK
+  // cannot change another user's password, so this calls the Worker
+  // endpoint, which uses the Firebase service account. Returns the new
+  // password (generated server-side) so the super admin can share it.
+  async function resetStaffPassword(staffUid) {
+    const token = await currentUser.getIdToken();
+    const res = await fetch("/api/admin/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ uid: staffUid }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Password reset failed.");
+    return data.password;
+  }
+
   function hasRole(...roles) {
     return userProfile && roles.includes(userProfile.role);
   }
@@ -153,6 +169,7 @@ export function AuthProvider({ children }) {
     registerStaff,
     createDefaultStaff,
     changePassword,
+    resetStaffPassword,
     hasRole,
     canAccessRestaurant,
     isAuthenticated: !!currentUser,
