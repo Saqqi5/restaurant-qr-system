@@ -7,6 +7,7 @@ import {
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
+import { cleanupExpiredDemoItems, isExpiredDemoItem } from "../config/db";
 import { hideDemoDish, unhideDemoDish, getDemoHiddenDishes } from "../utils/session";
 import { formatExpiryDate, getPlanLabel, getMenuItemLimit } from "../config/plans";
 import { downscaleImage } from "../utils/image";
@@ -187,6 +188,16 @@ export default function GeneralAdminDashboard() {
     await restoreMenuItem(restaurantId, itemId);
   }
 
+  // Demo auto-cleanup (website rule, no outside task): when a demo
+  // restaurant's admin dashboard opens, delete visitor-added dishes older
+  // than 24h for real. A failure here is silent — expired dishes are
+  // already hidden from every menu view by isExpiredDemoItem.
+  useEffect(() => {
+    if (restaurant?.is_demo) {
+      cleanupExpiredDemoItems(restaurantId).catch(() => {});
+    }
+  }, [restaurant?.is_demo, restaurantId]);
+
   function handleEditItem(item) {
     setEditingItem(item);
     setShowItemModal(true);
@@ -211,7 +222,7 @@ export default function GeneralAdminDashboard() {
   // On a demo restaurant, dishes hidden in THIS browser (localStorage, 24h)
   // are hidden here too — another browser still sees them.
   const demoHidden = restaurant?.is_demo ? getDemoHiddenDishes(restaurantId) : new Set();
-  const visibleItems = menuItems.filter((i) => !i.deleted && !demoHidden.has(i.id));
+  const visibleItems = menuItems.filter((i) => !i.deleted && !demoHidden.has(i.id) && !(restaurant?.is_demo && isExpiredDemoItem(restaurantId, i)));
   const hiddenItems = menuItems.filter((i) => i.deleted || demoHidden.has(i.id));
   const visibleCategories = [...new Set(visibleItems.map((i) => i.category))];
 

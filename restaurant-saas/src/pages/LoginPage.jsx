@@ -86,6 +86,13 @@ export default function LoginPage() {
         <div className="login-footer">
           Staff? Ask your restaurant admin for your login.
         </div>
+        <div className="login-footer" style={{ marginTop: 8 }}>
+          Password bhool gaye hain? Super admin se rabta karein —{" "}
+          <a href="https://t.me/Saqlyndigital" target="_blank" rel="noreferrer">
+            Telegram @SAQLYNDIGITAL
+          </a>
+          .
+        </div>
       </div>
     </div>
   );

@@ -4,7 +4,9 @@ import {
   signOut,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
   getAuth,
 } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
@@ -121,8 +123,15 @@ export function AuthProvider({ children }) {
     return results;
   }
 
-  async function resetPassword(email) {
-    return sendPasswordResetEmail(auth, email);
+  // Change password for the signed-in user (any role). Re-authenticating
+  // with the current password also satisfies Firebase's recent-login
+  // requirement. Forgot password is NOT self-service by design: only the
+  // super admin resets a forgotten password (delete + recreate the login).
+  async function changePassword(currentPassword, newPassword) {
+    if (!currentUser?.email) throw new Error("Not signed in.");
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+    await reauthenticateWithCredential(currentUser, credential);
+    await updatePassword(currentUser, newPassword);
   }
 
   function hasRole(...roles) {
@@ -143,7 +152,7 @@ export function AuthProvider({ children }) {
     logout,
     registerStaff,
     createDefaultStaff,
-    resetPassword,
+    changePassword,
     hasRole,
     canAccessRestaurant,
     isAuthenticated: !!currentUser,

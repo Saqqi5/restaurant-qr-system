@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { subscribeToRestaurantPayments, getRestaurant } from "../../config/db";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 export default function AdminLayout({ children, title, subtitle, onLogout, userProfile, compact }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [restaurantName, setRestaurantName] = useState("");
   const [pendingPayments, setPendingPayments] = useState([]);
   const [showToast, setShowToast] = useState(false);
@@ -66,6 +68,9 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
             <div className="user-avatar">{userProfile?.name?.[0]?.toUpperCase() || "?"}</div>
             <div className="user-name">{userProfile?.name}</div>
           </div>
+          <button className="btn-logout" onClick={() => setShowPasswordModal(true)} title="Change password">
+            🔒 Password
+          </button>
           <button className="btn-logout" onClick={onLogout}>
             Logout
           </button>
@@ -120,6 +125,8 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
           </div>
         </div>
       )}
+
+      {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
     </div>
   );
 }

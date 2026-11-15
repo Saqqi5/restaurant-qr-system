@@ -124,6 +124,7 @@ export default function StaffModal({ restaurant, onClose }) {
           {success && <div className="success-banner">✅ {success}</div>}
 
           {view === "list" && (
+            <>
             <div className="staff-list">
               {visibleStaff.length === 0 && (
                 <div className="empty-state-sm">No staff members yet.</div>
@@ -178,6 +179,7 @@ export default function StaffModal({ restaurant, onClose }) {
                 ))}
               </div>
             )}
+            </>
           )}
 
           {view === "create" && (

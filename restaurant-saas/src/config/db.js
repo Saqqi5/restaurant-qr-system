@@ -178,6 +178,56 @@ export async function getRestaurant(restaurantId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+// ── Demo auto-cleanup (website rule, no outside task) ────────────────────
+// Visitor-added dishes on a demo restaurant expire after 24 hours. The
+// website enforces this itself in two places:
+//   1. isExpiredDemoItem() — every menu view (customer, waiter, admin)
+//      hides expired visitor dishes, so the default demo menu shows even
+//      before any delete runs.
+//   2. cleanupExpiredDemoItems() — the demo admin's dashboard deletes the
+//      expired docs for real when it opens (the menu write rule lets the
+//      restaurant's own general admin delete menu docs).
+// Seeded dishes are never touched, and an item with no created_at is never
+// hidden or deleted. Orders/payments are NOT auto-deleted here: only the
+// super admin may delete those (rules), so they still clear via the
+// super-admin "Reset demo" button.
+export const DEMO_AUTO_CLEANUP_HOURS = 24;
+
+function demoSeedIds(restaurantId) {
+  const seed = DEMO_MENU_SEED[restaurantId];
+  return seed ? new Set(seed.map((s) => s.id)) : null;
+}
+
+function demoItemCreatedMs(item) {
+  return item?.created_at?.toDate?.()?.getTime?.() ?? null;
+}
+
+export function isExpiredDemoItem(restaurantId, item) {
+  const seedIds = demoSeedIds(restaurantId);
+  if (!seedIds) return false;
+  if (seedIds.has(item.id)) return false;
+  const created = demoItemCreatedMs(item);
+  if (!created) return false;
+  return created < Date.now() - DEMO_AUTO_CLEANUP_HOURS * 60 * 60 * 1000;
+}
+
+export async function cleanupExpiredDemoItems(restaurantId) {
+  const seedIds = demoSeedIds(restaurantId);
+  if (!seedIds) return 0;
+  const snap = await getDocs(menuCol(restaurantId));
+  const cutoff = Date.now() - DEMO_AUTO_CLEANUP_HOURS * 60 * 60 * 1000;
+  let n = 0;
+  for (const d of snap.docs) {
+    if (seedIds.has(d.id)) continue;
+    const created = demoItemCreatedMs(d.data());
+    if (created && created < cutoff) {
+      await deleteDoc(d.ref);
+      n++;
+    }
+  }
+  return n;
+}
+
 export async function getAllRestaurants() {
   const snap = await getDocs(restaurantsCol());
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));

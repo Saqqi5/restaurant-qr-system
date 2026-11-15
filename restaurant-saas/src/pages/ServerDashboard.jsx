@@ -5,6 +5,7 @@ import {
   subscribeToRestaurantPayments
 , getRestaurant } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
+import { isExpiredDemoItem } from "../config/db";
 import { getDemoHiddenDishes } from "../utils/session";
 import AdminLayout from "../components/admin/AdminLayout";
 
@@ -89,6 +90,8 @@ export default function ServerDashboard() {
     // On a demo restaurant, dishes hidden in THIS browser (localStorage, 24h)
     // are hidden here too — another browser still sees them.
     && !(isDemo && getDemoHiddenDishes(restaurantId).has(i.id))
+    // Visitor-added demo dishes older than 24h never show (website rule).
+    && !(isDemo && isExpiredDemoItem(restaurantId, i))
   );
   const categories = [...new Set(filteredMenu.map((i) => i.category))];
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);

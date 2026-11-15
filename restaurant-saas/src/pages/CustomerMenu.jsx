@@ -4,7 +4,7 @@ import { useTenant } from "../contexts/TenantContext";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, createOrder, subscribeToTableOrders,
-  createPayment, subscribeToPayment, calculateBill
+  createPayment, subscribeToPayment, calculateBill, isExpiredDemoItem
 } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import { downscaleImage } from "../utils/image";
@@ -104,7 +104,7 @@ export default function CustomerMenu() {
     // restaurant, dishes hidden in THIS browser (localStorage, 24h) are
     // hidden here too — another browser still sees them.
     const isDemo = restaurant?.is_demo === true;
-    const unsub = subscribeToMenu(restaurantId, (items) => setMenuItems(items.filter((i) => !i.deleted && !(isDemo && getDemoHiddenDishes(restaurantId).has(i.id)))));
+    const unsub = subscribeToMenu(restaurantId, (items) => setMenuItems(items.filter((i) => !i.deleted && !(isDemo && getDemoHiddenDishes(restaurantId).has(i.id)) && !(isDemo && isExpiredDemoItem(restaurantId, i)))));
     return unsub;
   }, [restaurantId, restaurant?.is_demo]);
 
