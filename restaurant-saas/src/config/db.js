@@ -52,6 +52,8 @@ export const paymentsCol = () => collection(db, "payments");
 export const paymentDoc = (paymentId) => doc(db, "payments", paymentId);
 export const planPaymentsCol = () => collection(db, "plan_payments");
 export const planPaymentDoc = (paymentId) => doc(db, "plan_payments", paymentId);
+export const signupRequestsCol = () => collection(db, "signup_requests");
+export const signupRequestDoc = (requestId) => doc(db, "signup_requests", requestId);
 export const domainMappingsCol = () => collection(db, "domain_mappings");
 
 // ── Restaurant Operations ──────────────────────────────────────────────────
@@ -449,6 +451,42 @@ export async function rejectPlanPayment(payment) {
     status: "rejected",
     verifiedAt: serverTimestamp(),
     verifiedBy: "super_admin",
+  });
+}
+
+// ── Signup Requests (Get Started page) ───────────────────────────────────
+// A prospect buys a plan from the public /get-started page (no login).
+// The request is stored for the super admin, who creates the restaurant
+// from it (see SuperAdminDashboard). Status: "new" | "created" | "dismissed".
+export async function createSignupRequest(data) {
+  const ref = doc(signupRequestsCol());
+  const request = {
+    id: ref.id,
+    plan: data.plan,
+    amount: data.amount,
+    restaurantName: data.restaurantName,
+    ownerName: data.ownerName,
+    whatsapp: data.whatsapp,
+    city: data.city,
+    cuisine: data.cuisine || "",
+    tables: data.tables,
+    notes: data.notes || "",
+    status: "new",
+    createdAt: serverTimestamp(),
+  };
+  await setDoc(ref, request);
+  return request;
+}
+
+export async function updateSignupRequest(requestId, data) {
+  await updateDoc(signupRequestDoc(requestId), { ...data, updatedAt: serverTimestamp() });
+}
+
+export function subscribeToSignupRequests(callback) {
+  return onSnapshot(signupRequestsCol(), (snap) => {
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    items.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+    callback(items);
   });
 }
 

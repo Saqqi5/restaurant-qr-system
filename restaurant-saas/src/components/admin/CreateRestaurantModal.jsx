@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { PLANS, getPlanLimit, normalizePlan } from "../../config/plans";
 
-export default function CreateRestaurantModal({ onClose, onCreate }) {
+export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
   const [form, setForm] = useState({
     name: "", table_count: 10, logo_url: "", plan: "basic",
-    theme: { primary: "#20C997", accent: "#17A884" }
+    theme: { primary: "#20C997", accent: "#17A884" },
+    ...(initial || {}),
   });
   const createLimit = getPlanLimit(normalizePlan(form.plan), null);
   const [loading, setLoading] = useState(false);

@@ -3,7 +3,8 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
   getRestaurantUsers, mapDomain,
-  subscribeToPlanPayments, verifyPlanPayment, rejectPlanPayment
+  subscribeToPlanPayments, verifyPlanPayment, rejectPlanPayment,
+  subscribeToSignupRequests, updateSignupRequest
 } from "../config/db";
 import { PLANS, getPlanLimit, getPlanLabel, normalizePlan } from "../config/plans";
 import { buildQrUrl } from "../config/tenantResolver";
@@ -26,6 +27,9 @@ export default function SuperAdminDashboard() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [planPayments, setPlanPayments] = useState([]);
   const [planActionId, setPlanActionId] = useState(null);
+  const [signupRequests, setSignupRequests] = useState([]);
+  const [signupActionId, setSignupActionId] = useState(null);
+  const [createFromSignup, setCreateFromSignup] = useState(null); // request being turned into a restaurant
   const [staffNotice, setStaffNotice] = useState(null); // { restaurantName, results } after a create
 
   useEffect(() => {
@@ -36,6 +40,7 @@ export default function SuperAdminDashboard() {
   }, []);
 
   useEffect(() => subscribeToPlanPayments(setPlanPayments), []);
+  useEffect(() => subscribeToSignupRequests(setSignupRequests), []);
 
   // Verify a plan payment: the plan activates for 30 days (see db.js).
   async function handleVerifyPlanPayment(payment) {
@@ -64,10 +69,33 @@ export default function SuperAdminDashboard() {
     }
   }
 
+  // Turn a Get Started signup request into a restaurant: opens the create
+  // modal prefilled with the request's name, plan and table count.
+  function handleCreateFromSignup(request) {
+    setCreateFromSignup(request);
+    setShowCreate(true);
+  }
+
+  async function handleDismissSignup(request) {
+    if (signupActionId) return;
+    setSignupActionId(request.id);
+    try {
+      await updateSignupRequest(request.id, { status: "dismissed" });
+    } finally {
+      setSignupActionId(null);
+    }
+  }
+
   async function handleCreateRestaurant(formData) {
     const newRestaurant = await createRestaurant(formData);
     setRestaurants((prev) => [newRestaurant, ...prev]);
     setShowCreate(false);
+    // Created from a Get Started signup request: mark it done so it
+    // leaves the pending list.
+    if (createFromSignup) {
+      await updateSignupRequest(createFromSignup.id, { status: "created", restaurantId: newRestaurant.id });
+      setCreateFromSignup(null);
+    }
     // Auto-create the 4 default staff logins (admin / kitchen / cashier /
     // waiter) exactly like the demo restaurants. One failure never blocks
     // the others — the notice lists what was created and what failed.
@@ -161,6 +189,59 @@ export default function SuperAdminDashboard() {
         </button>
       </div>
 
+      {/* ── New signup requests (Get Started page) ── */}
+      {(() => {
+        const pending = signupRequests.filter((r) => r.status === "new");
+        const done = signupRequests.filter((r) => r.status !== "new").slice(0, 5);
+        if (signupRequests.length === 0) return null;
+        return (
+          <div className="settings-section" style={{ marginBottom: 24, borderColor: "var(--color-primary)" }}>
+            <h2 className="settings-section-title">🆕 New Signup Requests</h2>
+            {pending.length === 0 && (
+              <p className="form-hint">No pending signup requests. {done.length > 0 && "Recent ones are below."}</p>
+            )}
+            {pending.map((r) => (
+              <div key={r.id} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 16, marginBottom: 14, background: "var(--color-surface2)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                  <strong>{r.restaurantName}</strong>
+                  <span>
+                    {getPlanLabel(r.plan)} plan — <strong>Rs. {r.amount?.toLocaleString?.() || r.amount}/month</strong>
+                  </span>
+                </div>
+                <div className="form-hint" style={{ marginBottom: 10 }}>
+                  {r.ownerName} · <a href={`https://wa.me/${r.whatsapp}`} target="_blank" rel="noreferrer">{r.whatsapp}</a> · {r.city} · {r.cuisine} · {r.tables} tables
+                  {r.notes ? ` · “${r.notes}”` : ""}
+                </div>
+                <div className="form-hint" style={{ marginBottom: 10 }}>
+                  {r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : ""}
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button className="btn-primary" onClick={() => handleCreateFromSignup(r)} disabled={signupActionId === r.id}>
+                    🏪 Create Restaurant
+                  </button>
+                  <button className="btn-secondary" onClick={() => handleDismissSignup(r)} disabled={signupActionId === r.id}>
+                    ❌ Dismiss
+                  </button>
+                </div>
+                <p className="form-hint" style={{ marginTop: 8 }}>
+                  Creating the restaurant starts the {r.plan === "basic" ? "7-day free trial" : "paid 30-day period"} and creates the 4 staff logins automatically.
+                </p>
+              </div>
+            ))}
+            {done.length > 0 && (
+              <>
+                <h3 style={{ fontSize: 14, margin: "16px 0 8px" }}>Recent</h3>
+                {done.map((r) => (
+                  <div key={r.id} className="form-hint" style={{ padding: "6px 0", borderBottom: "1px solid var(--color-border)" }}>
+                    {r.status === "created" ? "✅" : "❌"} {r.restaurantName} — {getPlanLabel(r.plan)} plan, Rs. {r.amount?.toLocaleString?.() || r.amount}/month
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       {/* ── Plan payment requests (owners buying/upgrading a plan) ── */}
       {(() => {
         const pending = planPayments.filter((p) => p.status === "pending");
@@ -240,8 +321,16 @@ export default function SuperAdminDashboard() {
 
       {showCreate && (
         <CreateRestaurantModal
-          onClose={() => setShowCreate(false)}
+          onClose={() => { setShowCreate(false); setCreateFromSignup(null); }}
           onCreate={handleCreateRestaurant}
+          initial={createFromSignup ? {
+            name: createFromSignup.restaurantName,
+            plan: createFromSignup.plan,
+            table_count: Math.min(
+              createFromSignup.tables || 10,
+              getPlanLimit(normalizePlan(createFromSignup.plan), null) || 10
+            ),
+          } : undefined}
         />
       )}
 

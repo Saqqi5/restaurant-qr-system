@@ -259,6 +259,42 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // ── Signup Requests (Get Started page) ──────────────────────────
+    // Prospects submit these without logging in. Anyone can create one
+    // (validated payload below); only the super admin can read or change
+    // them — the customer never sees other requests.
+    match /signup_requests/{requestId} {
+      allow create: if request.resource.data.keys().hasAll([
+          'id', 'plan', 'amount', 'restaurantName', 'ownerName',
+          'whatsapp', 'city', 'cuisine', 'tables', 'notes',
+          'status', 'createdAt'
+        ])
+        && request.resource.data.plan in ['basic', 'standard', 'premium']
+        && request.resource.data.status == 'new'
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && request.resource.data.restaurantName is string
+        && request.resource.data.restaurantName.size() >= 2
+        && request.resource.data.restaurantName.size() <= 80
+        && request.resource.data.ownerName is string
+        && request.resource.data.ownerName.size() >= 2
+        && request.resource.data.ownerName.size() <= 80
+        && request.resource.data.whatsapp is string
+        && request.resource.data.whatsapp.size() >= 10
+        && request.resource.data.whatsapp.size() <= 15
+        && request.resource.data.city is string
+        && request.resource.data.city.size() >= 2
+        && request.resource.data.city.size() <= 60
+        && request.resource.data.cuisine is string
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 300
+        && request.resource.data.tables is int
+        && request.resource.data.tables >= 1
+        && request.resource.data.tables <= 50;
+
+      allow read, update, delete: if isSuperAdmin();
+    }
+
     // ── Domain Mappings ───────────────────────────────────────
     match /domain_mappings/{domain} {
       allow read: if true; // needed for domain resolution

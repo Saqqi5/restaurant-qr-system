@@ -5,7 +5,9 @@ import { getDemoRestaurants, menuCol, sortMenuItems } from "../config/db";
 import { formatPrice } from "../utils/currency";
 
 // Sales go through Telegram — restaurants contact Saqlain directly,
-// and the super admin creates the restaurant (incl. the 30-day trial).
+// and the super admin creates the restaurant (incl. the 7-day trial).
+// New prospects start on the /get-started page instead: they pick a plan
+// and leave their details, and the request lands in `signup_requests`.
 const TELEGRAM = "https://t.me/Saqlyndigital";
 
 export default function LandingPage() {
@@ -76,14 +78,9 @@ export default function LandingPage() {
             No apps, no queues — just scan and enjoy.
           </p>
           <div className="hero-ctas">
-            <a
-              href={`${TELEGRAM}?text=${encodeURIComponent("Hi! I want SAQLYN for my restaurant.")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-hero-primary"
-            >
+            <Link to="/get-started" className="btn-hero-primary">
               Get Started →
-            </a>
+            </Link>
             <a href={`/r/demo_restaurant_001?table=1`} className="btn-hero-secondary">Try Demo</a>
           </div>
           <div className="hero-trust">
@@ -200,14 +197,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <a
-                href={`${TELEGRAM}?text=${encodeURIComponent(plan.ctaText)}`}
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                to={`/get-started?plan=${plan.key}`}
                 className={`btn-pricing ${plan.featured ? "filled" : "outline"}`}
               >
                 {plan.cta}
-              </a>
+              </Link>
             </div>
           ))}
         </div>
@@ -281,13 +276,13 @@ const FEATURES = [
 
 const PLANS = [
   {
+    key: "basic",
     name: "Basic",
     price: "5,000",
     currency: "Rs.",
     desc: "Perfect for small restaurants getting started with digital ordering.",
     featured: false,
-    cta: "Start 30-day free trial",
-    ctaText: "Hi! I want to start the 30-day free trial (Basic plan) for my restaurant.",
+    cta: "Start 7-day free trial",
     features: [
       "10 tables",
       "4 staff logins",
@@ -298,13 +293,13 @@ const PLANS = [
     ],
   },
   {
+    key: "standard",
     name: "Standard",
     price: "8,000",
     currency: "Rs.",
     desc: "For growing restaurants that need more tables, more staff and the server dashboard.",
     featured: true,
     cta: "Get Standard",
-    ctaText: "Hi! I want the Standard plan (Rs. 8,000/month) for my restaurant.",
     features: [
       "20 tables",
       "10 staff logins",
@@ -314,13 +309,13 @@ const PLANS = [
     ],
   },
   {
+    key: "premium",
     name: "Premium",
     price: "12,000",
     currency: "Rs.",
     desc: "For busy restaurants — 50 tables, 30 staff logins, with priority support.",
     featured: false,
     cta: "Get Premium",
-    ctaText: "Hi! I want the Premium plan (Rs. 12,000/month) for my restaurant.",
     features: [
       "50 tables",
       "30 staff logins",

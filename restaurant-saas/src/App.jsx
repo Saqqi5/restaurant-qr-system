@@ -12,6 +12,7 @@ import { TenantProvider } from "./contexts/TenantContext";
 import { resolveTenant } from "./config/tenantResolver";
 
 import LandingPage from "./pages/LandingPage";
+import GetStarted from "./pages/GetStarted";
 import CustomerMenu from "./pages/CustomerMenu";
 import LoginPage from "./pages/LoginPage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
@@ -52,6 +53,7 @@ export default function App() {
         <Routes>
           {/* ── Public ─────────────────────────────────────── */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/get-started" element={<GetStarted />} />
 
           {/* ── Customer Menu (SaaS path) ──────────────────── */}
           <Route path="/r/:restaurantId" element={
