@@ -35,7 +35,8 @@ export default function GeneralAdminDashboard() {
   const [restaurant, setRestaurant] = useState(null);
   // Demo lead gate: a visitor adding their own dish to a DEMO restaurant
   // first leaves their contact details (saved as a demo lead for the
-  // super admin). Asked once per browser (localStorage flag).
+  // super admin). Asked EVERY time a dish is added, so each dish carries
+  // its own fresh lead.
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [leadForm, setLeadForm] = useState({ name: "", email: "", whatsapp: "" });
   const [leadErrors, setLeadErrors] = useState({});
@@ -83,9 +84,10 @@ export default function GeneralAdminDashboard() {
     }
     setMenuLimitNotice("");
     // Demo restaurants are public playgrounds: before a visitor adds
-    // their OWN dish, capture them as a sales lead (once per browser).
-    // Real customer restaurants never see this gate.
-    if (restaurant?.is_demo && localStorage.getItem("saqlyn_demo_lead_given") !== "1") {
+    // their OWN dish, capture them as a sales lead — every time, so each
+    // dish carries its own fresh lead. Real customer restaurants never
+    // see this gate.
+    if (restaurant?.is_demo) {
       setLeadSubmitError("");
       setShowLeadModal(true);
       return;
@@ -117,7 +119,7 @@ export default function GeneralAdminDashboard() {
         restaurantId,
         restaurantName: restaurant?.name || "",
       });
-      localStorage.setItem("saqlyn_demo_lead_given", "1");
+      setLeadForm({ name: "", email: "", whatsapp: "" });
       setShowLeadModal(false);
       setShowItemModal(true);
     } catch {
