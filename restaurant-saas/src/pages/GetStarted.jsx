@@ -33,6 +33,7 @@ function planFeatures(key) {
     menu === null ? "Unlimited menu items" : `${menu} menu items`,
     "QR code ordering",
     "Kitchen & cash dashboards",
+    PLANS[key].support,
   ];
 }
 

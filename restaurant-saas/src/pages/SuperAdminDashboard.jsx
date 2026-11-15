@@ -4,7 +4,8 @@ import {
   getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
   getRestaurantUsers, mapDomain,
   subscribeToPlanPayments, verifyPlanPayment, rejectPlanPayment,
-  subscribeToSignupRequests, updateSignupRequest
+  subscribeToSignupRequests, updateSignupRequest,
+  subscribeToDemoLeads
 } from "../config/db";
 import { PLANS, getPlanLimit, getPlanLabel, normalizePlan } from "../config/plans";
 import { buildQrUrl } from "../config/tenantResolver";
@@ -29,6 +30,7 @@ export default function SuperAdminDashboard() {
   const [planActionId, setPlanActionId] = useState(null);
   const [signupRequests, setSignupRequests] = useState([]);
   const [signupActionId, setSignupActionId] = useState(null);
+  const [demoLeads, setDemoLeads] = useState([]);
   const [createFromSignup, setCreateFromSignup] = useState(null); // request being turned into a restaurant
   const [staffNotice, setStaffNotice] = useState(null); // { restaurantName, results } after a create
 
@@ -41,6 +43,7 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => subscribeToPlanPayments(setPlanPayments), []);
   useEffect(() => subscribeToSignupRequests(setSignupRequests), []);
+  useEffect(() => subscribeToDemoLeads(setDemoLeads), []);
 
   // Verify a plan payment: the plan activates for 30 days (see db.js).
   async function handleVerifyPlanPayment(payment) {
@@ -241,6 +244,31 @@ export default function SuperAdminDashboard() {
           </div>
         );
       })()}
+
+      {/* ── Demo leads (visitors who added their own dish in Try Demo) ── */}
+      {demoLeads.length > 0 && (
+        <div className="settings-section" style={{ marginBottom: 24, borderColor: "var(--color-primary)" }}>
+          <h2 className="settings-section-title">🎯 Demo Leads ({demoLeads.length})</h2>
+          <p className="form-hint" style={{ marginBottom: 12 }}>
+            Visitors who added their own menu item in the Try Demo and left their details. Contact them on WhatsApp about buying SAQLYN.
+          </p>
+          {demoLeads.map((l) => (
+            <div key={l.id} style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 14, marginBottom: 10, background: "var(--color-surface2)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 6 }}>
+                <strong>{l.name}</strong>
+                <span className="form-hint">{l.restaurantName || l.restaurantId}</span>
+              </div>
+              <div className="form-hint">
+                <a href={`mailto:${l.email}`}>{l.email}</a>
+                {" · "}
+                <a href={`https://wa.me/${l.whatsapp}`} target="_blank" rel="noreferrer">💬 {l.whatsapp}</a>
+                {" · "}
+                {l.createdAt?.toDate ? l.createdAt.toDate().toLocaleString() : ""}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Plan payment requests (owners buying/upgrading a plan) ── */}
       {(() => {

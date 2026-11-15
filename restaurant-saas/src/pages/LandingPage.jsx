@@ -291,6 +291,7 @@ const PLANS = [
       "Kitchen & cash dashboards",
       "Tax & discount billing",
       "Payment proof uploads",
+      "WhatsApp support",
     ],
   },
   {
@@ -307,6 +308,7 @@ const PLANS = [
       "Everything in Basic",
       "Server dashboard",
       "Advanced analytics",
+      "Priority WhatsApp support",
     ],
   },
   {
@@ -321,7 +323,7 @@ const PLANS = [
       "50 tables",
       "30 staff logins",
       "Everything in Standard",
-      "Priority support",
+      "Priority support + phone calls",
     ],
   },
 ];

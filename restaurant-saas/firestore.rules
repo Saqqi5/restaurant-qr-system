@@ -295,6 +295,32 @@ service cloud.firestore {
       allow read, update, delete: if isSuperAdmin();
     }
 
+    // ── Demo Leads (Try Demo page) ──────────────────────────────────
+    // A visitor who adds their own menu item to a demo restaurant
+    // leaves their contact details first. Anyone can create one
+    // (validated payload below); only the super admin can read them.
+    match /demo_leads/{leadId} {
+      allow create: if request.resource.data.keys().hasAll([
+          'id', 'name', 'email', 'whatsapp', 'restaurantId',
+          'restaurantName', 'source', 'status', 'createdAt'
+        ])
+        && request.resource.data.status == 'new'
+        && request.resource.data.source == 'demo-menu-add'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.email is string
+        && request.resource.data.email.matches('.*@.*\\..*')
+        && request.resource.data.email.size() <= 120
+        && request.resource.data.whatsapp is string
+        && request.resource.data.whatsapp.size() >= 10
+        && request.resource.data.whatsapp.size() <= 15
+        && request.resource.data.restaurantId is string
+        && request.resource.data.restaurantName is string;
+
+      allow read, update, delete: if isSuperAdmin();
+    }
+
     // ── Domain Mappings ───────────────────────────────────────
     match /domain_mappings/{domain} {
       allow read: if true; // needed for domain resolution

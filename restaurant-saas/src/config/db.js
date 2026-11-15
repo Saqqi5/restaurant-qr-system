@@ -55,6 +55,8 @@ export const planPaymentsCol = () => collection(db, "plan_payments");
 export const planPaymentDoc = (paymentId) => doc(db, "plan_payments", paymentId);
 export const signupRequestsCol = () => collection(db, "signup_requests");
 export const signupRequestDoc = (requestId) => doc(db, "signup_requests", requestId);
+export const demoLeadsCol = () => collection(db, "demo_leads");
+export const demoLeadDoc = (leadId) => doc(db, "demo_leads", leadId);
 export const domainMappingsCol = () => collection(db, "domain_mappings");
 
 // ── Restaurant Operations ──────────────────────────────────────────────────
@@ -501,6 +503,36 @@ export async function updateSignupRequest(requestId, data) {
 
 export function subscribeToSignupRequests(callback) {
   return onSnapshot(signupRequestsCol(), (snap) => {
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    items.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+    callback(items);
+  });
+}
+
+// ── Demo Leads (Try Demo page) ───────────────────────────────────────────
+// A visitor playing with a DEMO restaurant who adds their own menu item
+// first leaves their name, email and WhatsApp — that is a sales lead for
+// the super admin to follow up. Status: "new" only (leads are never
+// edited in the app; the super admin contacts them on WhatsApp).
+export async function createDemoLead(data) {
+  const ref = doc(demoLeadsCol());
+  const lead = {
+    id: ref.id,
+    name: data.name,
+    email: data.email,
+    whatsapp: data.whatsapp,
+    restaurantId: data.restaurantId,
+    restaurantName: data.restaurantName || "",
+    source: "demo-menu-add",
+    status: "new",
+    createdAt: serverTimestamp(),
+  };
+  await setDoc(ref, lead);
+  return lead;
+}
+
+export function subscribeToDemoLeads(callback) {
+  return onSnapshot(demoLeadsCol(), (snap) => {
     const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     items.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
     callback(items);

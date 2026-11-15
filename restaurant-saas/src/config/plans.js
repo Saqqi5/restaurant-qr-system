@@ -8,9 +8,9 @@
 // Prices (PKR/month): Basic 5,000 / Standard 8,000 / Premium 12,000
 // (his 2026-11-14 decision; Premium was my pick).
 export const PLANS = {
-  basic:    { key: "basic",    label: "Basic",    defaultTableLimit: 10,   defaultStaffLimit: 4,  defaultMenuItemLimit: 20,   defaultPrice: 5000 },
-  standard: { key: "standard", label: "Standard", defaultTableLimit: 20,   defaultStaffLimit: 10, defaultMenuItemLimit: 50,   defaultPrice: 8000 },
-  premium:  { key: "premium",  label: "Premium",  defaultTableLimit: 50,   defaultStaffLimit: 30, defaultMenuItemLimit: null, defaultPrice: 12000 },
+  basic:    { key: "basic",    label: "Basic",    defaultTableLimit: 10,   defaultStaffLimit: 4,  defaultMenuItemLimit: 20,   defaultPrice: 5000, support: "WhatsApp support" },
+  standard: { key: "standard", label: "Standard", defaultTableLimit: 20,   defaultStaffLimit: 10, defaultMenuItemLimit: 50,   defaultPrice: 8000, support: "Priority WhatsApp support" },
+  premium:  { key: "premium",  label: "Premium",  defaultTableLimit: 50,   defaultStaffLimit: 30, defaultMenuItemLimit: null, defaultPrice: 12000, support: "Priority support + phone calls" },
 };
 
 export const DEFAULT_PLAN_LIMITS = { basic: 10, standard: 20, premium: 50 };

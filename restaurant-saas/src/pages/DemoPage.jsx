@@ -109,8 +109,10 @@ export default function DemoPage() {
             ))}
             <p className="form-hint">
               Tip: pay at the counter — the cashier marks the order paid, so no
-              screenshot is needed for the demo. We reset the demo regularly,
-              so don&apos;t worry about breaking anything.
+              screenshot is needed for the demo. Want to add your own dishes?
+              Log in as Admin — we&apos;ll ask for your email &amp; WhatsApp first
+              so we can follow up. We reset the demo regularly, so don&apos;t
+              worry about breaking anything.
             </p>
           </div>
         </div>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
-  subscribeToMenu, subscribeToOrders,
-  createMenuItem, updateMenuItem, deleteMenuItem,
+  subscribeToMenu, subscribeToOrders, subscribeToRestaurant,
+  createMenuItem, updateMenuItem, deleteMenuItem, createDemoLead,
   getRestaurantUsers, subscribeToPlatformSettings,
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
@@ -32,6 +32,15 @@ export default function GeneralAdminDashboard() {
   const [editingItem, setEditingItem] = useState(null);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [restaurant, setRestaurant] = useState(null);
+  // Demo lead gate: a visitor adding their own dish to a DEMO restaurant
+  // first leaves their contact details (saved as a demo lead for the
+  // super admin). Asked once per browser (localStorage flag).
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [leadForm, setLeadForm] = useState({ name: "", email: "", whatsapp: "" });
+  const [leadErrors, setLeadErrors] = useState({});
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadSubmitError, setLeadSubmitError] = useState("");
   const [verifyingId, setVerifyingId] = useState(null);
   const [platformLimits, setPlatformLimits] = useState(null);
   const [menuLimitNotice, setMenuLimitNotice] = useState("");
@@ -48,8 +57,9 @@ export default function GeneralAdminDashboard() {
       setOrders(data);
     });
     const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
+    const unsubRestaurant = subscribeToRestaurant(restaurantId, setRestaurant);
     getRestaurantUsers(restaurantId).then(setStaff);
-    return () => { unsubMenu(); unsubOrders(); unsubPayments(); };
+    return () => { unsubMenu(); unsubOrders(); unsubPayments(); unsubRestaurant(); };
   }, [restaurantId]);
 
   async function handleVerifyPayment(payment) {
@@ -72,8 +82,55 @@ export default function GeneralAdminDashboard() {
       return;
     }
     setMenuLimitNotice("");
+    // Demo restaurants are public playgrounds: before a visitor adds
+    // their OWN dish, capture them as a sales lead (once per browser).
+    // Real customer restaurants never see this gate.
+    if (restaurant?.is_demo && localStorage.getItem("saqlyn_demo_lead_given") !== "1") {
+      setLeadSubmitError("");
+      setShowLeadModal(true);
+      return;
+    }
     setShowItemModal(true);
   }
+
+  function handleLeadField(key, value) {
+    setLeadForm((f) => ({ ...f, [key]: value }));
+    setLeadErrors((e) => ({ ...e, [key]: undefined }));
+  }
+
+  async function handleLeadSubmit(e) {
+    e.preventDefault();
+    const errs = {};
+    if (leadForm.name.trim().length < 2) errs.name = "Your name is required.";
+    if (!/^\S+@\S+\.\S+$/.test(leadForm.email.trim())) errs.email = "Enter a valid email address.";
+    const digits = leadForm.whatsapp.replace(/\D/g, "");
+    if (digits.length < 10 || digits.length > 15) errs.whatsapp = "Enter a valid WhatsApp number (10–15 digits).";
+    setLeadErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    setLeadSubmitting(true);
+    setLeadSubmitError("");
+    try {
+      await createDemoLead({
+        name: leadForm.name.trim(),
+        email: leadForm.email.trim(),
+        whatsapp: digits,
+        restaurantId,
+        restaurantName: restaurant?.name || "",
+      });
+      localStorage.setItem("saqlyn_demo_lead_given", "1");
+      setShowLeadModal(false);
+      setShowItemModal(true);
+    } catch {
+      // Rules not published yet, or offline: don't strand the visitor —
+      // offer the Telegram fallback (details prefilled) and let them
+      // continue to the add-item form anyway.
+      setLeadSubmitError("We could not save your details just now. You can send them on Telegram instead — or continue anyway.");
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }
+
+  const leadTelegramText = `Hi! I tried the SAQLYN demo and want to add my own menu items.\nName: ${leadForm.name.trim() || "-"}\nEmail: ${leadForm.email.trim() || "-"}\nWhatsApp: ${leadForm.whatsapp.trim() || "-"}\nDemo restaurant: ${restaurant?.name || "-"}`;
 
   function formatDate(ts) {
     if (!ts?.toDate) return "—";
@@ -357,6 +414,80 @@ export default function GeneralAdminDashboard() {
           <button className="btn-primary" onClick={() => setShowQrModal(true)}>
             Open QR Generator
           </button>
+        </div>
+      )}
+
+      {showLeadModal && (
+        <div className="modal-overlay" onClick={() => setShowLeadModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add your own dish 🍽️</h3>
+              <button className="modal-close" onClick={() => setShowLeadModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="form-hint" style={{ marginBottom: 16 }}>
+                This is the public demo — before you add your own menu item, tell us
+                where to reach you. If you want SAQLYN for your own restaurant, we will follow up.
+              </p>
+              <form onSubmit={handleLeadSubmit}>
+                <div className="form-group">
+                  <label>Your name *</label>
+                  <input
+                    value={leadForm.name}
+                    onChange={(e) => handleLeadField("name", e.target.value)}
+                    placeholder="Your full name"
+                  />
+                  {leadErrors.name && <p className="gs-error">{leadErrors.name}</p>}
+                </div>
+                <div className="form-group">
+                  <label>Email *</label>
+                  <input
+                    type="email"
+                    value={leadForm.email}
+                    onChange={(e) => handleLeadField("email", e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                  {leadErrors.email && <p className="gs-error">{leadErrors.email}</p>}
+                </div>
+                <div className="form-group">
+                  <label>WhatsApp number *</label>
+                  <input
+                    value={leadForm.whatsapp}
+                    onChange={(e) => handleLeadField("whatsapp", e.target.value)}
+                    placeholder="03XX-XXXXXXX"
+                    inputMode="tel"
+                  />
+                  {leadErrors.whatsapp && <p className="gs-error">{leadErrors.whatsapp}</p>}
+                </div>
+                {leadSubmitError && <p className="gs-error">{leadSubmitError}</p>}
+                {leadSubmitError && (
+                  <div className="gs-actions" style={{ justifyContent: "flex-start", marginBottom: 12 }}>
+                    <a
+                      className="btn-primary"
+                      href={`https://t.me/Saqlyndigital?text=${encodeURIComponent(leadTelegramText)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      💬 Send details on Telegram →
+                    </a>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => { setShowLeadModal(false); setShowItemModal(true); }}
+                    >
+                      Continue anyway
+                    </button>
+                  </div>
+                )}
+                <div className="gs-actions" style={{ justifyContent: "flex-end" }}>
+                  <button type="button" className="btn-secondary" onClick={() => setShowLeadModal(false)}>Cancel</button>
+                  <button type="submit" className="btn-primary" disabled={leadSubmitting}>
+                    {leadSubmitting ? "Saving…" : "Save & add item →"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 
