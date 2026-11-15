@@ -43,7 +43,7 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
         </button>
         <div className="topbar-brand">
           <div className="topbar-brand-name">SAQL<span>YN</span></div>
-          <div style={{ marginLeft: 12 }}>
+          <div className="topbar-brand-text" style={{ marginLeft: 12 }}>
             <div className="brand-title">{restaurantName || title}</div>
             {subtitle && <div className="brand-subtitle">{restaurantName ? `${title} • ${subtitle}` : subtitle}</div>}
             {!subtitle && restaurantName && <div className="brand-subtitle">{title}</div>}
@@ -69,10 +69,10 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
             <div className="user-name">{userProfile?.name}</div>
           </div>
           <button className="btn-logout" onClick={() => setShowPasswordModal(true)} title="Change password">
-            🔒 Password
+            🔒 <span className="btn-label">Password</span>
           </button>
           <button className="btn-logout" onClick={onLogout}>
-            Logout
+            <span className="btn-logout-icon">⎋</span><span className="btn-label">Logout</span>
           </button>
         </div>
       </header>

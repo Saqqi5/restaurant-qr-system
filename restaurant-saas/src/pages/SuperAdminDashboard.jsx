@@ -14,6 +14,7 @@ import RestaurantCard from "../components/admin/RestaurantCard";
 import CreateRestaurantModal from "../components/admin/CreateRestaurantModal";
 import StaffModal from "../components/admin/StaffModal";
 import QRModal from "../components/admin/QRModal";
+import ConfirmModal from "../components/admin/ConfirmModal";
 import StatsBar from "../components/admin/StatsBar";
 
 export default function SuperAdminDashboard() {
@@ -28,6 +29,7 @@ export default function SuperAdminDashboard() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [planPayments, setPlanPayments] = useState([]);
   const [planActionId, setPlanActionId] = useState(null);
+  const [pendingReject, setPendingReject] = useState(null); // plan payment awaiting reject confirm
   const [signupRequests, setSignupRequests] = useState([]);
   const [signupActionId, setSignupActionId] = useState(null);
   const [demoLeads, setDemoLeads] = useState([]);
@@ -63,7 +65,14 @@ export default function SuperAdminDashboard() {
 
   async function handleRejectPlanPayment(payment) {
     if (planActionId) return;
-    if (!confirm(`Reject the ${getPlanLabel(payment.plan)} plan payment from ${payment.restaurantName}? The owner can submit a new one.`)) return;
+    // Ask in the styled in-app dialog (not the browser's plain popup).
+    setPendingReject(payment);
+  }
+
+  async function confirmRejectPlanPayment() {
+    const payment = pendingReject;
+    setPendingReject(null);
+    if (!payment) return;
     setPlanActionId(payment.id);
     try {
       await rejectPlanPayment(payment);
@@ -414,6 +423,17 @@ export default function SuperAdminDashboard() {
           restaurant={selectedRestaurant}
           onClose={() => setModalType(null)}
           onSave={(domain) => handleMapDomain(selectedRestaurant.id, domain)}
+        />
+      )}
+
+      {pendingReject && (
+        <ConfirmModal
+          title="Reject plan payment?"
+          message={`Reject the ${getPlanLabel(pendingReject.plan)} plan payment from ${pendingReject.restaurantName}? The owner can submit a new one.`}
+          confirmLabel="Reject"
+          danger
+          onConfirm={confirmRejectPlanPayment}
+          onCancel={() => setPendingReject(null)}
         />
       )}
     </AdminLayout>

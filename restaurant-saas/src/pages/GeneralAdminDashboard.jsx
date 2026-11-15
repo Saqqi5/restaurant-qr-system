@@ -17,6 +17,7 @@ import OrdersTable from "../components/admin/OrdersTable";
 import StatsBar from "../components/admin/StatsBar";
 import StaffModal from "../components/admin/StaffModal";
 import QRModal from "../components/admin/QRModal";
+import ConfirmModal from "../components/admin/ConfirmModal";
 import AnalyticsPanel from "../components/admin/AnalyticsPanel";
 
 const TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
@@ -34,6 +35,7 @@ export default function GeneralAdminDashboard() {
   const [editingItem, setEditingItem] = useState(null);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState(null); // dish awaiting hide confirm
   const [restaurant, setRestaurant] = useState(null);
   // Bump to re-render after a per-browser demo hide/restore (localStorage
   // changes don't re-render on their own).
@@ -170,7 +172,14 @@ export default function GeneralAdminDashboard() {
   // another visitor elsewhere still sees the dish, and it returns on its
   // own after 24 hours. Nothing is written to the backend for demos.
   async function handleDeleteItem(itemId) {
-    if (!confirm("Hide this dish? It will disappear from the customer menu, but it stays saved — you can restore it anytime from Hidden dishes below.")) return;
+    // Ask in the styled in-app dialog (not the browser's plain popup).
+    setPendingDeleteItem(itemId);
+  }
+
+  async function confirmDeleteItem() {
+    const itemId = pendingDeleteItem;
+    setPendingDeleteItem(null);
+    if (!itemId) return;
     if (restaurant?.is_demo) {
       hideDemoDish(restaurantId, itemId);
       setDemoHiddenTick((t) => t + 1);
@@ -583,6 +592,16 @@ export default function GeneralAdminDashboard() {
         <QRModal
           restaurant={{ id: restaurantId }}
           onClose={() => setShowQrModal(false)}
+        />
+      )}
+
+      {pendingDeleteItem && (
+        <ConfirmModal
+          title="Hide this dish?"
+          message="It will disappear from the customer menu, but it stays saved — you can restore it anytime from Hidden dishes below."
+          confirmLabel="Hide dish"
+          onConfirm={confirmDeleteItem}
+          onCancel={() => setPendingDeleteItem(null)}
         />
       )}
     </AdminLayout>

@@ -3,6 +3,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getRestaurantUsers, subscribeToPlatformSettings, deleteUser } from "../../config/db";
 import { getStaffLimit, getPlanLabel, normalizePlan } from "../../config/plans";
 import { getDemoRemovedStaff, removeDemoStaff, restoreDemoStaff } from "../../utils/session";
+import ConfirmModal from "./ConfirmModal";
 
 const STAFF_ROLES = [
   { value: "general_admin", label: "Admin", icon: "🏪", desc: "Menu management & orders overview" },
@@ -20,6 +21,7 @@ export default function StaffModal({ restaurant, onClose }) {
   const [success, setSuccess] = useState("");
   const [view, setView] = useState("list"); // "list" | "create"
   const [platformLimits, setPlatformLimits] = useState(null);
+  const [pendingRemove, setPendingRemove] = useState(null); // staff member awaiting remove/hide confirm
 
   const plan = normalizePlan(restaurant?.plan);
   const staffLimit = getStaffLimit(plan, platformLimits);
@@ -57,11 +59,15 @@ export default function StaffModal({ restaurant, onClose }) {
     setLoading(false);
   }
 
-  async function handleRemove(member) {
-    const confirmText = restaurant?.is_demo
-      ? `Hide ${member.name} in this browser? They will disappear from this staff list only, and return automatically after 24 hours. Their login keeps working.`
-      : `Remove ${member.name}? Their login will stop working for ${restaurant?.name}.`;
-    if (!window.confirm(confirmText)) return;
+  function handleRemove(member) {
+    // Ask in the styled in-app dialog (not the browser's plain popup).
+    setPendingRemove(member);
+  }
+
+  async function confirmRemove() {
+    const member = pendingRemove;
+    setPendingRemove(null);
+    if (!member) return;
     setError("");
     // On a demo restaurant the removal is per-browser only (localStorage,
     // 24h): another visitor elsewhere still sees them, and they return on
@@ -252,6 +258,18 @@ export default function StaffModal({ restaurant, onClose }) {
           )}
         </div>
       </div>
+      {pendingRemove && (
+        <ConfirmModal
+          title={restaurant?.is_demo ? "Hide staff member?" : "Remove staff member?"}
+          message={restaurant?.is_demo
+            ? `Hide ${pendingRemove.name} in this browser? They will disappear from this staff list only, and return automatically after 24 hours. Their login keeps working.`
+            : `Remove ${pendingRemove.name}? Their login will stop working for ${restaurant?.name}.`}
+          confirmLabel={restaurant?.is_demo ? "Hide in this browser" : "Remove"}
+          danger={!restaurant?.is_demo}
+          onConfirm={confirmRemove}
+          onCancel={() => setPendingRemove(null)}
+        />
+      )}
     </div>
   );
 }

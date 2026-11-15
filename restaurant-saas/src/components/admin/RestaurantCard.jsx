@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getPlanLabel, getExpiryInfo, formatExpiryDate } from "../../config/plans";
 import { continuePlan, startDemo, resetDemoRestaurant } from "../../config/db";
+import ConfirmModal from "./ConfirmModal";
 
 export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain, onDelete }) {
   const [continuing, setContinuing] = useState(false);
@@ -9,6 +10,7 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
   const [demoStarted, setDemoStarted] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // "demo" | "reset"
   const expiry = getExpiryInfo(restaurant);
 
   async function handleContinue() {
@@ -25,9 +27,12 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
   // Lend this restaurant as a 7-day demo. Ask first — it puts an expiry
   // on the restaurant, after which the staff logins block.
   async function handleStartDemo() {
-    if (!window.confirm(
-      `Start a 7-day demo for ${restaurant.name}? The staff logins will stop working after 7 days unless you continue the plan.`
-    )) return;
+    // Ask in the styled in-app dialog (not the browser's plain popup).
+    setConfirmAction("demo");
+  }
+
+  async function confirmStartDemo() {
+    setConfirmAction(null);
     setDemoing(true);
     try {
       await startDemo(restaurant.id);
@@ -42,9 +47,12 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
   // all orders, payment proofs and plan payments go, and the menu is
   // restored to the original seed. Plan, tables and settings are kept.
   async function handleResetDemo() {
-    if (!window.confirm(
-      `Reset the ${restaurant.name} demo? This deletes ALL its orders and payment proofs and restores the original menu. The plan, tables and settings stay as they are.`
-    )) return;
+    // Ask in the styled in-app dialog (not the browser's plain popup).
+    setConfirmAction("reset");
+  }
+
+  async function confirmResetDemo() {
+    setConfirmAction(null);
     setResetting(true);
     try {
       await resetDemoRestaurant(restaurant.id);
@@ -115,6 +123,25 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
           </button>
         )}
       </div>
+      {confirmAction === "demo" && (
+        <ConfirmModal
+          title="Start 7-day demo?"
+          message={`Start a 7-day demo for ${restaurant.name}? The staff logins will stop working after 7 days unless you continue the plan.`}
+          confirmLabel="Start demo"
+          onConfirm={confirmStartDemo}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+      {confirmAction === "reset" && (
+        <ConfirmModal
+          title="Reset demo?"
+          message={`Reset the ${restaurant.name} demo? This deletes ALL its orders and payment proofs and restores the original menu. The plan, tables and settings stay as they are.`}
+          confirmLabel="Reset demo"
+          danger
+          onConfirm={confirmResetDemo}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
     </div>
   );
 }

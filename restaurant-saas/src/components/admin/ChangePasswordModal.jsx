@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 
 // Change password for the signed-in user (any role). Forgot password is
-// NOT self-service by design: only the super admin resets a forgotten
+// NOT self-service by design: only the administrator resets a forgotten
 // password (delete + recreate the staff login).
 export default function ChangePasswordModal({ onClose }) {
   const { changePassword } = useAuth();
@@ -89,7 +89,7 @@ export default function ChangePasswordModal({ onClose }) {
             </button>
           </form>
           <p className="form-hint" style={{ marginTop: 12 }}>
-            Forgot your password? Only the super admin can reset it — contact the administrator.
+            Forgot your password? Only the administrator can reset it — contact the administrator.
           </p>
         </div>
       </div>

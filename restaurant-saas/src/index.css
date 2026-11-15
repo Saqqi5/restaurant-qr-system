@@ -546,6 +546,35 @@ a { color: var(--color-primary); text-decoration: none; }
   border: 1px solid var(--color-border); border-radius: 6px; transition: all var(--transition);
 }
 .btn-logout:hover { color: var(--color-text); border-color: var(--color-text); }
+.btn-logout-icon { display: none; }
+.topbar-brand-text { min-width: 0; }
+
+/* Red confirm button (destructive actions in the styled confirm dialog) */
+.btn-danger {
+  background: var(--color-danger);
+  color: white; border-radius: var(--radius-sm);
+  padding: 10px 20px; font-size: 14px; font-weight: 700;
+  font-family: var(--font);
+  transition: background var(--transition), transform var(--transition);
+}
+.btn-danger:hover { background: #e05252; transform: translateY(-1px); }
+
+/* Styled confirm dialog (replaces the browser's plain popup) */
+.confirm-modal { max-width: 420px; }
+.confirm-message { font-size: 14px; line-height: 1.6; color: var(--color-text); margin: 0; }
+
+/* Admin topbar on small phones: keep every button on screen — the brand
+   text truncates and the Password/Logout buttons become icon-only. */
+@media (max-width: 720px) {
+  .admin-topbar { padding: 10px 12px; gap: 10px; }
+  .topbar-brand { min-width: 0; gap: 8px; }
+  .brand-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand-subtitle { display: none; }
+  .topbar-right { gap: 8px; }
+  .btn-logout { padding: 6px 8px; }
+  .btn-logout .btn-label { display: none; }
+  .btn-logout-icon { display: inline; }
+}
 
 /* Sidebar */
 .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; }
