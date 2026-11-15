@@ -299,7 +299,7 @@ const PLANS = [
     currency: "Rs.",
     desc: "For growing restaurants that need more tables, more staff and the server dashboard.",
     featured: true,
-    cta: "Get Standard",
+    cta: "Start 7-day free trial",
     features: [
       "20 tables",
       "10 staff logins",
@@ -315,7 +315,7 @@ const PLANS = [
     currency: "Rs.",
     desc: "For busy restaurants — 50 tables, 30 staff logins, with priority support.",
     featured: false,
-    cta: "Get Premium",
+    cta: "Start 7-day free trial",
     features: [
       "50 tables",
       "30 staff logins",

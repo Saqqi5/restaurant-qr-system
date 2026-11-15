@@ -15,9 +15,10 @@ import { createSignupRequest } from "../config/db";
 // here instead of bouncing straight to Telegram (t.me often just sits on
 // "Loading"). A customer picks a plan, leaves restaurant details, and the
 // request lands in Firestore (`signup_requests`) for the super admin.
-// Payment is NOT taken here: there is no payment gateway. Basic starts a
-// 7-day free trial at setup; Standard/Premium start after payment via
-// EasyPaisa / JazzCash / bank transfer (details shared on WhatsApp).
+// Payment is NOT taken here: there is no payment gateway. EVERY plan
+// starts with a 7-day free trial at setup; after the trial the plan
+// continues at the monthly price (paid via EasyPaisa / JazzCash / bank
+// transfer, details shared on WhatsApp).
 const TELEGRAM = "https://t.me/Saqlyndigital";
 const CUISINES = ["Desi / Pakistani", "BBQ & Grill", "Fast Food", "Italian", "Chinese", "Cafe & Desserts", "Other"];
 const PLAN_ORDER = ["basic", "standard", "premium"];
@@ -155,32 +156,37 @@ export default function GetStarted() {
                 const pPrice = getPlanPrice(key, null);
                 const featured = key === "standard";
                 return (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`gs-plan ${plan === key ? "selected" : ""} ${featured ? "featured" : ""}`}
-                    onClick={() => pickPlan(key)}
-                  >
-                    {featured && <span className="gs-badge">MOST POPULAR</span>}
-                    <span className="gs-plan-name">{p.label}</span>
-                    <span className="gs-plan-price">{formatRs(pPrice)}<small>/month</small></span>
-                    {key === "basic" && <span className="gs-trial">{TRIAL_DAYS}-day free trial</span>}
-                    <ul>
-                      {planFeatures(key).map((f) => (
-                        <li key={f}>✓ {f}</li>
-                      ))}
-                    </ul>
-                  </button>
+                  <div className="gs-plan-col" key={key}>
+                    <button
+                      type="button"
+                      className={`gs-plan ${plan === key ? "selected" : ""} ${featured ? "featured" : ""}`}
+                      onClick={() => pickPlan(key)}
+                    >
+                      {featured && <span className="gs-badge">MOST POPULAR</span>}
+                      <span className="gs-plan-name">{p.label}</span>
+                      <span className="gs-plan-price">{formatRs(pPrice)}<small>/month</small></span>
+                      <span className="gs-trial">{TRIAL_DAYS}-day free trial</span>
+                      <ul>
+                        {planFeatures(key).map((f) => (
+                          <li key={f}>✓ {f}</li>
+                        ))}
+                      </ul>
+                    </button>
+                    {plan === key && (
+                      <button
+                        type="button"
+                        className="btn-primary gs-continue"
+                        onClick={() => setStep("details")}
+                      >
+                        Continue with {p.label} →
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
-            <div className="gs-actions">
-              <button type="button" className="btn-primary" onClick={() => setStep("details")}>
-                Continue with {PLANS[plan].label} →
-              </button>
-            </div>
             <p className="form-hint" style={{ textAlign: "center" }}>
-              Basic starts with a {TRIAL_DAYS}-day free trial. Standard and Premium start a paid 30-day period after payment.
+              Every plan starts with a {TRIAL_DAYS}-day free trial. After the trial, the plan continues at the monthly price.
             </p>
           </>
         )}
@@ -283,13 +289,11 @@ export default function GetStarted() {
               <div className="gs-review-row"><span>Tables</span><strong>{form.tables}</strong></div>
               {form.notes.trim() && <div className="gs-review-row"><span>Notes</span><strong>{form.notes.trim()}</strong></div>}
               <div className="gs-review-row gs-total">
-                <span>{plan === "basic" ? `First ${TRIAL_DAYS} days` : "First month"}</span>
-                <strong>{plan === "basic" ? "FREE trial" : formatRs(price)}</strong>
+                <span>First {TRIAL_DAYS} days</span>
+                <strong>FREE trial</strong>
               </div>
               <p className="form-hint">
-                {plan === "basic"
-                  ? `Your restaurant starts with a ${TRIAL_DAYS}-day free trial. After the trial, the plan continues at ${formatRs(price)}/month.`
-                  : `Your 30-day period starts after payment. Pay via EasyPaisa, JazzCash or bank transfer — account details will be shared with you on WhatsApp.`}
+                {`Your restaurant starts with a ${TRIAL_DAYS}-day free trial. After the trial, the plan continues at ${formatRs(price)}/month.`}
               </p>
             </div>
             {submitError && <p className="gs-error" style={{ textAlign: "center" }}>{submitError}</p>}
@@ -327,11 +331,7 @@ export default function GetStarted() {
               <ol className="gs-next">
                 <li><strong>We contact you on WhatsApp</strong> ({form.whatsapp.trim()}) within 24 hours to confirm your menu and tables.</li>
                 <li><strong>We set up your restaurant</strong> — menu, QR codes for every table, and staff logins.</li>
-                {plan === "basic" ? (
-                  <li><strong>Your {TRIAL_DAYS}-day free trial starts</strong> as soon as setup is done. After the trial, the plan continues at {formatRs(price)}/month.</li>
-                ) : (
-                  <li><strong>Payment:</strong> pay {formatRs(price)} via EasyPaisa, JazzCash or bank transfer — account details will be shared with you on WhatsApp. Your 30-day period starts after payment.</li>
-                )}
+                <li><strong>Your {TRIAL_DAYS}-day free trial starts</strong> as soon as setup is done. After the trial, the plan continues at {formatRs(price)}/month — pay via EasyPaisa, JazzCash or bank transfer (account details will be shared with you on WhatsApp).</li>
               </ol>
             </div>
             <div className="gs-actions">

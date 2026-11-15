@@ -29,7 +29,7 @@
  *   - restaurant_id, verified, created_at
  */
 
-import { expiryDateFrom, demoExpiryDateFrom, paidExpiryDateFrom, normalizePlan } from "./plans";
+import { expiryDateFrom, demoExpiryDateFrom, paidExpiryDateFrom } from "./plans";
 
 import {
   collection, doc, setDoc, updateDoc, deleteDoc,
@@ -71,15 +71,10 @@ export async function createRestaurant(data) {
     created_at: serverTimestamp(),
     active: true,
     plan: data.plan || "basic",
-    // The 7-day trial exists ONLY on Basic. A Standard/Premium restaurant
-    // is created after payment, so it starts a paid 30-day period instead.
+    // Every new restaurant starts with a 7-day free trial, on any plan.
     // At expiry the login is blocked until the super admin continues the
     // plan (see continuePlan).
-    plan_expires_at: Timestamp.fromDate(
-      normalizePlan(data.plan) === "basic"
-        ? expiryDateFrom(new Date())
-        : paidExpiryDateFrom(new Date())
-    ),
+    plan_expires_at: Timestamp.fromDate(expiryDateFrom(new Date())),
   };
   await setDoc(ref, restaurant);
   return { id: ref.id, ...restaurant };

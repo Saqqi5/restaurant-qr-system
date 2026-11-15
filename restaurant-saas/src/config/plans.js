@@ -8,8 +8,8 @@
 // Prices (PKR/month): Basic 5,000 / Standard 8,000 / Premium 12,000
 // (his 2026-11-14 decision; Premium was my pick).
 export const PLANS = {
-  basic:    { key: "basic",    label: "Basic",    defaultTableLimit: 10,   defaultStaffLimit: 4,  defaultMenuItemLimit: 30,   defaultPrice: 5000 },
-  standard: { key: "standard", label: "Standard", defaultTableLimit: 20,   defaultStaffLimit: 10, defaultMenuItemLimit: 100,  defaultPrice: 8000 },
+  basic:    { key: "basic",    label: "Basic",    defaultTableLimit: 10,   defaultStaffLimit: 4,  defaultMenuItemLimit: 20,   defaultPrice: 5000 },
+  standard: { key: "standard", label: "Standard", defaultTableLimit: 20,   defaultStaffLimit: 10, defaultMenuItemLimit: 50,   defaultPrice: 8000 },
   premium:  { key: "premium",  label: "Premium",  defaultTableLimit: 50,   defaultStaffLimit: 30, defaultMenuItemLimit: null, defaultPrice: 12000 },
 };
 
@@ -73,13 +73,12 @@ export function getStaffLimit(plan, overrides) {
 }
 
 // ── Trial / subscription period ──────────────────────────────────────────
-// A new restaurant starts on a 7-day period (the Basic trial — the trial
-// exists ONLY on Basic). At expiry the login is blocked until the super
-// admin continues the plan (one click, +30 days — a paid month). A
-// restaurant with no plan_expires_at (older data) never expires.
-// Paid periods (Continue, verified plan payment, a Standard/Premium
-// restaurant created after payment) are always 30 days — they must NOT
-// follow TRIAL_DAYS.
+// Every new restaurant starts with a 7-day free trial, on ANY plan. At
+// expiry the login is blocked until the super admin continues the plan
+// (one click, +30 days — a paid month). A restaurant with no
+// plan_expires_at (older data) never expires.
+// Paid periods (Continue, verified plan payment) are always 30 days —
+// they must NOT follow TRIAL_DAYS.
 export const TRIAL_DAYS = 7;
 export const PAID_PERIOD_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;

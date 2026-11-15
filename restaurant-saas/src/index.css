@@ -1436,6 +1436,8 @@ a { color: var(--color-primary); text-decoration: none; }
 .gs-plan li { font-size: 13px; color: var(--color-muted); }
 .gs-plan.selected li { color: var(--color-text); }
 .gs-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+.gs-plan-col { display: flex; flex-direction: column; min-width: 0; }
+.gs-continue { width: 100%; margin-top: 12px; }
 .gs-form { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 28px; }
 .gs-error { color: var(--color-danger); font-size: 13px; margin-top: 6px; }
 .gs-review { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 28px; margin-bottom: 24px; }
