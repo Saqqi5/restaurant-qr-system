@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders, subscribeToRestaurant,
-  createMenuItem, updateMenuItem, deleteMenuItem, createDemoLead,
+  createMenuItem, updateMenuItem, deleteMenuItem, restoreMenuItem, createDemoLead,
   getRestaurantUsers, subscribeToPlatformSettings,
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
@@ -156,10 +156,16 @@ export default function GeneralAdminDashboard() {
     setEditingItem(null);
   }
 
+  // Soft delete: the dish is only hidden from the customer menu. It stays
+  // in the backend and shows in the "Hidden dishes" section below, where
+  // it can be restored. The live menu subscription refreshes the list.
   async function handleDeleteItem(itemId) {
-    if (!confirm("Delete this menu item?")) return;
+    if (!confirm("Hide this dish? It will disappear from the customer menu, but it stays saved — you can restore it anytime from Hidden dishes below.")) return;
     await deleteMenuItem(restaurantId, itemId);
-    setMenuItems((prev) => prev.filter((i) => i.id !== itemId));
+  }
+
+  async function handleRestoreItem(itemId) {
+    await restoreMenuItem(restaurantId, itemId);
   }
 
   function handleEditItem(item) {
@@ -182,6 +188,10 @@ export default function GeneralAdminDashboard() {
   ).length;
 
   const categories = [...new Set(menuItems.map((i) => i.category))];
+  // Soft-deleted dishes: hidden from customers, visible only to the admin.
+  const visibleItems = menuItems.filter((i) => !i.deleted);
+  const hiddenItems = menuItems.filter((i) => i.deleted);
+  const visibleCategories = [...new Set(visibleItems.map((i) => i.category))];
 
   return (
     <AdminLayout
@@ -245,11 +255,11 @@ export default function GeneralAdminDashboard() {
             <div className="error-banner" style={{ marginBottom: 14 }}>{menuLimitNotice}</div>
           )}
 
-          {categories.map((cat) => (
+          {visibleCategories.map((cat) => (
             <div key={cat} className="menu-category-section">
               <h4 className="category-label">{cat}</h4>
               <div className="menu-items-list">
-                {menuItems.filter((i) => i.category === cat).map((item) => (
+                {visibleItems.filter((i) => i.category === cat).map((item) => (
                   <div key={item.id} className={`menu-item-row ${!item.available ? "unavailable" : ""}`}>
                     {item.image_url && (
                       <img src={item.image_url} alt={item.name} className="item-thumb" />
@@ -274,6 +284,34 @@ export default function GeneralAdminDashboard() {
               </div>
             </div>
           ))}
+
+          {hiddenItems.length > 0 && (
+            <div className="menu-category-section">
+              <h4 className="category-label">🙈 Hidden dishes — only you can see these</h4>
+              <div className="menu-items-list">
+                {hiddenItems.map((item) => (
+                  <div key={item.id} className="menu-item-row unavailable">
+                    {item.image_url && (
+                      <img src={item.image_url} alt={item.name} className="item-thumb" />
+                    )}
+                    <div className="item-info">
+                      <span className="item-name">{item.name}</span>
+                      <span className="item-desc">{item.description}</span>
+                      <div className="item-meta">
+                        <span className="item-price">{formatPrice(item.price, currency)}</span>
+                        <span className="item-prep">⏱ {item.prep_time_minutes} min</span>
+                        <span className="item-status sold-out">Hidden</span>
+                      </div>
+                    </div>
+                    <div className="item-actions">
+                      <button className="btn-icon" onClick={() => handleEditItem(item)}>✏️</button>
+                      <button className="btn-icon" onClick={() => handleRestoreItem(item.id)} title="Restore dish">↩️</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {menuItems.length === 0 && !loading && (
             <div className="empty-state">

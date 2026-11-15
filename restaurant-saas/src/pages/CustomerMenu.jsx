@@ -100,7 +100,8 @@ export default function CustomerMenu() {
 
   useEffect(() => {
     if (!restaurantId) return;
-    const unsub = subscribeToMenu(restaurantId, setMenuItems);
+    // Hidden (soft-deleted) dishes never reach the customer menu.
+    const unsub = subscribeToMenu(restaurantId, (items) => setMenuItems(items.filter((i) => !i.deleted)));
     return unsub;
   }, [restaurantId]);
 

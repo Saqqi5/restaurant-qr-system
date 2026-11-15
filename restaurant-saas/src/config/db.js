@@ -209,6 +209,7 @@ export async function createMenuItem(restaurantId, data) {
     category: data.category || "Uncategorized",
     image_url: data.image_url || null,
     available: data.available !== false,
+    deleted: false,
     prep_time_minutes: parseInt(data.prep_time_minutes) || 15,
     sort_order: data.sort_order || 999,
     created_at: serverTimestamp(),
@@ -221,8 +222,23 @@ export async function updateMenuItem(restaurantId, itemId, data) {
   await updateDoc(menuItemDoc(restaurantId, itemId), data);
 }
 
+// Soft delete: hiding a dish only flips a flag — the document stays in
+// Firestore so it can be restored and is never lost. Nothing in the app
+// hard-deletes a menu item any more (the super-admin "Reset demo" still
+// wipes + reseeds a demo restaurant, and deleting a whole restaurant
+// removes its menu with it).
 export async function deleteMenuItem(restaurantId, itemId) {
-  await deleteDoc(menuItemDoc(restaurantId, itemId));
+  await updateDoc(menuItemDoc(restaurantId, itemId), {
+    deleted: true,
+    deleted_at: serverTimestamp(),
+  });
+}
+
+export async function restoreMenuItem(restaurantId, itemId) {
+  await updateDoc(menuItemDoc(restaurantId, itemId), {
+    deleted: false,
+    deleted_at: null,
+  });
 }
 
 // Natural menu flow for category tabs — starters first, drinks last.

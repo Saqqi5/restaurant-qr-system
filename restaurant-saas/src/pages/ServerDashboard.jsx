@@ -80,7 +80,7 @@ export default function ServerDashboard() {
 
   const activeOrders = orders.filter((o) => !["served", "paid"].includes(o.status));
   const filteredMenu = menuItems.filter((i) =>
-    i.name.toLowerCase().includes(searchTerm.toLowerCase()) && i.available
+    i.name.toLowerCase().includes(searchTerm.toLowerCase()) && i.available && !i.deleted
   );
   const categories = [...new Set(filteredMenu.map((i) => i.category))];
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
