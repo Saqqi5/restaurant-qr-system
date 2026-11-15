@@ -136,8 +136,16 @@ async function getServiceAccessToken(env) {
   }
   const email = env.FIREBASE_SERVICE_ACCOUNT_EMAIL;
   const key = env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!email || !key) {
-    throw new Error("Service account is not configured on this Worker yet.");
+  // Granular errors: they name the exact missing secret, so a live probe
+  // tells us whether a name is mistyped or the deploy predates the secrets.
+  if (!email && !key) {
+    throw new Error("Service account is not configured on this Worker yet (both secrets missing).");
+  }
+  if (!email) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_EMAIL is missing on this Worker.");
+  }
+  if (!key) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY is missing on this Worker.");
   }
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "RS256", typ: "JWT" };
