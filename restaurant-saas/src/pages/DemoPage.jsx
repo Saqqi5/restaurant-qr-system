@@ -43,13 +43,13 @@ export default function DemoPage() {
 
   return (
     <div className="landing">
-      <nav className="landing-nav">
-        <Link to="/" className="nav-brand">
-          SAQL<span className="nav-brand-dot">YN</span>
-        </Link>
+      <nav className="landing-nav gs-nav">
         <div className="nav-links">
           <Link to="/" className="nav-link">← Back to homepage</Link>
         </div>
+        <Link to="/" className="nav-brand">
+          SAQL<span className="nav-brand-dot">YN</span>
+        </Link>
       </nav>
 
       <div className="gs-wrap">
