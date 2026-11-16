@@ -236,6 +236,25 @@ service cloud.firestore {
           && request.resource.data.items == resource.data.items
           && request.resource.data.table_number == resource.data.table_number;
 
+        // A customer may cancel their OWN order, but ONLY while it is still
+        // pending — before the kitchen confirms it. The canceller must prove
+        // they placed it: cancelled_by must equal the session id that
+        // created the order (created_by, a "cust_…" id). Nothing else may
+        // change: same payment state, same bill, same items, same table.
+        // Honest limit: order docs are readable by design (table tracking),
+        // so anyone who reads an order can also see its created_by — this
+        // is the same public-read trade-off the site already accepts, not a
+        // per-table token. A proper fix is per-table tokens (bigger change).
+        allow update: if resource.data.status == 'pending'
+          && request.resource.data.status == 'cancelled'
+          && resource.data.created_by is string
+          && resource.data.created_by.matches('^cust_.*')
+          && request.resource.data.cancelled_by == resource.data.created_by
+          && request.resource.data.payment_status == resource.data.payment_status
+          && request.resource.data.total == resource.data.total
+          && request.resource.data.items == resource.data.items
+          && request.resource.data.table_number == resource.data.table_number;
+
         // Only super admin can delete orders
         allow delete: if isSuperAdmin();
       }

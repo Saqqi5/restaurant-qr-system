@@ -50,6 +50,9 @@ export default function CustomerMenu() {
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
+  // True while an order is being sent — the Place Order button is disabled
+  // in that window, so a double tap can never book the order twice.
+  const [placingOrder, setPlacingOrder] = useState(false);
   const [tableOrders, setTableOrders] = useState([]);
   const [tableOrdersLoaded, setTableOrdersLoaded] = useState(false);
   // This browser's customer identity (localStorage). The customer who
@@ -158,24 +161,34 @@ export default function CustomerMenu() {
     if (!cart.length || !tableNumber) return;
     // The table may have been reserved by another customer since the page loaded.
     if (isTableReserved) return;
-    const created = await createOrder(restaurantId, {
-      table_number: tableNumber,
-      items: cart.map(i => ({
-        item_id: i.id,
-        name: i.name,
-        price: i.price,
-        quantity: i.quantity,
-        notes: i.notes,
-        prep_time_minutes: i.prep_time_minutes,
-      })),
-      created_by: mySessionId,
-    });
-    setCart([]);
-    setCartOpen(false);
-    setPlacedOrder(created);
-    setOrderPlaced(true);
-    setView("orders");
-    setTimeout(() => setOrderPlaced(false), 4000);
+    // Double-tap guard: a second tap while the first order is still being
+    // sent is ignored, so the order can never be booked twice.
+    if (placingOrder) return;
+    setPlacingOrder(true);
+    try {
+      const created = await createOrder(restaurantId, {
+        table_number: tableNumber,
+        items: cart.map(i => ({
+          item_id: i.id,
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+          notes: i.notes,
+          prep_time_minutes: i.prep_time_minutes,
+        })),
+        created_by: mySessionId,
+      });
+      // The cart clears the moment the order is confirmed — the selected
+      // items are gone at once, so there is nothing left to re-place.
+      setCart([]);
+      setCartOpen(false);
+      setPlacedOrder(created);
+      setOrderPlaced(true);
+      setView("orders");
+      setTimeout(() => setOrderPlaced(false), 4000);
+    } finally {
+      setPlacingOrder(false);
+    }
   }
 
   function handleProofFileChange(e) {
@@ -399,7 +412,7 @@ export default function CustomerMenu() {
 
       {view === "orders" && (
         <>
-          <OrderTracker orders={tableOrders} currency={currency} restaurantId={restaurantId} />
+          <OrderTracker orders={tableOrders} currency={currency} restaurantId={restaurantId} sessionId={mySessionId} />
           {activeOrders.length > 0 && (
             <div className="pay-now-section">
               <button
@@ -432,6 +445,7 @@ export default function CustomerMenu() {
         onRemove={removeFromCart}
         onUpdateNotes={updateNotes}
         onPlaceOrder={placeOrder}
+        placing={placingOrder}
         restaurant={restaurant}
       />
 

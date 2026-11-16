@@ -1477,6 +1477,25 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 .receipt-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
+/* ── Customer order cancel (My Orders, pending orders only) ── */
+.cancel-order-btn {
+  margin-top: 10px; width: 100%; padding: 9px 14px; border-radius: 8px;
+  border: 1px solid #7f1d1d; background: transparent; color: #fca5a5;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.cancel-order-btn:hover { background: rgba(185, 28, 28, 0.12); }
+.cancel-order-btn.armed { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+.cancel-order-btn:disabled { opacity: 0.6; cursor: default; }
+.cancel-error {
+  margin-bottom: 12px; padding: 10px 12px; border-radius: 8px;
+  background: rgba(185, 28, 28, 0.15); color: #fca5a5; font-size: 13px;
+}
+.order-track-card.cancelled { opacity: 0.65; }
+.cancelled-badge {
+  display: inline-block; margin: 4px 0 12px; padding: 4px 10px; border-radius: 999px;
+  background: #b91c1c; color: #fff; font-size: 13px; font-weight: 700;
+}
+
 /* ── Theme picker (super admin Edit modal) ── */
 .theme-presets { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 .theme-preset-btn {

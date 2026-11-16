@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { formatPrice } from "../../utils/currency";
+import { cancelOrder } from "../../config/db";
 import ReceiptModal from "../ReceiptModal";
 
 const STATUS_STEPS = [
@@ -12,8 +13,33 @@ const STATUS_STEPS = [
 
 const STATUS_INDEX = STATUS_STEPS.reduce((acc, s, i) => ({ ...acc, [s.key]: i }), {});
 
-export default function OrderTracker({ orders, currency, restaurantId }) {
+export default function OrderTracker({ orders, currency, restaurantId, sessionId }) {
   const [receiptOrder, setReceiptOrder] = useState(null);
+  // Which order's Cancel button is armed (first tap asks, second tap cancels).
+  const [armingCancelId, setArmingCancelId] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
+  const [cancelError, setCancelError] = useState(null);
+
+  // A customer may cancel their OWN order, and only while it is still
+  // pending — before the kitchen confirms it. Staff orders at the same
+  // table (created_by is a staff uid, not this browser's session) stay.
+  async function handleCancel(order) {
+    if (armingCancelId !== order.id) {
+      setCancelError(null);
+      setArmingCancelId(order.id);
+      return;
+    }
+    setArmingCancelId(null);
+    setCancellingId(order.id);
+    setCancelError(null);
+    try {
+      await cancelOrder(restaurantId, order.id, { uid: sessionId, name: "Customer" });
+    } catch (e) {
+      setCancelError("Could not cancel this order. Please ask the counter for help.");
+    } finally {
+      setCancellingId(null);
+    }
+  }
   if (orders.length === 0) {
     return (
       <div className="order-tracker-empty">
@@ -35,9 +61,36 @@ export default function OrderTracker({ orders, currency, restaurantId }) {
 
   return (
     <div className="order-tracker">
+      {cancelError && <div className="cancel-error">{cancelError}</div>}
       {orders.map((order) => {
         const stepIndex = STATUS_INDEX[order.status] ?? 0;
         const eta = getEstimatedTime(order);
+        const isMine = !!sessionId && order.created_by === sessionId;
+        const canCancel = order.status === "pending" && isMine;
+
+        // A cancelled order stays visible, dimmed, so the customer sees
+        // the cancel went through — it never reaches the bill or the kitchen.
+        if (order.status === "cancelled") {
+          return (
+            <div key={order.id} className="order-track-card cancelled">
+              <div className="order-track-header">
+                <span className="order-track-id">Order #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
+                <span className="order-total-display">{formatPrice(order.total, currency)}</span>
+              </div>
+              <div className="cancelled-badge">❌ Cancelled</div>
+              <div className="order-items-summary">
+                {order.items?.map((item, i) => (
+                  <span key={i} className="track-item">
+                    {item.name} ×{item.quantity}
+                  </span>
+                ))}
+              </div>
+              <button className="receipt-btn" onClick={() => setReceiptOrder(order)}>
+                🧾 View Receipt
+              </button>
+            </div>
+          );
+        }
 
         return (
           <div key={order.id} className="order-track-card">
@@ -80,6 +133,20 @@ export default function OrderTracker({ orders, currency, restaurantId }) {
             <button className="receipt-btn" onClick={() => setReceiptOrder(order)}>
               🧾 View Receipt
             </button>
+
+            {canCancel && (
+              <button
+                className={`cancel-order-btn ${armingCancelId === order.id ? "armed" : ""}`}
+                onClick={() => handleCancel(order)}
+                disabled={cancellingId === order.id}
+              >
+                {cancellingId === order.id
+                  ? "Cancelling…"
+                  : armingCancelId === order.id
+                    ? "Tap again to cancel this order"
+                    : "✕ Cancel order"}
+              </button>
+            )}
           </div>
         );
       })}

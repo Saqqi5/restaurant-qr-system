@@ -1,7 +1,7 @@
 import { formatPrice } from "../../utils/currency";
 import { calculateBill } from "../../config/db";
 
-export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpdateNotes, onPlaceOrder, restaurant }) {
+export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpdateNotes, onPlaceOrder, placing, restaurant }) {
   const currency = restaurant?.currency || "$";
   const bill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0);
   const maxPrepTime = cart.length ? Math.max(...cart.map((i) => i.prep_time_minutes || 15)) : 0;
@@ -76,8 +76,8 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
                   <strong>{formatPrice(bill.total, currency)}</strong>
                 </div>
               </div>
-              <button className="btn-place-order" onClick={onPlaceOrder}>
-                Place Order — {formatPrice(bill.total, currency)}
+              <button className="btn-place-order" onClick={onPlaceOrder} disabled={placing}>
+                {placing ? "Placing order…" : `Place Order — ${formatPrice(bill.total, currency)}`}
               </button>
               <p className="cart-disclaimer">Payment at the counter after your meal.</p>
             </div>
