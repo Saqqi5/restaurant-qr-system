@@ -106,8 +106,12 @@ export default function SuperAdminOrdersPage() {
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + (o.total || 0), 0);
   // Revenue is shown in the selected restaurant's currency. With "All
-  // restaurants" the total mixes currencies, so it falls back to the $ default.
-  const revenueCurrency = restaurantFilter === "all" ? "$" : (restMap[restaurantFilter]?.currency || "$");
+  // restaurants" the total mixes currencies — if every restaurant happens to
+  // share one currency (e.g. all Rs.), use it; otherwise fall back to $.
+  const allCurrencies = [...new Set(restaurants.map((r) => r.currency || "$"))];
+  const revenueCurrency = restaurantFilter === "all"
+    ? (allCurrencies.length === 1 ? allCurrencies[0] : "$")
+    : (restMap[restaurantFilter]?.currency || "$");
 
   function fmt(ts) {
     if (!ts?.toDate) return "—";
