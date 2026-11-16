@@ -54,7 +54,9 @@ export default function ProtectedRoute({ children, role }) {
     );
   }
 
-  if (role && userProfile?.role !== role && userProfile?.role !== "super_admin") {
+  // `role` is one role or a list of roles; the super admin bypasses all of them.
+  const allowedRoles = role ? (Array.isArray(role) ? role : [role]) : null;
+  if (allowedRoles && !allowedRoles.includes(userProfile?.role) && userProfile?.role !== "super_admin") {
     // Redirect to correct dashboard for their role
     const redirect = ROLE_REDIRECTS[userProfile?.role] || "/login";
     return <Navigate to={redirect} replace />;

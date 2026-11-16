@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToOrders, updatePaymentStatus, cancelOrder,
@@ -24,6 +25,7 @@ export default function CashCounterDashboard() {
   const [receiptOrder, setReceiptOrder] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
   const [deleteError, setDeleteError] = useState("");
+  const navigate = useNavigate();
 
   // The cashier may delete a WRONG order only AFTER the kitchen has
   // confirmed it (a still-pending order is the server's to delete).
@@ -157,6 +159,14 @@ export default function CashCounterDashboard() {
           {pendingProofs.length > 0 && (
             <span className="badge-alert">{pendingProofs.length}</span>
           )}
+        </button>
+        <button
+          type="button"
+          className="tab-btn"
+          onClick={() => navigate("/admin/order-taker")}
+          title="Take an order on behalf of a customer"
+        >
+          🛎️ Take Order
         </button>
       </div>
 

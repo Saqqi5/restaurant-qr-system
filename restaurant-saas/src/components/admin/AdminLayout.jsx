@@ -158,6 +158,7 @@ function getSidebarLinks(role, pendingCount = 0) {
   if (role === "general_admin") {
     return [
       { path: "/admin/restaurant", icon: "🏪", label: "Dashboard", badge: pendingCount },
+      { path: "/admin/order-taker", icon: "🛎️", label: "Order Taker", badge: 0 },
       { path: "/admin/tables",     icon: "🪑", label: "Tables", badge: 0 },
       { path: "/admin/history",    icon: "📋", label: "Order History", badge: 0 },
       { path: "/admin/settings",   icon: "⚙️",  label: "Settings", badge: 0 },
@@ -173,6 +174,7 @@ function getSidebarLinks(role, pendingCount = 0) {
   if (role === "cash_counter") {
     return [
       { path: "/admin/cash", icon: "💳", label: "Cash Counter", badge: pendingCount },
+      { path: "/admin/order-taker", icon: "🛎️", label: "Order Taker", badge: 0 },
       logout,
     ];
   }

@@ -451,6 +451,7 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
     plan: normalizePlan(restaurant.plan),
     currency: restaurant.currency || "$",
     address: restaurant.address || "",
+    order_taker_enabled: restaurant.order_taker_enabled === true,
     theme: restaurant.theme || { ...DEFAULT_THEME },
   });
   const editLimit = getPlanLimit(form.plan, null);
@@ -570,6 +571,14 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
                 onChange={(e) => setForm({ ...form, active: e.target.checked })} />
               Active
             </label>
+          </div>
+          <div className="form-group-inline">
+            <label>
+              <input type="checkbox" checked={!!form.order_taker_enabled}
+                onChange={(e) => setForm({ ...form, order_taker_enabled: e.target.checked })} />
+              Order Taker mode enabled
+            </label>
+            <p className="form-hint">Standard and Premium plans include Order Taker mode. Tick this to enable it for this restaurant even on the Basic plan.</p>
           </div>
         </div>
         <div className="modal-footer">

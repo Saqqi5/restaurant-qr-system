@@ -1491,6 +1491,35 @@ a { color: var(--color-primary); text-decoration: none; }
   cursor: pointer; flex-shrink: 0; border: 1px solid var(--color-border);
 }
 
+/* ── Order Taker page ── */
+.taker-tables {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px; margin-bottom: 20px;
+}
+.taker-table-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 12px 6px; border-radius: 10px; cursor: pointer;
+  background: var(--color-surface); border: 1.5px solid var(--color-border);
+  font-size: 14px; font-weight: 700;
+}
+.taker-table-btn.busy:not(.selected) { border-color: #f7931e; }
+.taker-table-btn.selected { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
+.taker-table-count { font-size: 11px; font-weight: 600; opacity: 0.75; }
+.taker-layout { display: flex; gap: 20px; align-items: flex-start; }
+.taker-menu { flex: 1; min-width: 0; }
+.taker-cart { width: 330px; flex-shrink: 0; position: sticky; top: 16px; }
+@media (max-width: 900px) {
+  .taker-layout { flex-direction: column; }
+  .taker-cart { width: 100%; position: static; }
+}
+.taker-cart-card {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius); padding: 16px;
+}
+.taker-cart-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; }
+.taker-bill { border-top: 1px dashed var(--color-border); margin-top: 10px; padding-top: 8px; }
+.taker-total { font-size: 16px; font-weight: 800; padding-top: 6px; }
+
 @media print {
   /* The app is dark-themed, so the page/body background is near-black.
      Without this the slip prints as a black box with unreadable text

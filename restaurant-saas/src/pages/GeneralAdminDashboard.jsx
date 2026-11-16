@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders, subscribeToRestaurant,
@@ -27,6 +28,7 @@ export default function GeneralAdminDashboard() {
   const { userProfile, restaurantId, logout, trialInfo } = useAuth();
   const currency = useRestaurantCurrency(restaurantId);
   const [activeTab, setActiveTab] = useState("menu");
+  const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -295,6 +297,14 @@ export default function GeneralAdminDashboard() {
             </button>
           );
         })}
+        <button
+          type="button"
+          className="tab-btn"
+          onClick={() => navigate("/admin/order-taker")}
+          title="Take an order on behalf of a customer"
+        >
+          🛎️ Take Order
+        </button>
       </div>
 
       {/* Menu Tab */}

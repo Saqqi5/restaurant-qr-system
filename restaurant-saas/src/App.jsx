@@ -27,6 +27,7 @@ import ProtectedRoute         from "./components/ProtectedRoute";
 import RestaurantSettingsPage from "./pages/RestaurantSettingsPage";
 import TableManagementPage    from "./pages/TableManagementPage";
 import OrderHistoryPage       from "./pages/OrderHistoryPage";
+import OrderTakerPage         from "./pages/OrderTakerPage";
 
 // Wraps any page that needs restaurant context (reads :restaurantId from URL)
 function WithTenant({ children }) {
@@ -118,6 +119,13 @@ export default function App() {
             <WithAdminTenant>
               <ProtectedRoute role="general_admin">
                 <OrderHistoryPage />
+              </ProtectedRoute>
+            </WithAdminTenant>
+          } />
+          <Route path="/admin/order-taker" element={
+            <WithAdminTenant>
+              <ProtectedRoute role={["general_admin", "cash_counter"]}>
+                <OrderTakerPage />
               </ProtectedRoute>
             </WithAdminTenant>
           } />
