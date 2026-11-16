@@ -385,7 +385,7 @@ export default function GeneralAdminDashboard() {
       {/* Orders Tab */}
       {activeTab === "orders" && (
         <div className="tab-content">
-          <OrdersTable orders={orders} restaurantId={restaurantId} showActions={true} />
+          <OrdersTable orders={orders} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} />
         </div>
       )}
 

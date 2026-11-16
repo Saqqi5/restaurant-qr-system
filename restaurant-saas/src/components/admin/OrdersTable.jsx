@@ -10,7 +10,7 @@ const STATUS_COLORS = {
   ready: "#27ae60", served: "#8e8e8e", paid: "#27ae60", cancelled: "#e05252",
 };
 
-export function OrdersTable({ orders, restaurantId, showActions = true }) {
+export function OrdersTable({ orders, restaurantId, showActions = true, onSelectOrder }) {
   const currency = useRestaurantCurrency(restaurantId);
   const { userProfile } = useAuth();
   const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
@@ -45,7 +45,10 @@ export function OrdersTable({ orders, restaurantId, showActions = true }) {
       )}
       <div className="orders-list-admin">
         {orders.map((order) => (
-          <div key={order.id} className="order-row-admin" style={order.status === "cancelled" ? { opacity: 0.65 } : undefined}>
+          <div key={order.id} className="order-row-admin"
+            style={{ ...(order.status === "cancelled" ? { opacity: 0.65 } : {}), ...(onSelectOrder ? { cursor: "pointer" } : {}) }}
+            onClick={onSelectOrder ? () => onSelectOrder(order) : undefined}
+            title={onSelectOrder ? "Click to view slip" : undefined}>
             <div className="order-row-left">
               <span className="table-badge-sm">T{order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
               <div className="order-row-info">
@@ -73,7 +76,7 @@ export function OrdersTable({ orders, restaurantId, showActions = true }) {
                   type="button"
                   className="icon-btn"
                   title="Delete order"
-                  onClick={() => setPendingDelete(order)}
+                  onClick={(e) => { e.stopPropagation(); setPendingDelete(order); }}
                   style={{ fontSize: 15 }}
                 >
                   🗑️

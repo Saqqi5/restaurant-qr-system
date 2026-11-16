@@ -57,7 +57,8 @@ export default function CustomerMenu() {
   // is another customer and sees the table as reserved.
   const [mySessionId] = useState(() => getCustomerSessionId());
   // Unpaid ones only — used for the bill total, the badge and Pay Bill.
-  const activeOrders = tableOrders.filter((o) => o.payment_status === "unpaid");
+  // Cancelled orders drop out at once (they are never served or paid).
+  const activeOrders = tableOrders.filter((o) => o.payment_status === "unpaid" && o.status !== "cancelled");
 
   // Table reservation: an unpaid order placed by ANOTHER customer (a
   // different browser session) reserves this table until that customer

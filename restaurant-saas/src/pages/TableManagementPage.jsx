@@ -89,10 +89,12 @@ export default function TableManagementPage() {
     setSaving(false);
   }
 
-  // Build a map of table → status
+  // Build a map of table → status. A cancelled order never holds a table:
+  // the moment an order is cancelled the table frees up for the next
+  // customer (or order taker). Cancelled orders stay only in history.
   function getTableStatus(tableNum) {
     const tableOrders = orders.filter(
-      (o) => o.table_number === tableNum && o.payment_status === "unpaid"
+      (o) => o.table_number === tableNum && o.payment_status === "unpaid" && o.status !== "cancelled"
     );
     if (!tableOrders.length) return "empty";
     const statuses = tableOrders.map((o) => o.status);
@@ -104,7 +106,7 @@ export default function TableManagementPage() {
 
   function getTableOrders(tableNum) {
     return orders.filter(
-      (o) => o.table_number === tableNum && o.payment_status === "unpaid"
+      (o) => o.table_number === tableNum && o.payment_status === "unpaid" && o.status !== "cancelled"
     );
   }
 
