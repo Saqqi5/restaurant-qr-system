@@ -54,6 +54,7 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
             <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
               {isKot ? "KITCHEN ORDER TICKET" : "RECEIPT"}
             </div>
+            <div style={{ fontSize: 15, fontWeight: 800, marginTop: 6 }}>Order {orderNo}</div>
           </div>
 
           <div style={{ fontSize: 13, lineHeight: 1.7, borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "8px 0" }}>
@@ -64,9 +65,6 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
             )}
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Table</span><strong>{order.table_number}</strong>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Order</span><strong>{orderNo}</strong>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Status</span><strong style={{ textTransform: "capitalize" }}>{order.status || "—"}</strong>

@@ -111,27 +111,60 @@ export default function SuperAdminOrdersPage() {
     return ts.toDate().toLocaleString([], { dateStyle: "short", timeStyle: "short" });
   }
 
-  function exportCSV() {
-    const rows = [
-      ["Order #", "Restaurant", "Table", "Status", "Payment", "Total", "Date", "Cancelled By", "Items"].join(","),
-      ...filtered.map((o) => [
-        o.order_number ?? "",
-        `"${(restMap[o.restaurant_id]?.name || o.restaurant_id || "").replace(/"/g, "")}"`,
-        o.table_number,
-        o.status,
-        o.payment_status,
-        o.total?.toFixed(2),
-        o.created_at?.toDate?.()?.toISOString?.() || "",
-        o.cancelled_by_name || "",
-        `"${o.items?.map((i) => `${i.name} x${i.quantity}`).join("; ")}"`,
-      ].join(",")),
+  // Real Excel file (.xlsx), not a plain CSV: highlighted SAQLYN-green
+  // header row, proper column widths, frozen header + auto-filter, so it
+  // opens in Excel as a professional table. (A CSV has no formatting —
+  // headers open plain and long names get cut off.)
+  async function exportExcel() {
+    // Loaded on demand so the ~1MB spreadsheet library stays out of the
+    // main bundle — it downloads only when Export is clicked.
+    const { default: ExcelJS } = await import("exceljs");
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "SAQLYN";
+    const ws = wb.addWorksheet("All Orders");
+    ws.columns = [
+      { header: "Order #", key: "no", width: 10 },
+      { header: "Restaurant", key: "rest", width: 24 },
+      { header: "Table", key: "table", width: 9 },
+      { header: "Status", key: "status", width: 12 },
+      { header: "Payment", key: "payment", width: 11 },
+      { header: "Total", key: "total", width: 13 },
+      { header: "Date", key: "date", width: 20 },
+      { header: "Cancelled By", key: "cancelledBy", width: 17 },
+      { header: "Items", key: "items", width: 55 },
     ];
-    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+    filtered.forEach((o) => {
+      ws.addRow({
+        no: o.order_number ?? "",
+        rest: restMap[o.restaurant_id]?.name || o.restaurant_id || "",
+        table: o.table_number,
+        status: o.status,
+        payment: o.payment_status,
+        total: typeof o.total === "number" ? o.total : "",
+        date: o.created_at?.toDate?.() || "",
+        cancelledBy: o.cancelled_by_name || "",
+        items: o.items?.map((i) => `${i.name} x${i.quantity}`).join("; ") || "",
+      });
+    });
+    const headerRow = ws.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF20C997" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+    });
+    headerRow.height = 22;
+    ws.autoFilter = { from: "A1", to: `I${ws.rowCount}` };
+    ws.views = [{ state: "frozen", ySplit: 1 }];
+    ws.getColumn("date").numFmt = "yyyy-mm-dd hh:mm";
+    ws.getColumn("total").numFmt = "#,##0.00";
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `all_orders_${dateFrom}_to_${dateTo}.csv`;
+    a.download = `all_orders_${dateFrom}_to_${dateTo}.xlsx`;
     a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -200,8 +233,8 @@ export default function SuperAdminOrdersPage() {
         <button className="btn-primary" onClick={() => fetchOrders(restaurants, restaurantFilter, true)} disabled={loading}>
           {loading ? "Loading…" : "Apply"}
         </button>
-        <button className="btn-secondary" onClick={exportCSV} disabled={!filtered.length}>
-          ⬇️ Export CSV
+        <button className="btn-secondary" onClick={exportExcel} disabled={!filtered.length}>
+          ⬇️ Export Excel
         </button>
       </div>
 
