@@ -7,6 +7,9 @@
 // account — set these two secrets on the Worker (never in the repo):
 //   FIREBASE_SERVICE_ACCOUNT_EMAIL — client_email from the service-account JSON
 //   FIREBASE_SERVICE_ACCOUNT_KEY   — private_key from the service-account JSON
+// NOTE: after (re-)saving these secrets in the dashboard, the Worker must be
+// redeployed before the new values are visible to it (redeployed 2026-11-16
+// for exactly this reason).
 
 const FIREBASE_PROJECT_ID = "restaurant-system-d74b1";
 const IDENTITY_TOOLKIT = "https://identitytoolkit.googleapis.com/v1";
