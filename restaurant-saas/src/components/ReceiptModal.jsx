@@ -21,6 +21,17 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
     }
   }, [restaurantId, restaurantName, restaurantLogo]);
 
+  // The browser names a saved PDF after document.title — set it to the
+  // slip's name (restaurant + order number) while the slip is open, so
+  // "Save as PDF" saves e.g. "Lahori Dastarkhwan - Order #1.pdf".
+  // Restored when the slip closes.
+  useEffect(() => {
+    const prev = document.title;
+    const no = order?.order_number ? `#${order.order_number}` : `#${order?.id?.slice(-6).toUpperCase()}`;
+    document.title = `${name || "Restaurant"} - Order ${no}${mode === "kot" ? " - KOT" : ""}`;
+    return () => { document.title = prev; };
+  }, [order, name, mode]);
+
   if (!order) return null;
   const isKot = mode === "kot";
   const orderNo = order.order_number ? `#${order.order_number}` : `#${order.id?.slice(-6).toUpperCase()}`;
