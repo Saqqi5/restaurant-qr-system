@@ -1476,12 +1476,14 @@ a { color: var(--color-primary); text-decoration: none; }
   /* The app is dark-themed, so the page/body background is near-black.
      Without this the slip prints as a black box with unreadable text
      (the white modal background belongs to the hidden parent). Force a
-     plain white page + white slip + black text for print. */
+     plain white page + white slip for print. Text colours are NOT forced
+     here — browsers print text colours as-is (only backgrounds are
+     dropped), so the slip's green/red/amber accents print correctly. */
   html, body { background: #fff !important; }
   body * { visibility: hidden; }
   .receipt-print-area, .receipt-print-area * { visibility: visible; }
   .receipt-print-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff !important; color: #111 !important; }
-  .receipt-print-area * { background: transparent !important; color: #111 !important; border-color: #ccc !important; }
+  .receipt-print-area * { background: transparent !important; border-color: #ccc !important; }
 }
 
 .order-paid-badge {

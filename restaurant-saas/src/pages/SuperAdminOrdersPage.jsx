@@ -115,13 +115,17 @@ export default function SuperAdminOrdersPage() {
   // header row, proper column widths, frozen header + auto-filter, so it
   // opens in Excel as a professional table. (A CSV has no formatting —
   // headers open plain and long names get cut off.)
+  // File name carries the restaurant + the report period, e.g.
+  // orders_lahori-dastarkhwan_2026-11-15_to_2026-11-16.xlsx
+  // (orders_all_… when all restaurants are selected).
   async function exportExcel() {
     // Loaded on demand so the ~1MB spreadsheet library stays out of the
     // main bundle — it downloads only when Export is clicked.
     const { default: ExcelJS } = await import("exceljs");
     const wb = new ExcelJS.Workbook();
     wb.creator = "SAQLYN";
-    const ws = wb.addWorksheet("All Orders");
+    const sheetName = restFilter === "all" ? "All Orders" : (restMap[restFilter]?.name || "Orders").slice(0, 31);
+    const ws = wb.addWorksheet(sheetName);
     ws.columns = [
       { header: "Order #", key: "no", width: 10 },
       { header: "Restaurant", key: "rest", width: 24 },
@@ -162,7 +166,11 @@ export default function SuperAdminOrdersPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `all_orders_${dateFrom}_to_${dateTo}.xlsx`;
+    const restSlug = restFilter === "all"
+      ? "all"
+      : (restaurants.find((r) => r.id === restFilter)?.slug || restMap[restFilter]?.name || restFilter)
+          .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    a.download = `orders_${restSlug}_${dateFrom}_to_${dateTo}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   }

@@ -45,16 +45,16 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
   return (
     <div className="receipt-modal-overlay" onClick={onClose}>
       <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="receipt-print-area">
+        <div className="receipt-print-area" style={{ borderTop: "3px solid #20C997" }}>
           <div style={{ textAlign: "center", marginBottom: 12 }}>
             {logo && (
               <img src={logo} alt="" style={{ maxHeight: 64, maxWidth: 200, objectFit: "contain", display: "block", margin: "0 auto 8px" }} />
             )}
             <div style={{ fontSize: 18, fontWeight: 800 }}>{name || "Restaurant"}</div>
-            <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: "#12805c", fontWeight: 700, letterSpacing: "2px", marginTop: 2 }}>
               {isKot ? "KITCHEN ORDER TICKET" : "RECEIPT"}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 800, marginTop: 6 }}>Order {orderNo}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#0b7a55", marginTop: 6 }}>Order {orderNo}</div>
           </div>
 
           <div style={{ fontSize: 13, lineHeight: 1.7, borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "8px 0" }}>
@@ -67,7 +67,7 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
               <span>Table</span><strong>{order.table_number}</strong>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Status</span><strong style={{ textTransform: "capitalize" }}>{order.status || "—"}</strong>
+              <span>Status</span><strong style={{ textTransform: "capitalize", color: order.status === "cancelled" ? "#b91c1c" : order.status === "served" ? "#12805c" : undefined }}>{order.status || "—"}</strong>
             </div>
             {order.status === "cancelled" && order.cancelled_by_name && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -105,12 +105,12 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
                   <span>{formatPrice(tax, currency)}</span>
                 </div>
               )}
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 800, borderTop: "1px solid #ddd", marginTop: 4, paddingTop: 6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 800, color: "#12805c", borderTop: "1px solid #ddd", marginTop: 4, paddingTop: 6 }}>
                 <span>Total</span><span>{formatPrice(order.total, currency)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666" }}>
                 <span>Payment</span>
-                <span>{order.payment_status === "paid" ? `Paid (${order.payment_method || "—"})` : "Unpaid"}</span>
+                <span style={{ color: order.payment_status === "paid" ? "#12805c" : "#b45309" }}>{order.payment_status === "paid" ? `Paid (${order.payment_method || "—"})` : "Unpaid"}</span>
               </div>
             </div>
           )}
@@ -118,6 +118,9 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
           <div style={{ textAlign: "center", fontSize: 12, color: "#666", marginTop: 14 }}>
             {isKot ? "— Kitchen copy —" : "Thank you for dining with us!"}
           </div>
+          {!isKot && (
+            <div style={{ textAlign: "center", fontSize: 11, color: "#888", marginTop: 4 }}>Powered by SAQLYN</div>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
