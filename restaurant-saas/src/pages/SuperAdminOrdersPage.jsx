@@ -295,6 +295,7 @@ export default function SuperAdminOrdersPage() {
           order={slipOrder}
           restaurantId={slipOrder.restaurant_id}
           restaurantName={restMap[slipOrder.restaurant_id]?.name}
+          restaurantLogo={restMap[slipOrder.restaurant_id]?.logo_url}
           currency={restMap[slipOrder.restaurant_id]?.currency || "$"}
           mode="receipt"
           onClose={() => setSlipOrder(null)}

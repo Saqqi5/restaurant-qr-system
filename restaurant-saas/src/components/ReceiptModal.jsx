@@ -4,19 +4,28 @@ import { formatPrice } from "../utils/currency";
 
 // Printable receipt (customer bill) and KOT (kitchen order ticket).
 // Print button uses window.print(); index.css @media print shows only
-// the .receipt-print-area.
-export default function ReceiptModal({ order, restaurantId, restaurantName, currency = "$", mode = "receipt", onClose }) {
+// the .receipt-print-area on a forced white page (the app is dark-themed).
+// The restaurant logo (set in Restaurant Settings → logo upload, saved as
+// `logo_url` on the restaurant doc) shows above the name when available.
+export default function ReceiptModal({ order, restaurantId, restaurantName, restaurantLogo = "", currency = "$", mode = "receipt", onClose }) {
   const [name, setName] = useState(restaurantName || "");
+  const [logo, setLogo] = useState(restaurantLogo || "");
+  useEffect(() => { if (restaurantName) setName(restaurantName); }, [restaurantName]);
+  useEffect(() => { if (restaurantLogo) setLogo(restaurantLogo); }, [restaurantLogo]);
   useEffect(() => {
-    if (restaurantName) return;
-    if (restaurantId) getRestaurant(restaurantId).then((r) => r?.name && setName(r.name));
-  }, [restaurantId, restaurantName]);
+    if (restaurantId && (!restaurantName || !restaurantLogo)) {
+      getRestaurant(restaurantId).then((r) => {
+        if (r?.name && !restaurantName) setName(r.name);
+        if (r?.logo_url && !restaurantLogo) setLogo(r.logo_url);
+      });
+    }
+  }, [restaurantId, restaurantName, restaurantLogo]);
 
   if (!order) return null;
   const isKot = mode === "kot";
   const orderNo = order.order_number ? `#${order.order_number}` : `#${order.id?.slice(-6).toUpperCase()}`;
   const dateStr = order.created_at?.toDate
-    ? order.created_at.toDate().toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    ? order.created_at.toDate().toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
     : "";
   const subtotal = order.subtotal ?? (order.items || []).reduce((s, i) => s + i.price * i.quantity, 0);
   const discount = order.discount_amount || 0;
@@ -27,6 +36,9 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, curr
       <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
         <div className="receipt-print-area">
           <div style={{ textAlign: "center", marginBottom: 12 }}>
+            {logo && (
+              <img src={logo} alt="" style={{ maxHeight: 64, maxWidth: 200, objectFit: "contain", display: "block", margin: "0 auto 8px" }} />
+            )}
             <div style={{ fontSize: 18, fontWeight: 800 }}>{name || "Restaurant"}</div>
             <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
               {isKot ? "KITCHEN ORDER TICKET" : "RECEIPT"}
@@ -34,17 +46,17 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, curr
           </div>
 
           <div style={{ fontSize: 13, lineHeight: 1.7, borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "8px 0" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Order</span><strong>{orderNo}</strong>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Table</span><strong>{order.table_number}</strong>
-            </div>
             {dateStr && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>Date</span><span>{dateStr}</span>
               </div>
             )}
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Table</span><strong>{order.table_number}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Order</span><strong>{orderNo}</strong>
+            </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Status</span><strong style={{ textTransform: "capitalize" }}>{order.status || "—"}</strong>
             </div>
