@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-// Public live demo — a REAL restaurant running on SAQLYN, not a video.
-// Visitors scan the Lahori Dastarkhwan QR, place an order, then log in
+// Public live demo — REAL restaurants running on SAQLYN, not a video.
+// Visitors scan a demo QR, place an order, then log in
 // with the separate demo-only accounts below (demoadmin@ etc.) and watch
 // the order move through the kitchen and the cash counter. Demo accounts
 // are flagged is_demo_user: they never appear in staff lists and can never
@@ -13,6 +13,8 @@ import { Link } from "react-router-dom";
 const APP_URL = "https://restaurant-qr-system.saqlainmushtaq555.workers.dev";
 const DEMO_MENU_URL = `${APP_URL}/r/demo_restaurant_002?table=1`;
 const QR_SRC = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(DEMO_MENU_URL)}&format=png&qzone=2`;
+const BELLA_MENU_URL = `${APP_URL}/r/demo_restaurant_001?table=1`;
+const BELLA_QR_SRC = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(BELLA_MENU_URL)}&format=png&qzone=2`;
 const TELEGRAM = "https://t.me/Saqlyndigital";
 
 const STEPS = [
@@ -24,10 +26,17 @@ const STEPS = [
 ];
 
 const DEMO_LOGINS = [
-  { role: "Restaurant Admin", desc: "Menu, staff, settings & revenue", email: "demoadmin@lahoridastarkhwan.com", password: "Admin@123", to: "/admin/restaurant" },
-  { role: "Kitchen", desc: "See orders & confirm them", email: "demokitchen@lahoridastarkhwan.com", password: "Kitchen@123", to: "/admin/kitchen" },
-  { role: "Cashier", desc: "Verify payments & mark paid", email: "democash@lahoridastarkhwan.com", password: "Cash@123", to: "/admin/cash" },
-  { role: "Waiter", desc: "Take orders for a table", email: "demoserver@lahoridastarkhwan.com", password: "Server@123", to: "/admin/server" },
+  { id: "lahori-admin", role: "Restaurant Admin", desc: "Menu, staff, settings & revenue", email: "demoadmin@lahoridastarkhwan.com", password: "Admin@123", to: "/admin/restaurant" },
+  { id: "lahori-kitchen", role: "Kitchen", desc: "See orders & confirm them", email: "demokitchen@lahoridastarkhwan.com", password: "Kitchen@123", to: "/admin/kitchen" },
+  { id: "lahori-cash", role: "Cashier", desc: "Verify payments & mark paid", email: "democash@lahoridastarkhwan.com", password: "Cash@123", to: "/admin/cash" },
+  { id: "lahori-server", role: "Waiter", desc: "Take orders for a table", email: "demoserver@lahoridastarkhwan.com", password: "Server@123", to: "/admin/server" },
+];
+
+const BELLA_DEMO_LOGINS = [
+  { id: "bella-admin", role: "Restaurant Admin", desc: "Menu, staff, settings & revenue", email: "demoadmin@bellaitalia.com", password: "Admin@123", to: "/admin/restaurant" },
+  { id: "bella-kitchen", role: "Kitchen", desc: "See orders & confirm them", email: "demokitchen@bellaitalia.com", password: "Kitchen@123", to: "/admin/kitchen" },
+  { id: "bella-cash", role: "Cashier", desc: "Verify payments & mark paid", email: "democash@bellaitalia.com", password: "Cash@123", to: "/admin/cash" },
+  { id: "bella-server", role: "Waiter", desc: "Take orders for a table", email: "demoserver@bellaitalia.com", password: "Server@123", to: "/admin/server" },
 ];
 
 export default function DemoPage() {
@@ -93,24 +102,24 @@ export default function DemoPage() {
               ⏰ Anything you add or change here is deleted automatically after 24 hours.
             </p>
             {DEMO_LOGINS.map((l) => (
-              <div className="demo-login" key={l.role}>
+              <div className="demo-login" key={l.id}>
                 <div className="demo-login-head">
                   <strong>{l.role}</strong>
                   <span>{l.desc}</span>
                 </div>
                 <div className="demo-cred">
                   <code>{l.email}</code>
-                  <button type="button" className="demo-copy" onClick={() => copy(l.email, `${l.role}-email`)}>
-                    {copied === `${l.role}-email` ? "Copied ✓" : "Copy"}
+                  <button type="button" className="demo-copy" onClick={() => copy(l.email, `${l.id}-email`)}>
+                    {copied === `${l.id}-email` ? "Copied ✓" : "Copy"}
                   </button>
                 </div>
                 <div className="demo-cred">
-                  <code>{shownPass === l.role ? l.password : "••••••••"}</code>
-                  <button type="button" className="demo-copy" onClick={() => setShownPass(shownPass === l.role ? "" : l.role)}>
-                    {shownPass === l.role ? "Hide" : "Show"}
+                  <code>{shownPass === l.id ? l.password : "••••••••"}</code>
+                  <button type="button" className="demo-copy" onClick={() => setShownPass(shownPass === l.id ? "" : l.id)}>
+                    {shownPass === l.id ? "Hide" : "Show"}
                   </button>
-                  <button type="button" className="demo-copy" onClick={() => copy(l.password, `${l.role}-pass`)}>
-                    {copied === `${l.role}-pass` ? "Copied ✓" : "Copy"}
+                  <button type="button" className="demo-copy" onClick={() => copy(l.password, `${l.id}-pass`)}>
+                    {copied === `${l.id}-pass` ? "Copied ✓" : "Copy"}
                   </button>
                 </div>
                 <Link className="demo-open" to={l.to}>Open {l.role} dashboard →</Link>
@@ -126,6 +135,52 @@ export default function DemoPage() {
               Have your own restaurant and want SAQLYN for it?{" "}
               <Link to="/get-started">Buy a plan →</Link> or{" "}
               <a href={TELEGRAM} target="_blank" rel="noreferrer">contact the administrator</a>.
+            </p>
+          </div>
+
+          <div className="demo-card">
+            <h2>🍕 Customer — order food</h2>
+            <p className="demo-card-sub">Bella Italia · Table 1 · Prices in $</p>
+            <img className="demo-qr" src={BELLA_QR_SRC} alt="QR code for the Bella Italia demo menu" width="240" height="240" />
+            <p className="form-hint">Scan with your phone camera, or open the menu here:</p>
+            <div className="gs-actions">
+              <a className="btn-primary" href={BELLA_MENU_URL}>Open demo menu →</a>
+            </div>
+          </div>
+
+          <div className="demo-card">
+            <h2>👨‍🍳 Restaurant manager — run the restaurant</h2>
+            <p className="demo-card-sub">Bella Italia — log in with any demo account and try its dashboard.</p>
+            <p className="form-hint" style={{ marginBottom: 12 }}>
+              ⏰ Same 24-hour rule — anything you add or change here is deleted automatically after 24 hours.
+            </p>
+            {BELLA_DEMO_LOGINS.map((l) => (
+              <div className="demo-login" key={l.id}>
+                <div className="demo-login-head">
+                  <strong>{l.role}</strong>
+                  <span>{l.desc}</span>
+                </div>
+                <div className="demo-cred">
+                  <code>{l.email}</code>
+                  <button type="button" className="demo-copy" onClick={() => copy(l.email, `${l.id}-email`)}>
+                    {copied === `${l.id}-email` ? "Copied ✓" : "Copy"}
+                  </button>
+                </div>
+                <div className="demo-cred">
+                  <code>{shownPass === l.id ? l.password : "••••••••"}</code>
+                  <button type="button" className="demo-copy" onClick={() => setShownPass(shownPass === l.id ? "" : l.id)}>
+                    {shownPass === l.id ? "Hide" : "Show"}
+                  </button>
+                  <button type="button" className="demo-copy" onClick={() => copy(l.password, `${l.id}-pass`)}>
+                    {copied === `${l.id}-pass` ? "Copied ✓" : "Copy"}
+                  </button>
+                </div>
+                <Link className="demo-open" to={l.to}>Open {l.role} dashboard →</Link>
+              </div>
+            ))}
+            <p className="form-hint">
+              Tip: pay at the counter — the cashier marks the order paid, so no
+              screenshot is needed for the demo.
             </p>
           </div>
         </div>
