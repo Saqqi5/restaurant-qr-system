@@ -272,11 +272,15 @@ export default {
     // not return a 404 and not_found_handling does not cover it), so the
     // single-page fallback has to happen here — otherwise every deep link
     // (/demo, /login, /r/...) dies with Error 1101 while / still works.
+    // NOTE: the fallback request must be a PLAIN new Request — copying the
+    // original request as init (new Request(url, request)) makes the
+    // fallback fetch throw too, which is why /admin/super showed
+    // "Site unavailable" even after the first fix deployed.
     try {
       return await env.ASSETS.fetch(request);
     } catch {
       try {
-        return await env.ASSETS.fetch(new Request(new URL("/", request.url), request));
+        return await env.ASSETS.fetch(new Request(new URL("/", request.url)));
       } catch {
         return new Response("Site unavailable. Please try again.", {
           status: 500,
