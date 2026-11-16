@@ -136,6 +136,7 @@ function getSidebarLinks(role, pendingCount = 0) {
   if (role === "super_admin") {
     return [
       { path: "/admin/super", icon: "👑", label: "All Restaurants", badge: 0 },
+      { path: "/admin/super/orders", icon: "📋", label: "All Orders", badge: 0 },
       { path: "/admin/super/settings", icon: "⚙️", label: "Settings", badge: 0 },
       logout,
     ];

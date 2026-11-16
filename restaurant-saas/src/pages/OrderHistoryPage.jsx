@@ -24,6 +24,7 @@ export default function OrderHistoryPage() {
   const [dateFrom, setDateFrom] = useState(toDateInput(startOfDay(new Date())));
   const [dateTo,   setDateTo]   = useState(toDateInput(new Date()));
   const [statusFilter, setStatusFilter] = useState("all");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
 
   async function fetchOrders() {
     setLoading(true);
@@ -42,9 +43,12 @@ export default function OrderHistoryPage() {
 
   useEffect(() => { if (restaurantId) fetchOrders(); }, [restaurantId]);
 
-  const filtered = statusFilter === "all"
-    ? orders
-    : orders.filter((o) => o.payment_status === statusFilter);
+  // Payment filter + order-status filter (cancelled orders stay in
+  // history with who cancelled them — nothing is ever hard-deleted).
+  const filtered = orders.filter((o) =>
+    (statusFilter === "all" || o.payment_status === statusFilter) &&
+    (orderStatusFilter === "all" || o.status === orderStatusFilter)
+  );
 
   const totalRevenue = filtered
     .filter((o) => o.payment_status === "paid")
@@ -52,14 +56,16 @@ export default function OrderHistoryPage() {
 
   function exportCSV() {
     const rows = [
-      ["Order ID", "Table", "Status", "Payment", "Total", "Date", "Items"].join(","),
+      ["Order #", "Order ID", "Table", "Status", "Payment", "Total", "Date", "Cancelled By", "Items"].join(","),
       ...filtered.map((o) => [
+        o.order_number ?? "",
         o.id,
         o.table_number,
         o.status,
         o.payment_status,
         o.total?.toFixed(2),
         o.created_at?.toDate?.()?.toISOString?.() || "",
+        o.cancelled_by_name || "",
         `"${o.items?.map((i) => `${i.name} x${i.quantity}`).join("; ")}"`,
       ].join(",")),
     ];
@@ -101,6 +107,18 @@ export default function OrderHistoryPage() {
             <option value="unpaid">Unpaid</option>
           </select>
         </div>
+        <div className="filter-group">
+          <label>Order Status</label>
+          <select value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)}>
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="preparing">Preparing</option>
+            <option value="ready">Ready</option>
+            <option value="served">Served</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
         <button className="btn-primary" onClick={fetchOrders} disabled={loading}>
           {loading ? "Loading…" : "Apply"}
         </button>
@@ -140,6 +158,7 @@ export default function OrderHistoryPage() {
           <table className="history-table">
             <thead>
               <tr>
+                <th>Order #</th>
                 <th>Time</th>
                 <th>Table</th>
                 <th>Items</th>
@@ -150,7 +169,8 @@ export default function OrderHistoryPage() {
             </thead>
             <tbody>
               {filtered.map((order) => (
-                <tr key={order.id}>
+                <tr key={order.id} style={order.status === "cancelled" ? { opacity: 0.65 } : undefined}>
+                  <td className="ht-mono">#{order.order_number ?? order.id?.slice(-6).toUpperCase()}</td>
                   <td className="ht-mono">{fmt(order.created_at)}</td>
                   <td><span className="table-badge-sm">T{order.table_number}</span></td>
                   <td className="ht-items">
@@ -161,6 +181,11 @@ export default function OrderHistoryPage() {
                     <span className={`status-pill status-${order.status}`}>
                       {order.status}
                     </span>
+                    {order.status === "cancelled" && order.cancelled_by_name && (
+                      <div style={{ fontSize: 11, color: "#e05252", marginTop: 2 }}>
+                        by {order.cancelled_by_name}
+                      </div>
+                    )}
                   </td>
                   <td>
                     <span className={`payment-dot ${order.payment_status}`}>

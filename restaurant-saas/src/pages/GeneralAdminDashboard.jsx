@@ -218,8 +218,9 @@ export default function GeneralAdminDashboard() {
     return orderDate.toDateString() === today.toDateString();
   });
 
+  // Cancelled orders never count as revenue (they stay in history only).
   const todayRevenue = todayOrders
-    .filter((o) => o.payment_status === "paid")
+    .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + (o.total || 0), 0);
 
   const pendingOrders = orders.filter((o) =>
@@ -371,7 +372,7 @@ export default function GeneralAdminDashboard() {
       {/* Orders Tab */}
       {activeTab === "orders" && (
         <div className="tab-content">
-          <OrdersTable orders={orders} restaurantId={restaurantId} showActions={false} />
+          <OrdersTable orders={orders} restaurantId={restaurantId} showActions={true} />
         </div>
       )}
 

@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
-  subscribeToMenu, subscribeToOrders, createOrder,
+  subscribeToMenu, subscribeToOrders, createOrder, cancelOrder,
   subscribeToRestaurantPayments
 , getRestaurant } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { isExpiredDemoItem } from "../config/db";
 import { getDemoHiddenDishes } from "../utils/session";
 import AdminLayout from "../components/admin/AdminLayout";
+import ConfirmModal from "../components/admin/ConfirmModal";
 
 export default function ServerDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
@@ -31,6 +32,26 @@ export default function ServerDashboard() {
     });
   }, [restaurantId]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  // A server may delete an order ONLY while it is still pending — before
+  // the kitchen confirms it. The order is soft-cancelled (status
+  // "cancelled" + who/when), never hard-deleted, so history stays complete.
+  async function confirmDeleteOrder() {
+    const order = pendingDelete;
+    setPendingDelete(null);
+    if (!order) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await cancelOrder(restaurantId, order.id, { uid: userProfile?.id, name: userProfile?.name });
+    } catch (e) {
+      setDeleteError(e.message || "Could not delete this order.");
+    }
+    setDeleting(false);
+  }
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -84,7 +105,8 @@ export default function ServerDashboard() {
     setPlacing(false);
   }
 
-  const activeOrders = orders.filter((o) => !["served", "paid"].includes(o.status));
+  // Cancelled orders never show in the active list (they live in history).
+  const activeOrders = orders.filter((o) => !["served", "paid", "cancelled"].includes(o.status));
   const filteredMenu = menuItems.filter((i) =>
     i.name.toLowerCase().includes(searchTerm.toLowerCase()) && i.available && !i.deleted
     // On a demo restaurant, dishes hidden in THIS browser (localStorage, 24h)
@@ -142,7 +164,7 @@ export default function ServerDashboard() {
           {activeOrders.map((order) => (
             <div key={order.id} className="server-order-card">
               <div className="server-order-header">
-                <span className="table-badge">Table {order.table_number}</span>
+                <span className="table-badge">Table {order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
                 <span className={`status-pill status-${order.status}`}>{order.status}</span>
                 <span className="order-total-display">{formatPrice(order.total, currency)}</span>
                 {getPaymentPill(order)}
@@ -154,9 +176,33 @@ export default function ServerDashboard() {
                   </span>
                 ))}
               </div>
+              {order.status === "pending" && (
+                <button
+                  type="button"
+                  className="btn-danger btn-sm"
+                  style={{ marginTop: 10 }}
+                  onClick={() => setPendingDelete(order)}
+                  disabled={deleting}
+                >
+                  🗑️ Delete Order
+                </button>
+              )}
             </div>
           ))}
         </div>
+      )}
+      {deleteError && (
+        <div className="error-banner" style={{ marginTop: 12 }}>{deleteError}</div>
+      )}
+      {pendingDelete && (
+        <ConfirmModal
+          title="Delete this order?"
+          message={`Delete Order #${pendingDelete.order_number ?? pendingDelete.id?.slice(-6).toUpperCase()} (Table ${pendingDelete.table_number})? It will be saved as Cancelled — the kitchen will not make it.`}
+          confirmLabel="Delete Order"
+          danger
+          onConfirm={confirmDeleteOrder}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
 
       {view === "new_order" && (

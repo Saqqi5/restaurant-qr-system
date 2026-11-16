@@ -395,6 +395,22 @@ export async function updateOrderStatus(restaurantId, orderId, status) {
   });
 }
 
+// Soft-cancel an order: it stays in Firestore with status "cancelled"
+// (plus who cancelled it and when), so the daily history stays complete —
+// nothing is ever hard-deleted. Who may cancel is enforced in the app
+// (server: only while the order is still pending; kitchen / cashier /
+// admin: after the kitchen has confirmed it) and in firestore.rules
+// (the server may only cancel a pending order).
+export async function cancelOrder(restaurantId, orderId, by) {
+  await updateDoc(orderDoc(restaurantId, orderId), {
+    status: "cancelled",
+    cancelled_by: by?.uid || null,
+    cancelled_by_name: by?.name || null,
+    cancelled_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  });
+}
+
 export async function updatePaymentStatus(restaurantId, orderId, paymentMethod) {
   // Payment state and kitchen stage are separate: only the payment fields
   // change here. Setting status: "paid" used to drop the order out of the

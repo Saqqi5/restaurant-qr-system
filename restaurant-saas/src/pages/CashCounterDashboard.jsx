@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
-  subscribeToOrders, updatePaymentStatus,
+  subscribeToOrders, updatePaymentStatus, cancelOrder,
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
 import ReceiptModal from "../components/ReceiptModal";
+import ConfirmModal from "../components/admin/ConfirmModal";
 
 export default function CashCounterDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
@@ -21,6 +22,24 @@ export default function CashCounterDashboard() {
   const [mainTab, setMainTab] = useState("orders"); // "orders" | "proofs"
   const [expandedProof, setExpandedProof] = useState(null);
   const [receiptOrder, setReceiptOrder] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
+  const [deleteError, setDeleteError] = useState("");
+
+  // The cashier may delete a WRONG order only AFTER the kitchen has
+  // confirmed it (a still-pending order is the server's to delete).
+  // Soft-cancel: the order stays saved with status "cancelled" + who/when.
+  async function confirmDeleteOrder() {
+    const order = pendingDelete;
+    setPendingDelete(null);
+    if (!order) return;
+    setDeleteError("");
+    try {
+      await cancelOrder(restaurantId, order.id, { uid: userProfile?.id, name: userProfile?.name });
+      setSelectedOrder(null);
+    } catch (e) {
+      setDeleteError(e.message || "Could not delete this order.");
+    }
+  }
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -55,7 +74,9 @@ export default function CashCounterDashboard() {
     });
   }
 
+  // Cancelled orders never show at the counter (they live in history).
   const filteredOrders = orders.filter((o) => {
+    if (o.status === "cancelled") return false;
     if (filter === "unpaid") return o.payment_status === "unpaid" && o.status !== "pending";
     if (filter === "paid") return o.payment_status === "paid";
     return true;
@@ -64,11 +85,11 @@ export default function CashCounterDashboard() {
   const todayPaid = orders.filter((o) => {
     const today = new Date().toDateString();
     const orderDate = o.created_at?.toDate?.()?.toDateString?.();
-    return orderDate === today && o.payment_status === "paid";
+    return orderDate === today && o.payment_status === "paid" && o.status !== "cancelled";
   });
 
   const todayRevenue = todayPaid.reduce((s, o) => s + (o.total || 0), 0);
-  const unpaidCount = orders.filter((o) => o.payment_status === "unpaid" && o.status !== "pending").length;
+  const unpaidCount = orders.filter((o) => o.payment_status === "unpaid" && o.status !== "pending" && o.status !== "cancelled").length;
   const pendingProofs = payments.filter(p => p.status === "pending");
   const verifiedProofs = payments.filter(p => p.status === "verified");
 
@@ -156,7 +177,7 @@ export default function CashCounterDashboard() {
               >
                 <div className="order-card-header">
                   <div>
-                    <span className="table-label">Table {order.table_number}</span>
+                    <span className="table-label">Table {order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
                     <span className="order-time">{formatTime(order.created_at)}</span>
                   </div>
                   <div className="order-header-right">
@@ -210,6 +231,16 @@ export default function CashCounterDashboard() {
                       >
                         🖨️ Print Bill
                       </button>
+                      {order.status !== "pending" && order.status !== "cancelled" && (
+                        <button
+                          type="button"
+                          className="btn-danger btn-sm"
+                          style={{ marginTop: 10, cursor: "pointer" }}
+                          onClick={(e) => { e.stopPropagation(); setPendingDelete(order); }}
+                        >
+                          🗑️ Delete Order
+                        </button>
+                      )}
                     </div>
 
                     {order.payment_status === "unpaid" && (
@@ -343,6 +374,19 @@ export default function CashCounterDashboard() {
       )}
       {receiptOrder && (
         <ReceiptModal order={receiptOrder} restaurantId={restaurantId} currency={currency} onClose={() => setReceiptOrder(null)} />
+      )}
+      {deleteError && (
+        <div className="error-banner" style={{ marginTop: 12 }}>{deleteError}</div>
+      )}
+      {pendingDelete && (
+        <ConfirmModal
+          title="Delete this order?"
+          message={`Delete Order #${pendingDelete.order_number ?? pendingDelete.id?.slice(-6).toUpperCase()} (Table ${pendingDelete.table_number})? It will be saved as Cancelled — it stays in history with who deleted it.`}
+          confirmLabel="Delete Order"
+          danger
+          onConfirm={confirmDeleteOrder}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
     </AdminLayout>
   );

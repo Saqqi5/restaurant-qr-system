@@ -17,6 +17,7 @@ import DemoPage from "./pages/DemoPage";
 import CustomerMenu from "./pages/CustomerMenu";
 import LoginPage from "./pages/LoginPage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import SuperAdminOrdersPage from "./pages/SuperAdminOrdersPage";
 import PlatformSettingsPage from "./pages/PlatformSettingsPage";
 import GeneralAdminDashboard from "./pages/GeneralAdminDashboard";
 import KitchenDashboard from "./pages/KitchenDashboard";
@@ -82,6 +83,13 @@ export default function App() {
             <WithAdminTenant>
               <ProtectedRoute role="super_admin">
                 <PlatformSettingsPage />
+              </ProtectedRoute>
+            </WithAdminTenant>
+          } />
+          <Route path="/admin/super/orders" element={
+            <WithAdminTenant>
+              <ProtectedRoute role="super_admin">
+                <SuperAdminOrdersPage />
               </ProtectedRoute>
             </WithAdminTenant>
           } />

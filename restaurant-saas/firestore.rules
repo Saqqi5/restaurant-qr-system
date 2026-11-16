@@ -48,6 +48,12 @@ service cloud.firestore {
         getUserData().restaurant_id == restaurantId;
     }
 
+    function isServer(restaurantId) {
+      return isAuthenticated() &&
+        getUserData().role == 'server' &&
+        getUserData().restaurant_id == restaurantId;
+    }
+
     function isPaymentStaff() {
       return isAuthenticated() &&
         getUserData().role in ['general_admin', 'cash_counter', 'server', 'super_admin'];
@@ -204,6 +210,17 @@ service cloud.firestore {
         allow update: if isOrderUpdateAllowed(restaurantId)
           && isOrderStatusValid(request.resource.data.status)
           && isPaymentStatusValid(request.resource.data.payment_status)
+          && request.resource.data.total == resource.data.total
+          && request.resource.data.items == resource.data.items
+          && request.resource.data.table_number == resource.data.table_number;
+
+        // A server may cancel (soft-delete) an order, but ONLY while it is
+        // still pending — before the kitchen confirms it. Nothing else may
+        // change: same payment state, same bill, same items, same table.
+        allow update: if isServer(restaurantId)
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.payment_status == resource.data.payment_status
           && request.resource.data.total == resource.data.total
           && request.resource.data.items == resource.data.items
           && request.resource.data.table_number == resource.data.table_number;
