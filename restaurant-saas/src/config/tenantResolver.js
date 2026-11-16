@@ -23,6 +23,27 @@ const DOMAIN_MAP = {
   // Add your custom domain mappings here
 };
 
+import { resolveDomain } from "./db";
+
+// Custom-domain lookup (Firestore domain_mappings, written by the Worker
+// when a domain is bought/linked). Cached per hostname so the app reads it
+// once per load. Fast path: the SaaS host and localhost never have a
+// mapping, so they never touch Firestore.
+let domainCache = { hostname: "", restaurantId: undefined };
+
+export async function getCustomDomainRestaurantId() {
+  const hostname = window.location.hostname;
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".workers.dev")) return null;
+  if (domainCache.hostname === hostname && domainCache.restaurantId !== undefined) return domainCache.restaurantId;
+  try {
+    const mapping = await resolveDomain(hostname);
+    domainCache = { hostname, restaurantId: mapping?.restaurant_id || null };
+  } catch {
+    domainCache = { hostname, restaurantId: null };
+  }
+  return domainCache.restaurantId;
+}
+
 export function resolveTenant() {
   // ── Mode 1: White-label standalone deployment ──────────────────────────────
   const envRestaurantId = import.meta.env.VITE_RESTAURANT_ID;

@@ -10,6 +10,19 @@
 // NOTE: after (re-)saving these secrets in the dashboard, the Worker must be
 // redeployed before the new values are visible to it (redeployed 2026-11-16
 // for exactly this reason).
+//
+// The /api/admin/domain/* endpoints are the one-click custom-domain system
+// (super admin only): check a domain's availability + price, BUY it for a
+// restaurant through the Cloudflare Registrar API (charged to the account's
+// default payment method — non-refundable), and LINK it by attaching the
+// domain to this Worker (Cloudflare provisions DNS + SSL automatically),
+// then saving the mapping so the menu opens at https://{domain}?table=N.
+// They need two more Worker secrets (never in the repo):
+//   CLOUDFLARE_API_TOKEN  — token with Account Registrar:Edit, Zone DNS:Edit
+//     + Zone:Read, Workers Scripts:Edit
+//   CLOUDFLARE_ACCOUNT_ID — the Cloudflare account id
+// Until they are set, every domain endpoint answers "not set up yet" and
+// nothing is bought or linked.
 
 const FIREBASE_PROJECT_ID = "restaurant-system-d74b1";
 const IDENTITY_TOOLKIT = "https://identitytoolkit.googleapis.com/v1";
@@ -156,7 +169,7 @@ async function getServiceAccessToken(env) {
     iss: email,
     sub: email,
     aud: "https://oauth2.googleapis.com/token",
-    scope: "https://www.googleapis.com/auth/identitytoolkit",
+    scope: "https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/datastore",
     iat: now,
     exp: now + 3600,
   };
@@ -191,7 +204,9 @@ async function getServiceAccessToken(env) {
   return cachedAccessToken.token;
 }
 
-async function handleResetPassword(request, env) {
+// Returns { caller, callerDoc, idToken } or a Response error to return.
+// Every /api/admin/* endpoint uses this — only the super admin may call them.
+async function requireSuperAdmin(request, action = "do this") {
   const auth = request.headers.get("Authorization") || "";
   const idToken = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   if (!idToken) return json({ error: "Sign-in required." }, 401);
@@ -211,8 +226,15 @@ async function handleResetPassword(request, env) {
     return json({ error: "Could not verify the caller." }, 500);
   }
   if (!callerDoc || callerDoc.role !== "super_admin") {
-    return json({ error: "Only the administrator can reset passwords." }, 403);
+    return json({ error: `Only the administrator can ${action}.` }, 403);
   }
+  return { caller, callerDoc, idToken };
+}
+
+async function handleResetPassword(request, env) {
+  const admin = await requireSuperAdmin(request, "reset passwords");
+  if (admin instanceof Response) return admin;
+  const { idToken } = admin;
 
   let body;
   try {
@@ -259,6 +281,304 @@ async function handleResetPassword(request, env) {
   return json({ ok: true, password });
 }
 
+// ── Custom domains (Cloudflare Registrar + Workers Custom Domains) ──────
+// One-click buy & link for a restaurant (Premium feature, super admin
+// only). Needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID on the Worker;
+// until they are set, every endpoint below answers "not set up yet" and
+// nothing is bought or linked.
+//
+//   check → Registrar domain-check: availability + live price.
+//   buy   → check again, then POST /registrar/registrations (charged to the
+//           account's default payment method — NON-REFUNDABLE), poll until
+//           it succeeds, then attach + save the mapping.
+//   link  → idempotent finish: attach a domain the customer already owns
+//           (or a bought one whose attach never finished). If the domain
+//           has no zone in our account yet, the zone is created and the
+//           nameservers are returned — the customer sets them at their
+//           registrar first, then Link runs again.
+//   unlink → detach the domain from the Worker + clear the mapping.
+//
+// Attach = PUT /accounts/{id}/workers/domains (one call; Cloudflare
+// provisions DNS + SSL for the hostname automatically). The app resolves
+// the restaurant from Firestore domain_mappings, so the menu opens at
+// https://{domain}?table=N with no other change.
+const CF_API = "https://api.cloudflare.com/client/v4";
+const WORKER_SERVICE = "restaurant-qr-system";
+
+function validDomain(domain) {
+  const d = (domain || "").trim().toLowerCase().replace(/\.$/, "");
+  if (!/^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/.test(d)) return null;
+  if (d.endsWith(".workers.dev")) return null;
+  return d;
+}
+
+function cfConfig(env) {
+  const token = env.CLOUDFLARE_API_TOKEN;
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID;
+  if (!token && !accountId) {
+    throw new Error("Custom domains are not set up yet: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are missing on this Worker.");
+  }
+  if (!token) throw new Error("CLOUDFLARE_API_TOKEN is missing on this Worker.");
+  if (!accountId) throw new Error("CLOUDFLARE_ACCOUNT_ID is missing on this Worker.");
+  return { token, accountId };
+}
+
+async function cf(env, method, path, body) {
+  const { token } = cfConfig(env);
+  const res = await fetch(`${CF_API}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    const msg = (data.errors || []).map((e) => e.message).join("; ") || `Cloudflare request failed (${res.status}).`;
+    throw new Error(msg);
+  }
+  return data.result;
+}
+
+// Firestore REST with the service-account token (bypasses rules — the
+// caller was already verified as super admin).
+async function fsGet(env, path) {
+  const token = await getServiceAccessToken(env);
+  const res = await fetch(`${FIRESTORE_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Could not read the restaurant record.");
+  return res.json();
+}
+
+async function fsPatch(env, path, fields) {
+  const token = await getServiceAccessToken(env);
+  const qs = Object.keys(fields).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join("&");
+  const res = await fetch(`${FIRESTORE_BASE}${path}?${qs}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error("Could not save the restaurant record.");
+  return res.json();
+}
+
+async function fsCreate(env, path, documentId, fields) {
+  const token = await getServiceAccessToken(env);
+  const res = await fetch(`${FIRESTORE_BASE}${path}?documentId=${encodeURIComponent(documentId)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) throw new Error("Could not save the domain mapping.");
+  return res.json();
+}
+
+async function fsDelete(env, path) {
+  const token = await getServiceAccessToken(env);
+  const res = await fetch(`${FIRESTORE_BASE}${path}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok && res.status !== 404) throw new Error("Could not remove the domain mapping.");
+}
+
+async function getRestaurantDoc(env, restaurantId) {
+  const doc = await fsGet(env, `/restaurants/${restaurantId}`);
+  if (!doc) return null;
+  const f = doc.fields || {};
+  return { id: restaurantId, name: f.name?.stringValue || "", custom_domain: f.custom_domain?.stringValue || null };
+}
+
+async function saveDomainMapping(env, restaurantId, domain) {
+  await fsPatch(env, `/restaurants/${restaurantId}`, { custom_domain: { stringValue: domain } });
+  await fsCreate(env, "/domain_mappings", domain, {
+    restaurant_id: { stringValue: restaurantId },
+    verified: { booleanValue: true },
+    created_at: { timestampValue: new Date().toISOString() },
+  });
+}
+
+async function clearDomainMapping(env, restaurantId, domain) {
+  await fsPatch(env, `/restaurants/${restaurantId}`, { custom_domain: { nullValue: null } });
+  if (domain) await fsDelete(env, `/domain_mappings/${domain}`);
+}
+
+// Zone for a domain in our account (created when missing). A zone that is
+// not "active" yet means the nameservers are not set — the caller returns
+// them so the customer can set them at their registrar first.
+async function ensureZone(env, domain) {
+  const { accountId } = cfConfig(env);
+  const zones = await cf(env, "GET", `/zones?name=${encodeURIComponent(domain)}`);
+  let zone = (zones || [])[0];
+  if (!zone) {
+    zone = await cf(env, "POST", "/zones", { name: domain, account: { id: accountId }, jump_start: false });
+  }
+  if (zone.status !== "active") {
+    return { needsNameservers: true, nameservers: zone.name_servers || [], zoneStatus: zone.status };
+  }
+  return { zone };
+}
+
+async function attachWorkerDomain(env, domain) {
+  const { accountId } = cfConfig(env);
+  const existing = await cf(env, "GET", `/accounts/${accountId}/workers/domains`);
+  if ((existing || []).some((d) => (d.hostname || "").toLowerCase() === domain)) {
+    return { alreadyAttached: true };
+  }
+  const zone = await ensureZone(env, domain);
+  if (zone.needsNameservers) return zone;
+  return cf(env, "PUT", `/accounts/${accountId}/workers/domains`, {
+    environment: "production",
+    hostname: domain,
+    service: WORKER_SERVICE,
+    zone_id: zone.zone.id,
+  });
+}
+
+async function parseDomainBody(request) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return { error: "Invalid request." };
+  }
+  const domain = validDomain(body?.domain);
+  if (!domain) return { error: "Enter a valid domain, e.g. myrestaurant.com." };
+  const restaurantId = typeof body?.restaurantId === "string" ? body.restaurantId.trim() : "";
+  return { domain, restaurantId };
+}
+
+function domainError(e) {
+  return json({ error: e?.message || "Custom domain failed." }, 500);
+}
+
+async function handleDomainCheck(request, env) {
+  const admin = await requireSuperAdmin(request, "manage custom domains");
+  if (admin instanceof Response) return admin;
+  const parsed = await parseDomainBody(request);
+  if (parsed.error) return json({ error: parsed.error }, 400);
+  try {
+    const { accountId } = cfConfig(env);
+    const result = await cf(env, "POST", `/accounts/${accountId}/registrar/domain-check`, { domains: [parsed.domain] });
+    const list = Array.isArray(result) ? result : result?.domains || [];
+    const info = list.find((r) => (r.domain_name || "").toLowerCase() === parsed.domain) || list[0];
+    if (!info) return json({ error: "Could not check this domain." }, 500);
+    const available = info.available ?? info.is_available ?? null;
+    const price = info.price ?? info.registration_price ?? info.prices?.registration ?? null;
+    return json({
+      ok: true,
+      domain: parsed.domain,
+      available: available === true,
+      price: typeof price === "number" ? price : null,
+      currency: info.currency || "USD",
+      premium: info.premium === true || info.is_premium === true,
+    });
+  } catch (e) {
+    return domainError(e);
+  }
+}
+
+async function pollRegistration(env, accountId, domain, tries = 12) {
+  for (let i = 0; i < tries; i++) {
+    const reg = await cf(env, "GET", `/accounts/${accountId}/registrar/registrations/${encodeURIComponent(domain)}`);
+    const state = reg?.state || reg?.status;
+    if (state === "succeeded" || state === "success") return { state: "succeeded" };
+    if (state === "failed" || state === "error") throw new Error("Domain registration failed at the registrar.");
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return { state: "pending" };
+}
+
+async function handleDomainBuy(request, env) {
+  const admin = await requireSuperAdmin(request, "manage custom domains");
+  if (admin instanceof Response) return admin;
+  const parsed = await parseDomainBody(request);
+  if (parsed.error) return json({ error: parsed.error }, 400);
+  if (!parsed.restaurantId) return json({ error: "Missing restaurant." }, 400);
+  const { domain, restaurantId } = parsed;
+  try {
+    const { accountId } = cfConfig(env);
+    const restaurant = await getRestaurantDoc(env, restaurantId);
+    if (!restaurant) return json({ error: "Restaurant not found." }, 404);
+    if (restaurant.custom_domain) {
+      return json({ error: `This restaurant already has a domain: ${restaurant.custom_domain}. Unlink it first.` }, 400);
+    }
+    // Fresh price check right before charging — registrations are
+    // non-refundable, and a premium name needs explicit approval.
+    const check = await cf(env, "POST", `/accounts/${accountId}/registrar/domain-check`, { domains: [domain] });
+    const list = Array.isArray(check) ? check : check?.domains || [];
+    const info = list.find((r) => (r.domain_name || "").toLowerCase() === domain) || list[0];
+    if (info && (info.available === false || info.is_available === false)) {
+      return json({ error: "This domain is no longer available." }, 400);
+    }
+    if (info && (info.premium === true || info.is_premium === true)) {
+      return json({ error: "This is a premium domain — buy it from the Cloudflare dashboard, where the price is shown before you pay." }, 400);
+    }
+    await cf(env, "POST", `/accounts/${accountId}/registrar/registrations`, { domain_name: domain });
+    const poll = await pollRegistration(env, accountId, domain);
+    if (poll.state !== "succeeded") {
+      return json({ ok: true, pending: true, domain, state: poll.state, message: "Registration is still processing at the registrar. Press Link once it completes." });
+    }
+    const attached = await attachWorkerDomain(env, domain);
+    if (attached.needsNameservers) {
+      return json({ ok: true, domain, bought: true, needsNameservers: true, nameservers: attached.nameservers, zoneStatus: attached.zoneStatus });
+    }
+    await saveDomainMapping(env, restaurantId, domain);
+    return json({ ok: true, domain, bought: true, attached: true });
+  } catch (e) {
+    return domainError(e);
+  }
+}
+
+async function handleDomainLink(request, env) {
+  const admin = await requireSuperAdmin(request, "manage custom domains");
+  if (admin instanceof Response) return admin;
+  const parsed = await parseDomainBody(request);
+  if (parsed.error) return json({ error: parsed.error }, 400);
+  if (!parsed.restaurantId) return json({ error: "Missing restaurant." }, 400);
+  const { domain, restaurantId } = parsed;
+  try {
+    const restaurant = await getRestaurantDoc(env, restaurantId);
+    if (!restaurant) return json({ error: "Restaurant not found." }, 404);
+    if (restaurant.custom_domain && restaurant.custom_domain !== domain) {
+      return json({ error: `This restaurant already has a domain: ${restaurant.custom_domain}. Unlink it first.` }, 400);
+    }
+    const attached = await attachWorkerDomain(env, domain);
+    if (attached.needsNameservers) {
+      return json({ ok: true, domain, needsNameservers: true, nameservers: attached.nameservers, zoneStatus: attached.zoneStatus });
+    }
+    await saveDomainMapping(env, restaurantId, domain);
+    return json({ ok: true, domain, attached: true });
+  } catch (e) {
+    return domainError(e);
+  }
+}
+
+async function handleDomainUnlink(request, env) {
+  const admin = await requireSuperAdmin(request, "manage custom domains");
+  if (admin instanceof Response) return admin;
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "Invalid request." }, 400);
+  }
+  const restaurantId = typeof body?.restaurantId === "string" ? body.restaurantId.trim() : "";
+  if (!restaurantId) return json({ error: "Missing restaurant." }, 400);
+  try {
+    const restaurant = await getRestaurantDoc(env, restaurantId);
+    if (!restaurant) return json({ error: "Restaurant not found." }, 404);
+    const domain = restaurant.custom_domain;
+    if (!domain) return json({ ok: true, detached: false });
+    const { accountId } = cfConfig(env);
+    let warning = null;
+    try {
+      await cf(env, "DELETE", `/accounts/${accountId}/workers/domains/${encodeURIComponent(domain)}`);
+    } catch (e) {
+      warning = `Cloudflare could not detach the domain: ${e.message}`;
+    }
+    await clearDomainMapping(env, restaurantId, domain);
+    return json({ ok: true, detached: true, domain, warning });
+  } catch (e) {
+    return domainError(e);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -268,6 +588,20 @@ export default {
         return await handleResetPassword(request, env);
       } catch (e) {
         return json({ error: e?.message || "Password reset failed." }, 500);
+      }
+    }
+    const domainHandlers = {
+      "/api/admin/domain/check": handleDomainCheck,
+      "/api/admin/domain/buy": handleDomainBuy,
+      "/api/admin/domain/link": handleDomainLink,
+      "/api/admin/domain/unlink": handleDomainUnlink,
+    };
+    if (domainHandlers[url.pathname]) {
+      if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+      try {
+        return await domainHandlers[url.pathname](request, env);
+      } catch (e) {
+        return json({ error: e?.message || "Custom domain failed." }, 500);
       }
     }
     // Serve static assets; fall back to index.html for SPA routes.

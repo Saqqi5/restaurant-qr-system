@@ -24,6 +24,9 @@ export default function PlanPrice({ pkr, variant }) {
 
   if (!converted) {
     // PKR (or rates not ready / failed): exactly the old display.
+    if (variant === "settings") {
+      return <>{formatMoney(pkr, "PKR")}/mo</>;
+    }
     if (variant === "getstarted") {
       return (
         <span className="gs-plan-price">
@@ -35,6 +38,15 @@ export default function PlanPrice({ pkr, variant }) {
       <>
         <span className="pricing-currency">Rs.</span>
         <span className="pricing-amount">{pkr.toLocaleString("en-US")}</span>
+      </>
+    );
+  }
+
+  if (variant === "settings") {
+    return (
+      <>
+        {formatMoney(converted.amount, converted.currency)}/mo
+        <span className="plan-converted-note">≈ {formatMoney(pkr, "PKR")}/mo</span>
       </>
     );
   }

@@ -128,6 +128,11 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
         <div className="rc-meta-item">
           <span>🌐</span> {restaurant.custom_domain || "No custom domain"}
         </div>
+        {restaurant.domain_request && !restaurant.custom_domain && (
+          <div className="rc-meta-item">
+            <span>💬</span> Domain requested: {restaurant.domain_request}
+          </div>
+        )}
         <div className="rc-meta-item">
           <span>📋</span> /{restaurant.slug || restaurant.id?.slice(0, 8)}
         </div>

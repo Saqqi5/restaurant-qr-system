@@ -5,6 +5,7 @@ import { updateRestaurant, getRestaurant, subscribeToPlatformSettings, createPla
 import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, getBackupLabel, PLANS } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
+import PlanPrice from "../components/PlanPrice";
 
 export default function RestaurantSettingsPage() {
   const { userProfile, restaurantId, logout } = useAuth();
@@ -22,6 +23,7 @@ export default function RestaurantSettingsPage() {
     payment_bank_name: "",
   });
   const [loaded, setLoaded] = useState(false);
+  const [domainInfo, setDomainInfo] = useState({ custom_domain: null, domain_request: null });
   const planLimit = getPlanLimit(plan, platformLimits);
   // Owners may lower the count anytime; the cap is the plan limit, or the
   // current count when already above it (grandfathered — cannot grow further).
@@ -39,6 +41,7 @@ export default function RestaurantSettingsPage() {
     getRestaurant(restaurantId).then((r) => {
       if (r) {
         setPlan(normalizePlan(r.plan));
+        setDomainInfo({ custom_domain: r.custom_domain || null, domain_request: r.domain_request || null });
         setForm({
           name: r.name || "",
           table_count: r.table_count || 10,
@@ -272,6 +275,14 @@ export default function RestaurantSettingsPage() {
 
       </form>
 
+      {/* ── Custom Domain (Premium — the administrator buys & links it) ── */}
+      <DomainRequestSection
+        restaurantId={restaurantId}
+        plan={plan}
+        domainInfo={domainInfo}
+        onRequested={(domain) => setDomainInfo((prev) => ({ ...prev, domain_request: domain }))}
+      />
+
       {/* ── Upgrade Plan (buy a plan, pay SAQLYN, administrator verifies) ── */}
       <PlanUpgradeSection
         restaurantId={restaurantId}
@@ -312,6 +323,7 @@ export default function RestaurantSettingsPage() {
         .plan-card.selected { border-color: var(--color-primary); background: rgba(32, 201, 151, 0.08); }
         .plan-card-name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
         .plan-card-price { font-size: 18px; font-weight: 700; color: var(--color-primary); margin-bottom: 6px; }
+        .plan-converted-note { display: block; font-size: 12px; font-weight: 400; color: var(--color-muted); margin-top: 2px; }
         .plan-card-limits { font-size: 12px; color: var(--color-muted); line-height: 1.6; }
       `}</style>
     </AdminLayout>
@@ -325,6 +337,79 @@ export default function RestaurantSettingsPage() {
 // as the food payments, but the money goes to the platform, not the
 // restaurant's own customers. While a payment is pending, no second one can
 // be sent.
+// Ask the administrator for a custom domain (e.g. myrestaurant.com).
+// The administrator buys it and links it in one click; the request shows
+// on the restaurant's card and in the domain dialog until it is served.
+function DomainRequestSection({ restaurantId, plan, domainInfo, onRequested }) {
+  const [wanted, setWanted] = useState(domainInfo.domain_request || "");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  if (domainInfo.custom_domain) {
+    return (
+      <section className="settings-section">
+        <h2 className="settings-section-title">🌐 Custom Domain</h2>
+        <p className="form-hint">
+          Your menu is live at{" "}
+          <a href={`https://${domainInfo.custom_domain}?table=1`} target="_blank" rel="noreferrer">
+            https://{domainInfo.custom_domain}
+          </a>
+          {" "}— your QR codes already use it.
+        </p>
+      </section>
+    );
+  }
+
+  async function handleRequest(e) {
+    e.preventDefault();
+    const domain = wanted.trim().toLowerCase().replace(/\.$/, "");
+    if (!/^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/.test(domain)) {
+      setError("Enter a valid domain, e.g. myrestaurant.com.");
+      return;
+    }
+    setError("");
+    setSending(true);
+    try {
+      await updateRestaurant(restaurantId, { domain_request: domain, domain_request_at: new Date() });
+      setSent(true);
+      onRequested(domain);
+    } catch (err) {
+      setError(err.message || "Could not send the request.");
+    }
+    setSending(false);
+  }
+
+  return (
+    <section className="settings-section">
+      <h2 className="settings-section-title">🌐 Custom Domain</h2>
+      {normalizePlan(plan) !== "premium" && (
+        <p className="form-hint">Custom domain is a Premium feature — request it here and the administrator will buy and link it for you.</p>
+      )}
+      {sent || domainInfo.domain_request ? (
+        <p className="form-hint">
+          ✅ Request sent for <strong>{domainInfo.domain_request}</strong> — the administrator will buy and link it for you.
+        </p>
+      ) : (
+        <form onSubmit={handleRequest}>
+          {error && <div className="error-banner">{error}</div>}
+          <div className="form-group">
+            <label>Domain you want</label>
+            <input
+              value={wanted}
+              onChange={(e) => setWanted(e.target.value)}
+              placeholder="myrestaurant.com"
+            />
+          </div>
+          <button type="submit" className="btn-primary" disabled={sending}>
+            {sending ? "Sending…" : "📩 Request Custom Domain"}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
+
 function PlanUpgradeSection({ restaurantId, restaurantName, currentPlan, platformSettings }) {
   const [selectedPlan, setSelectedPlan] = useState(
     currentPlan === "basic" ? "standard" : currentPlan === "standard" ? "premium" : "standard"
@@ -484,7 +569,7 @@ function PlanUpgradeSection({ restaurantId, restaurantName, currentPlan, platfor
                     <div className="plan-card-name">
                       {p.label}{isCurrent ? " — current" : ""}
                     </div>
-                    <div className="plan-card-price">Rs. {getPlanPrice(p.key, platformSettings).toLocaleString()}/mo</div>
+                    <div className="plan-card-price"><PlanPrice pkr={getPlanPrice(p.key, platformSettings)} variant="settings" /></div>
                     <div className="plan-card-limits">{limitsLine(p.key)}</div>
                   </div>
                 );

@@ -183,6 +183,21 @@ export function AuthProvider({ children }) {
     return data.password;
   }
 
+  // Generic Worker admin call (super-admin endpoints: custom domains).
+  // Returns the parsed JSON; throws with the server's error message.
+  async function callWorkerApi(path, body) {
+    if (!currentUser) throw new Error("Not signed in.");
+    const token = await currentUser.getIdToken();
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Request failed.");
+    return data;
+  }
+
   function hasRole(...roles) {
     return userProfile && roles.includes(userProfile.role);
   }
@@ -203,6 +218,7 @@ export function AuthProvider({ children }) {
     createDefaultStaff,
     changePassword,
     resetStaffPassword,
+    callWorkerApi,
     hasRole,
     canAccessRestaurant,
     isAuthenticated: !!currentUser,

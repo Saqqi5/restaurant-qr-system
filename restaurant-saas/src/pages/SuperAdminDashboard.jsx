@@ -137,9 +137,10 @@ export default function SuperAdminDashboard() {
 
   async function handleMapDomain(restaurantId, domain) {
     await mapDomain(domain, restaurantId);
-    await updateRestaurant(restaurantId, { custom_domain: domain });
+    // The request is served — clear it so the card stops showing it.
+    await updateRestaurant(restaurantId, { custom_domain: domain, domain_request: null, domain_request_at: null });
     setRestaurants((prev) =>
-      prev.map((r) => r.id === restaurantId ? { ...r, custom_domain: domain } : r)
+      prev.map((r) => r.id === restaurantId ? { ...r, custom_domain: domain, domain_request: null } : r)
     );
   }
 
@@ -424,7 +425,12 @@ export default function SuperAdminDashboard() {
         <DomainModal
           restaurant={selectedRestaurant}
           onClose={() => setModalType(null)}
-          onSave={(domain) => handleMapDomain(selectedRestaurant.id, domain)}
+          onSave={(domain) => domain
+            ? handleMapDomain(selectedRestaurant.id, domain)
+            : setRestaurants((prev) =>
+              prev.map((r) => r.id === selectedRestaurant.id ? { ...r, custom_domain: null } : r)
+            )
+          }
         />
       )}
 
@@ -591,43 +597,178 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
 }
 
 function DomainModal({ restaurant, onClose, onSave }) {
-  const [domain, setDomain] = useState(restaurant.custom_domain || "");
+  const { callWorkerApi } = useAuth();
+  const [domain, setDomain] = useState(restaurant.domain_request || restaurant.custom_domain || "");
+  const [check, setCheck] = useState(null); // {available, price, currency, premium}
+  const [busy, setBusy] = useState(""); // "", "check", "buy", "link", "unlink"
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null); // success message lines
+  const [confirmBuy, setConfirmBuy] = useState(false);
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const linked = restaurant.custom_domain || "";
+  const isPremium = normalizePlan(restaurant.plan) === "premium";
+
+  async function run(label, fn) {
+    setBusy(label);
+    setError("");
+    setResult(null);
+    try {
+      return await fn();
+    } catch (e) {
+      setError(e.message || "Failed.");
+      return null;
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function describe(data) {
+    if (!data) return;
+    if (data.attached) {
+      setResult([
+        `✅ ${data.domain} is live — the menu opens at https://${data.domain}?table=1`,
+        "QR codes for this restaurant now use the custom domain automatically.",
+      ]);
+      onSave(data.domain);
+    } else if (data.pending) {
+      setResult([`⏳ Registration is still processing at the registrar.`, "Press Link once it completes."]);
+    } else if (data.needsNameservers) {
+      setResult([
+        `🌐 ${data.domain} is registered but its nameservers are not set yet.`,
+        `Ask the customer to set these nameservers at their registrar: ${(data.nameservers || []).join(", ")}`,
+        "Then press Link again.",
+      ]);
+    } else if (data.detached) {
+      setResult([`✅ ${data.domain} is unlinked. The menu is back on the normal link.`]);
+      onSave("");
+    }
+    if (data.warning) setError(data.warning);
+  }
+
+  async function handleCheck() {
+    const data = await run("check", () => callWorkerApi("/api/admin/domain/check", { domain }));
+    if (data) setCheck(data);
+  }
+
+  async function handleBuy() {
+    const data = await run("buy", () => callWorkerApi("/api/admin/domain/buy", { restaurantId: restaurant.id, domain }));
+    setConfirmBuy(false);
+    describe(data);
+  }
+
+  async function handleLink() {
+    const data = await run("link", () => callWorkerApi("/api/admin/domain/link", { restaurantId: restaurant.id, domain }));
+    describe(data);
+  }
+
+  async function handleUnlink() {
+    const data = await run("unlink", () => callWorkerApi("/api/admin/domain/unlink", { restaurantId: restaurant.id }));
+    setConfirmUnlink(false);
+    describe(data);
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Custom Domain Mapping</h3>
+          <h3>🌐 Custom Domain</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          <p className="modal-info">
-            Point your domain's DNS A record to this server's IP, then enter the domain below.
-          </p>
-          <div className="form-group">
-            <label>Custom Domain</label>
-            <input
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              placeholder="myrestaurant.com"
-            />
-          </div>
-          <div className="domain-instructions">
-            <h4>DNS Setup Instructions:</h4>
-            <ol>
-              <li>Log into your domain registrar</li>
-              <li>Create an A record: <code>@ → {window.location.hostname}</code></li>
-              <li>Create a CNAME: <code>www → {window.location.hostname}</code></li>
-              <li>Wait for DNS propagation (up to 48 hours)</li>
-              <li>Enter your domain above and save</li>
-            </ol>
-          </div>
+          {!isPremium && (
+            <p className="form-hint">Custom domain is a Premium feature — this restaurant is on the {getPlanLabel(restaurant.plan)} plan.</p>
+          )}
+          {restaurant.domain_request && !linked && (
+            <p className="form-hint">💬 The restaurant asked for: <strong>{restaurant.domain_request}</strong></p>
+          )}
+          {linked ? (
+            <>
+              <p className="modal-info">
+                ✅ Linked — the menu is live at{" "}
+                <a href={`https://${linked}?table=1`} target="_blank" rel="noreferrer">https://{linked}</a>
+              </p>
+              {!confirmUnlink ? (
+                <button className="btn-secondary" onClick={() => setConfirmUnlink(true)} disabled={!!busy}>
+                  Unlink domain
+                </button>
+              ) : (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn-primary" onClick={handleUnlink} disabled={!!busy} style={{ background: "#c1121f" }}>
+                    {busy === "unlink" ? "Unlinking…" : "Yes, unlink it"}
+                  </button>
+                  <button className="btn-secondary" onClick={() => setConfirmUnlink(false)}>Cancel</button>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="modal-info">
+                Buy a domain for this restaurant (charged to the SAQLYN card, about $10–15 a year),
+                or link a domain the customer already owns. The menu then opens at that domain —
+                no DNS work needed from you for a domain we buy.
+              </p>
+              <div className="form-group">
+                <label>Domain</label>
+                <input
+                  value={domain}
+                  onChange={(e) => { setDomain(e.target.value); setCheck(null); }}
+                  placeholder="myrestaurant.com"
+                />
+              </div>
+              {error && <div className="error-banner">{error}</div>}
+              {result && (
+                <div className="modal-info">
+                  {result.map((line, i) => <div key={i}>{line}</div>)}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn-secondary" onClick={handleCheck} disabled={!!busy || !domain.trim()}>
+                  {busy === "check" ? "Checking…" : "🔍 Check availability"}
+                </button>
+                <button className="btn-secondary" onClick={handleLink} disabled={!!busy || !domain.trim()}>
+                  {busy === "link" ? "Linking…" : "🔗 Link domain"}
+                </button>
+              </div>
+              {check && (
+                <div className="modal-info" style={{ marginTop: 12 }}>
+                  {check.available ? (
+                    <>
+                      <div>✅ {check.domain} is available{check.price ? ` — $${check.price} a year` : ""}.</div>
+                      {check.premium && <div>⚠️ Premium domain — the price above is higher than usual.</div>}
+                      {!confirmBuy ? (
+                        <button className="btn-primary" style={{ marginTop: 8 }} onClick={() => setConfirmBuy(true)} disabled={!!busy}>
+                          Buy &amp; Link{check.price ? ` — $${check.price}` : ""}
+                        </button>
+                      ) : (
+                        <div style={{ marginTop: 8 }}>
+                          <div style={{ marginBottom: 8 }}>
+                            This charges {check.price ? `$${check.price}` : "the domain price"} to the SAQLYN card.
+                            Registrations are non-refundable.
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button className="btn-primary" onClick={handleBuy} disabled={!!busy}>
+                              {busy === "buy" ? "Buying…" : "Yes, buy it"}
+                            </button>
+                            <button className="btn-secondary" onClick={() => setConfirmBuy(false)}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div>❌ {check.domain} is not available. Try another name.</div>
+                  )}
+                </div>
+              )}
+              <p className="form-hint" style={{ marginTop: 12 }}>
+                Linking a customer-owned domain: if its nameservers are not on Cloudflare yet,
+                Link creates the zone and shows the nameservers — the customer sets them at
+                their registrar, then you press Link again.
+              </p>
+            </>
+          )}
         </div>
         <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={() => { onSave(domain); onClose(); }}>
-            Map Domain
-          </button>
+          <button className="btn-secondary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
