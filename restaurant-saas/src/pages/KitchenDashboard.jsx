@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { subscribeToOrders, updateOrderStatus, cancelOrder } from "../config/db";
+import { subscribeToOrders, updateOrderStatus } from "../config/db";
 import AdminLayout from "../components/admin/AdminLayout";
 import ReceiptModal from "../components/ReceiptModal";
-import ConfirmModal from "../components/admin/ConfirmModal";
 import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
 const ORDER_STAGES = [
@@ -33,24 +32,7 @@ export default function KitchenDashboard() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(new Set());
   const [kotOrder, setKotOrder] = useState(null);
-  const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
-  const [deleteError, setDeleteError] = useState("");
   const { toasts, dismiss } = useNotifications(restaurantId);
-
-  // The kitchen may delete a WRONG order only AFTER confirming it — a
-  // still-pending order is the server's to delete. Soft-cancel: the order
-  // stays saved with status "cancelled" + who/when.
-  async function confirmDeleteOrder() {
-    const order = pendingDelete;
-    setPendingDelete(null);
-    if (!order) return;
-    setDeleteError("");
-    try {
-      await cancelOrder(restaurantId, order.id, { uid: userProfile?.id, name: userProfile?.name });
-    } catch (e) {
-      setDeleteError(e.message || "Could not delete this order.");
-    }
-  }
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -171,16 +153,6 @@ export default function KitchenDashboard() {
                     >
                       🖨️ Print KOT
                     </button>
-
-                    {order.status !== "pending" && (
-                      <button
-                        className="kitchen-action-btn"
-                        onClick={() => setPendingDelete(order)}
-                        style={{ background: "#c0392b", marginTop: 8 }}
-                      >
-                        🗑️ Delete Order
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>
@@ -188,19 +160,6 @@ export default function KitchenDashboard() {
           );
         })}
       </div>
-      {deleteError && (
-        <div className="error-banner" style={{ marginTop: 12 }}>{deleteError}</div>
-      )}
-      {pendingDelete && (
-        <ConfirmModal
-          title="Delete this order?"
-          message={`Delete Order #${pendingDelete.order_number ?? pendingDelete.id?.slice(-6).toUpperCase()} (Table ${pendingDelete.table_number})? It will be saved as Cancelled — the kitchen will stop making it.`}
-          confirmLabel="Delete Order"
-          danger
-          onConfirm={confirmDeleteOrder}
-          onCancel={() => setPendingDelete(null)}
-        />
-      )}
       {kotOrder && (
         <ReceiptModal order={kotOrder} restaurantId={restaurantId} mode="kot" onClose={() => setKotOrder(null)} />
       )}

@@ -18,6 +18,7 @@ import StatsBar from "../components/admin/StatsBar";
 import StaffModal from "../components/admin/StaffModal";
 import QRModal from "../components/admin/QRModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
+import ReceiptModal from "../components/ReceiptModal";
 import AnalyticsPanel from "../components/admin/AnalyticsPanel";
 
 const TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
@@ -50,6 +51,7 @@ export default function GeneralAdminDashboard() {
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadSubmitError, setLeadSubmitError] = useState("");
   const [verifyingId, setVerifyingId] = useState(null);
+  const [receiptOrder, setReceiptOrder] = useState(null);
   const [platformLimits, setPlatformLimits] = useState(null);
   const [menuLimitNotice, setMenuLimitNotice] = useState("");
 
@@ -74,6 +76,17 @@ export default function GeneralAdminDashboard() {
     setVerifyingId(payment.id);
     await verifyPayment(payment);
     setVerifyingId(null);
+    // The bill slip opens right away so it can be printed immediately
+    // after the payment is verified (and the order marked paid). The local
+    // copy carries the new paid state because the live listener lags a
+    // beat behind the write.
+    const ids = payment.orderIds?.length
+      ? payment.orderIds
+      : payment.orderId
+        ? [payment.orderId]
+        : [];
+    const first = orders.find((o) => o.id === ids[0]);
+    if (first) setReceiptOrder({ ...first, payment_status: "paid", payment_method: payment.method || first.payment_method });
   }
 
   // Menu-item cap for this restaurant's plan (Basic 30 / Standard 100 /
@@ -603,6 +616,17 @@ export default function GeneralAdminDashboard() {
           confirmLabel="Hide dish"
           onConfirm={confirmDeleteItem}
           onCancel={() => setPendingDeleteItem(null)}
+        />
+      )}
+
+      {receiptOrder && (
+        <ReceiptModal
+          order={receiptOrder}
+          restaurantId={restaurantId}
+          restaurantName={restaurant?.name}
+          currency={currency}
+          mode="receipt"
+          onClose={() => setReceiptOrder(null)}
         />
       )}
     </AdminLayout>

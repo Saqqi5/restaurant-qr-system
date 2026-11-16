@@ -52,6 +52,11 @@ export default function CashCounterDashboard() {
     setProcessing(true);
     await updatePaymentStatus(restaurantId, orderId, paymentMethod);
     setSelectedOrder(null);
+    // The bill slip opens right away so it can be printed immediately
+    // after marking paid. The local copy carries the new paid state
+    // because the live listener lags a beat behind the write.
+    const paidOrder = orders.find((o) => o.id === orderId);
+    if (paidOrder) setReceiptOrder({ ...paidOrder, payment_status: "paid", payment_method: paymentMethod });
     setProcessing(false);
   }
 
@@ -59,6 +64,14 @@ export default function CashCounterDashboard() {
     setVerifying(payment.id);
     await verifyPayment(payment);
     setVerifying(null);
+    // Same: the slip for the order this proof just paid opens at once.
+    const ids = payment.orderIds?.length
+      ? payment.orderIds
+      : payment.orderId
+        ? [payment.orderId]
+        : [];
+    const first = orders.find((o) => o.id === ids[0]);
+    if (first) setReceiptOrder({ ...first, payment_status: "paid", payment_method: payment.method || first.payment_method });
   }
 
   function formatTime(ts) {

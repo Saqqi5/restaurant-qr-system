@@ -206,10 +206,14 @@ service cloud.firestore {
         // for a real restaurant, restrict this to staff + per-table tokens.
         allow read: if true;
 
-        // Staff status/payment updates with constrained values
+        // Staff status/payment updates with constrained values.
+        // The kitchen may move an order along (confirm → serve) but may
+        // NEVER cancel/delete one: a wrong confirmed order is deleted by
+        // the cashier or the admin only (his 2026-11-16 decision).
         allow update: if isOrderUpdateAllowed(restaurantId)
           && isOrderStatusValid(request.resource.data.status)
           && isPaymentStatusValid(request.resource.data.payment_status)
+          && (request.resource.data.status != 'cancelled' || !isKitchen(restaurantId))
           && request.resource.data.total == resource.data.total
           && request.resource.data.items == resource.data.items
           && request.resource.data.table_number == resource.data.table_number;
