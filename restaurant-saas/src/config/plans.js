@@ -96,10 +96,13 @@ export function getBackupDays(plan, overrides) {
 // Basic. Amount is my pick — PKR 2,000 one-time — change it in one place.
 export const CUSTOM_LOGO_ADDON_PKR = 2000;
 
-// The FULL feature list every plan card shows (LandingPage + GetStarted
-// share it, so the cards can never drift apart). Included features render
-// with a green check; a plan that does NOT include a feature shows it
-// struck-through, so a buyer compares plans at a glance. Order = card order.
+// Each plan card shows ITS OWN features (LandingPage + GetStarted share
+// this, so the cards can never drift apart). Included features render with
+// a green check. On top, Basic and Standard each show one or two headline
+// Premium features struck-through, so a buyer sees what the next plan
+// unlocks (his 2026-11-16 order — the full list on every card is gone).
+// Basic teasers: Order Taker mode + Custom domain. Standard teaser:
+// Custom domain. Order = card order.
 export function getPlanFeatures(planKey) {
   const key = normalizePlan(planKey);
   const tables = getPlanLimit(key, null);
@@ -107,7 +110,7 @@ export function getPlanFeatures(planKey) {
   const menu = getMenuItemLimit(key, null);
   const std = key !== "basic"; // Standard + Premium
   const prem = key === "premium";
-  return [
+  const own = [
     { text: `${tables} tables`, included: true },
     { text: `${staff} staff logins`, included: true },
     { text: menu === null ? "Unlimited menu items" : `${menu} menu items`, included: true },
@@ -115,22 +118,64 @@ export function getPlanFeatures(planKey) {
     { text: "Kitchen & cash dashboards", included: true },
     { text: "Tax & discount billing", included: true },
     { text: "Payment proof uploads", included: true },
-    { text: "Server dashboard", included: std },
-    { text: "Advanced analytics", included: std },
-    { text: "Order Taker mode", included: std },
-    // Custom logo: free on Premium; on Basic and Standard the customer can
-    // buy it from us for the one-time fee (his 2026-11-16 order — the line
-    // shows on every plan, so a Basic customer can ask for it too).
+  ];
+  if (std) {
+    own.push(
+      { text: "Server dashboard", included: true },
+      { text: "Advanced analytics", included: true },
+      { text: "Order Taker mode", included: true },
+    );
+  }
+  if (prem) own.push({ text: "Custom domain", included: true });
+  // Custom logo: free on Premium; on Basic and Standard the customer can
+  // buy it from us for the one-time fee (his 2026-11-16 order — the line
+  // shows on every plan, so a Basic customer can ask for it too).
+  own.push(
     {
       text: prem
         ? "Custom logo — Free"
         : `Custom logo — PKR ${CUSTOM_LOGO_ADDON_PKR.toLocaleString("en-US")} one-time`,
       included: true,
     },
-    { text: "Custom domain", included: prem },
     { text: getBackupLabel(key, null), included: true },
     { text: PLANS[key].support, included: true },
-  ];
+  );
+  if (key === "basic") {
+    own.push(
+      { text: "Order Taker mode", included: false },
+      { text: "Custom domain", included: false },
+    );
+  }
+  if (key === "standard") own.push({ text: "Custom domain", included: false });
+  return own;
+}
+
+// Retention window (his 2026-11-16 order): a restaurant admin sees only
+// orders newer than their plan's backup window (Basic 30 / Standard 90 /
+// Premium 365 days). NOTHING is deleted — the super admin still sees every
+// order; the window only limits what the restaurant's own panels show. It
+// rolls forward daily: each morning one more day falls out of the admin's
+// view. The cutoff is the start of the day N days ago, so "the last 90
+// days" shows exactly 90 days back.
+export function getRetentionCutoffDate(planKey, overrides) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - getBackupDays(planKey, overrides));
+  cutoff.setHours(0, 0, 0, 0);
+  return cutoff;
+}
+
+function orderDate(order) {
+  if (!order?.created_at) return null;
+  if (typeof order.created_at.toDate === "function") return order.created_at.toDate();
+  const d = new Date(order.created_at);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// An order with no usable date is always shown — never hide blindly.
+export function isOrderWithinRetention(order, planKey, overrides) {
+  const d = orderDate(order);
+  if (!d) return true;
+  return d >= getRetentionCutoffDate(planKey, overrides);
 }
 export function getBackupLabel(plan, overrides) {
   const days = getBackupDays(plan, overrides);

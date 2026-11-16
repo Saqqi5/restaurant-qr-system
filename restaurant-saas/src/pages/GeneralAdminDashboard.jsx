@@ -10,7 +10,7 @@ import {
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { cleanupExpiredDemoItems, isExpiredDemoItem } from "../config/db";
 import { hideDemoDish, unhideDemoDish, getDemoHiddenDishes } from "../utils/session";
-import { formatExpiryDate, getPlanLabel, getMenuItemLimit } from "../config/plans";
+import { formatExpiryDate, getPlanLabel, getMenuItemLimit, getBackupDays, isOrderWithinRetention } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 import MenuItemModal from "../components/admin/MenuItemModal";
@@ -238,7 +238,16 @@ export default function GeneralAdminDashboard() {
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + (o.total || 0), 0);
 
-  const pendingOrders = orders.filter((o) =>
+  // Retention window (his 2026-11-16 order): the admin sees only orders
+  // newer than their plan's backup window. Nothing is deleted — the
+  // super admin still sees everything. todayOrders/todayRevenue are
+  // today-only so they are unaffected; the receipt lookup for a
+  // just-verified payment keeps the full list so its slip always opens.
+  const retentionDays = getBackupDays(trialInfo?.plan || "basic", platformLimits);
+  const visibleOrders = orders.filter((o) => isOrderWithinRetention(o, trialInfo?.plan || "basic", platformLimits));
+  const retentionNote = `Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`;
+
+  const pendingOrders = visibleOrders.filter((o) =>
     ["pending", "confirmed", "preparing"].includes(o.status)
   ).length;
 
@@ -395,7 +404,8 @@ export default function GeneralAdminDashboard() {
       {/* Orders Tab */}
       {activeTab === "orders" && (
         <div className="tab-content">
-          <OrdersTable orders={orders} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} />
+          <p style={{ fontSize: "13px", color: "var(--color-muted)", margin: "0 0 12px" }}>{retentionNote}</p>
+          <OrdersTable orders={visibleOrders} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} />
         </div>
       )}
 
@@ -482,7 +492,8 @@ export default function GeneralAdminDashboard() {
       {/* Analytics Tab */}
       {activeTab === "analytics" && (
         <div className="tab-content">
-          <AnalyticsPanel orders={orders} menuItems={menuItems} currency={currency} />
+          <p style={{ fontSize: "13px", color: "var(--color-muted)", margin: "0 0 12px" }}>{retentionNote}</p>
+          <AnalyticsPanel orders={visibleOrders} menuItems={menuItems} currency={currency} />
         </div>
       )}
 

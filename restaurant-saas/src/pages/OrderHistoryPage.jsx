@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { getDocs, query, orderBy, where, Timestamp } from "firebase/firestore";
-import { ordersCol } from "../config/db";
+import { ordersCol, subscribeToPlatformSettings } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
+import { getBackupDays, getPlanLabel, getRetentionCutoffDate, isOrderWithinRetention } from "../config/plans";
 import AdminLayout from "../components/admin/AdminLayout";
 
 function startOfDay(date) {
@@ -17,7 +18,7 @@ function endOfDay(date) {
 }
 
 export default function OrderHistoryPage() {
-  const { userProfile, restaurantId, logout } = useAuth();
+  const { userProfile, restaurantId, logout, trialInfo } = useAuth();
   const currency = useRestaurantCurrency(restaurantId);
   const [orders, setOrders]     = useState([]);
   const [loading, setLoading]   = useState(false);
@@ -25,6 +26,13 @@ export default function OrderHistoryPage() {
   const [dateTo,   setDateTo]   = useState(toDateInput(new Date()));
   const [statusFilter, setStatusFilter] = useState("all");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+  const [platformLimits, setPlatformLimits] = useState(null);
+  useEffect(() => subscribeToPlatformSettings(setPlatformLimits), []);
+  // Retention window (his 2026-11-16 order): the admin sees only orders
+  // newer than their plan's backup window. Nothing is deleted — the
+  // super admin still sees everything.
+  const retentionDays = getBackupDays(trialInfo?.plan || "basic", platformLimits);
+  const cutoffInput = toDateInput(getRetentionCutoffDate(trialInfo?.plan || "basic", platformLimits));
 
   async function fetchOrders() {
     setLoading(true);
@@ -47,7 +55,8 @@ export default function OrderHistoryPage() {
   // history with who cancelled them — nothing is ever hard-deleted).
   const filtered = orders.filter((o) =>
     (statusFilter === "all" || o.payment_status === statusFilter) &&
-    (orderStatusFilter === "all" || o.status === orderStatusFilter)
+    (orderStatusFilter === "all" || o.status === orderStatusFilter) &&
+    isOrderWithinRetention(o, trialInfo?.plan || "basic", platformLimits)
   );
 
   const totalRevenue = filtered
@@ -93,7 +102,7 @@ export default function OrderHistoryPage() {
       <div className="history-filters">
         <div className="filter-group">
           <label>From</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <input type="date" value={dateFrom} min={cutoffInput} onChange={(e) => setDateFrom(e.target.value)} />
         </div>
         <div className="filter-group">
           <label>To</label>
@@ -126,6 +135,10 @@ export default function OrderHistoryPage() {
           ⬇️ Export CSV
         </button>
       </div>
+
+      <p style={{ fontSize: "13px", color: "var(--color-muted)", margin: "0 0 12px" }}>
+        Showing orders from the last {retentionDays} days — your {getPlanLabel(trialInfo?.plan || "basic")} plan keeps {retentionDays} days of history. Older orders are kept by the administrator.
+      </p>
 
       {/* Summary row */}
       <div className="history-summary">
