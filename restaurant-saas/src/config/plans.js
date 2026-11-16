@@ -118,13 +118,14 @@ export function getPlanFeatures(planKey) {
     { text: "Server dashboard", included: std },
     { text: "Advanced analytics", included: std },
     { text: "Order Taker mode", included: std },
+    // Custom logo: free on Premium; on Basic and Standard the customer can
+    // buy it from us for the one-time fee (his 2026-11-16 order — the line
+    // shows on every plan, so a Basic customer can ask for it too).
     {
       text: prem
         ? "Custom logo — Free"
-        : std
-          ? `Custom logo — PKR ${CUSTOM_LOGO_ADDON_PKR.toLocaleString("en-US")} one-time`
-          : "Custom logo",
-      included: prem || std,
+        : `Custom logo — PKR ${CUSTOM_LOGO_ADDON_PKR.toLocaleString("en-US")} one-time`,
+      included: true,
     },
     { text: "Custom domain", included: prem },
     { text: getBackupLabel(key, null), included: true },

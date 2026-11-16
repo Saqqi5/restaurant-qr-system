@@ -285,6 +285,41 @@ const FEATURES = [
     title: "Fast Billing & Payments",
     desc: "Customers pay via EasyPaisa, JazzCash, or bank transfer and upload proof directly in the app.",
   },
+  {
+    icon: "🧾",
+    title: "Tax & Discount Billing",
+    desc: "Set your tax and discount rates once — every bill adds them up automatically, to the rupee.",
+  },
+  {
+    icon: "🛎️",
+    title: "Order Taker Mode",
+    desc: "Staff take orders from the panel — pick a table, add dishes, and the kitchen gets it instantly.",
+  },
+  {
+    icon: "🍽️",
+    title: "Server Dashboard",
+    desc: "Waiters see live table orders, take new ones, and keep every table moving.",
+  },
+  {
+    icon: "📊",
+    title: "Advanced Analytics",
+    desc: "Live revenue, best sellers, and daily trends — see what's actually selling, not what you guess.",
+  },
+  {
+    icon: "🎨",
+    title: "Custom Logo & Branding",
+    desc: "Your restaurant's own logo and colours on the menu, the receipts, and the staff panels.",
+  },
+  {
+    icon: "🌐",
+    title: "Custom Domain",
+    desc: "Serve your menu on your own domain, like menu.yourrestaurant.com.",
+  },
+  {
+    icon: "💾",
+    title: "Data Kept Safe",
+    desc: "Your orders and menu history stay available — never deleted, ready whenever you need them.",
+  },
 ];
 
 const PLANS = [
