@@ -54,23 +54,26 @@ export default function SuperAdminOrdersPage() {
   const restMap = {};
   restaurants.forEach((r) => { restMap[r.id] = r; });
 
-  // The restaurant dropdown filters INSTANTLY (client-side, like the status
-  // and payment dropdowns): the fetch below always loads every restaurant's
-  // orders for the chosen date range / order number, and `filtered` below
-  // narrows it to the selected restaurant. Only the date range and the
-  // order number change the Firestore query, so only those need Apply.
-  // (Before this, the restaurant filter only took effect on Apply — the
-  // dropdown looked broken: pick a restaurant, nothing changed.)
-  async function fetchOrders(restList = restaurants) {
+  // Restaurant pick is INSTANT: selecting one restaurant loads ALL its
+  // orders at once (no date limit) — the super admin sees its full history.
+  // Switching back to "All restaurants" loads the date-ranged view again.
+  // Dates are NOT instant: they only apply when Apply is pressed, for
+  // whichever restaurant is selected at the time.
+  async function fetchOrders(restList = restaurants, restFilter = restaurantFilter, useDates = restFilter === "all") {
     setLoading(true);
     try {
       const num = parseInt(orderNo, 10);
-      const targets = restList;
+      const targets = restFilter === "all"
+        ? restList
+        : restList.filter((r) => r.id === restFilter);
       // One single-collection query per restaurant (proven to work under
       // the published rules); merged + sorted client-side.
       const snaps = await Promise.all(targets.map((r) => {
         if (Number.isFinite(num)) {
           return getDocs(query(ordersCol(r.id), where("order_number", "==", num)));
+        }
+        if (!useDates) {
+          return getDocs(query(ordersCol(r.id), orderBy("created_at", "desc")));
         }
         const from = Timestamp.fromDate(startOfDay(new Date(dateFrom)));
         const to = Timestamp.fromDate(endOfDay(new Date(dateTo)));
@@ -141,7 +144,14 @@ export default function SuperAdminOrdersPage() {
       <div className="history-filters">
         <div className="filter-group">
           <label>Restaurant</label>
-          <select value={restaurantFilter} onChange={(e) => setRestaurantFilter(e.target.value)}>
+          <select
+            value={restaurantFilter}
+            onChange={(e) => {
+              const v = e.target.value;
+              setRestaurantFilter(v);
+              fetchOrders(restaurants, v, v === "all");
+            }}
+          >
             <option value="all">All restaurants</option>
             {restaurants.map((r) => (
               <option key={r.id} value={r.id}>{r.name}</option>
@@ -187,7 +197,7 @@ export default function SuperAdminOrdersPage() {
             <option value="unpaid">Unpaid</option>
           </select>
         </div>
-        <button className="btn-primary" onClick={() => fetchOrders()} disabled={loading}>
+        <button className="btn-primary" onClick={() => fetchOrders(restaurants, restaurantFilter, true)} disabled={loading}>
           {loading ? "Loading…" : "Apply"}
         </button>
         <button className="btn-secondary" onClick={exportCSV} disabled={!filtered.length}>
@@ -209,6 +219,12 @@ export default function SuperAdminOrdersPage() {
           <span className="hs-value">{filtered.filter((o) => o.status === "cancelled").length}</span>
         </div>
       </div>
+
+      {restaurantFilter !== "all" && (
+        <p className="form-hint" style={{ marginBottom: 12 }}>
+          Showing all orders of {restMap[restaurantFilter]?.name || "this restaurant"} — to see a specific date, pick the dates and press Apply.
+        </p>
+      )}
 
       <p className="form-hint" style={{ marginBottom: 12 }}>
         Click any order to view its slip — status, items and bill.
