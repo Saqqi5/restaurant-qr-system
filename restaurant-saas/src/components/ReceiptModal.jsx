@@ -125,7 +125,7 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
 
           <div style={{ textAlign: "center", fontSize: 12, color: "#666", marginTop: 14 }}>
             {isKot ? "— Kitchen copy —" : (
-              <>Thank you for <img src="/favicon.svg" alt="" style={{ height: 14, width: 14, verticalAlign: "-2px", margin: "0 1px" }} /> dining with us!</>
+              <>Thank you for dining <img src="/favicon.svg" alt="" style={{ height: 14, width: 14, verticalAlign: "-2px", margin: "0 1px" }} /> with us!</>
             )}
           </div>
           {!isKot && (
