@@ -105,6 +105,9 @@ export default function SuperAdminOrdersPage() {
   const totalRevenue = filtered
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + (o.total || 0), 0);
+  // Revenue is shown in the selected restaurant's currency. With "All
+  // restaurants" the total mixes currencies, so it falls back to the $ default.
+  const revenueCurrency = restaurantFilter === "all" ? "$" : (restMap[restaurantFilter]?.currency || "$");
 
   function fmt(ts) {
     if (!ts?.toDate) return "—";
@@ -124,7 +127,7 @@ export default function SuperAdminOrdersPage() {
     const { default: ExcelJS } = await import("exceljs");
     const wb = new ExcelJS.Workbook();
     wb.creator = "SAQLYN";
-    const sheetName = restFilter === "all" ? "All Orders" : (restMap[restFilter]?.name || "Orders").slice(0, 31);
+    const sheetName = restaurantFilter === "all" ? "All Orders" : (restMap[restaurantFilter]?.name || "Orders").slice(0, 31);
     const ws = wb.addWorksheet(sheetName);
     ws.columns = [
       { header: "Order #", key: "no", width: 10 },
@@ -166,9 +169,9 @@ export default function SuperAdminOrdersPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const restSlug = restFilter === "all"
+    const restSlug = restaurantFilter === "all"
       ? "all"
-      : (restaurants.find((r) => r.id === restFilter)?.slug || restMap[restFilter]?.name || restFilter)
+      : (restaurants.find((r) => r.id === restaurantFilter)?.slug || restMap[restaurantFilter]?.name || restaurantFilter)
           .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     a.download = `orders_${restSlug}_${dateFrom}_to_${dateTo}.xlsx`;
     a.click();
@@ -253,7 +256,7 @@ export default function SuperAdminOrdersPage() {
         </div>
         <div className="hs-item">
           <span className="hs-label">Revenue (paid, excl. cancelled)</span>
-          <span className="hs-value">{formatPrice(totalRevenue, "$")}</span>
+          <span className="hs-value">{formatPrice(totalRevenue, revenueCurrency)}</span>
         </div>
         <div className="hs-item">
           <span className="hs-label">Cancelled</span>
@@ -337,6 +340,7 @@ export default function SuperAdminOrdersPage() {
           restaurantId={slipOrder.restaurant_id}
           restaurantName={restMap[slipOrder.restaurant_id]?.name}
           restaurantLogo={restMap[slipOrder.restaurant_id]?.logo_url}
+          restaurantAddress={restMap[slipOrder.restaurant_id]?.address}
           currency={restMap[slipOrder.restaurant_id]?.currency || "$"}
           mode="receipt"
           onClose={() => setSlipOrder(null)}

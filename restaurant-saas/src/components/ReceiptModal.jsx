@@ -7,19 +7,22 @@ import { formatPrice } from "../utils/currency";
 // the .receipt-print-area on a forced white page (the app is dark-themed).
 // The restaurant logo (set in Restaurant Settings → logo upload, saved as
 // `logo_url` on the restaurant doc) shows above the name when available.
-export default function ReceiptModal({ order, restaurantId, restaurantName, restaurantLogo = "", currency = "$", mode = "receipt", onClose }) {
+export default function ReceiptModal({ order, restaurantId, restaurantName, restaurantLogo = "", restaurantAddress = "", currency = "$", mode = "receipt", onClose }) {
   const [name, setName] = useState(restaurantName || "");
   const [logo, setLogo] = useState(restaurantLogo || "");
+  const [address, setAddress] = useState(restaurantAddress || "");
   useEffect(() => { if (restaurantName) setName(restaurantName); }, [restaurantName]);
   useEffect(() => { if (restaurantLogo) setLogo(restaurantLogo); }, [restaurantLogo]);
+  useEffect(() => { if (restaurantAddress) setAddress(restaurantAddress); }, [restaurantAddress]);
   useEffect(() => {
-    if (restaurantId && (!restaurantName || !restaurantLogo)) {
+    if (restaurantId && (!restaurantName || !restaurantLogo || !restaurantAddress)) {
       getRestaurant(restaurantId).then((r) => {
         if (r?.name && !restaurantName) setName(r.name);
         if (r?.logo_url && !restaurantLogo) setLogo(r.logo_url);
+        if (r?.address && !restaurantAddress) setAddress(r.address);
       });
     }
-  }, [restaurantId, restaurantName, restaurantLogo]);
+  }, [restaurantId, restaurantName, restaurantLogo, restaurantAddress]);
 
   // The browser names a saved PDF after document.title — set it to the
   // slip's name (restaurant + order number) while the slip is open, so
@@ -115,8 +118,15 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
             </div>
           )}
 
+          {/* Address: below the total bill, at the bottom of the slip. */}
+          {!isKot && address && (
+            <div style={{ textAlign: "center", fontSize: 12, color: "#666", marginTop: 10 }}>{address}</div>
+          )}
+
           <div style={{ textAlign: "center", fontSize: 12, color: "#666", marginTop: 14 }}>
-            {isKot ? "— Kitchen copy —" : "Thank you for dining with us!"}
+            {isKot ? "— Kitchen copy —" : (
+              <>Thank you for <img src="/favicon.svg" alt="" style={{ height: 14, width: 14, verticalAlign: "-2px", margin: "0 1px" }} /> dining with us!</>
+            )}
           </div>
           {!isKot && (
             <div style={{ textAlign: "center", fontSize: 11, color: "#888", marginTop: 4 }}>Powered by SAQLYN</div>

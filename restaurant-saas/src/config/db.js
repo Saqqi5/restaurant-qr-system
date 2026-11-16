@@ -68,6 +68,10 @@ export async function createRestaurant(data) {
     name: data.name,
     slug: data.slug || slugify(data.name),
     logo_url: data.logo_url || null,
+    // Currency is picked by the super admin at creation (default "$") and
+    // changeable later in the Edit modal; address prints on the receipt.
+    currency: data.currency || "$",
+    address: data.address || "",
     table_count: data.table_count || 10,
     custom_domain: data.custom_domain || null,
     theme: data.theme || { primary: "#20C997", accent: "#0F3D3E", font: "modern" },

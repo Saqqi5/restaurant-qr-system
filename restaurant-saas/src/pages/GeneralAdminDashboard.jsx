@@ -625,6 +625,7 @@ export default function GeneralAdminDashboard() {
           restaurantId={restaurantId}
           restaurantName={restaurant?.name}
           restaurantLogo={restaurant?.logo_url}
+          restaurantAddress={restaurant?.address}
           currency={currency}
           mode="receipt"
           onClose={() => setReceiptOrder(null)}

@@ -22,7 +22,7 @@ export default function RestaurantSettingsPage() {
   const [platformLimits, setPlatformLimits] = useState(null);
   const [plan, setPlan] = useState("standard");
   const [form, setForm] = useState({
-    name: "", table_count: 10, logo_url: "",
+    name: "", table_count: 10, logo_url: "", address: "",
     theme: { primary: "#20C997", accent: "#17A884" },
     tax_rate: 0, discount_rate: 0,
     payment_easypaisa_number: "",
@@ -54,6 +54,7 @@ export default function RestaurantSettingsPage() {
           name: r.name || "",
           table_count: r.table_count || 10,
           logo_url: r.logo_url || "",
+          address: r.address || "",
           theme: r.theme || { primary: "#20C997", accent: "#17A884" },
           tax_rate: Number(r.tax_rate) || 0,
           discount_rate: Number(r.discount_rate) || 0,
@@ -171,6 +172,16 @@ export default function RestaurantSettingsPage() {
           </div>
 
           {/* Logo Upload */}
+          <div className="form-group">
+            <label>Address</label>
+            <input
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="e.g. 12 Main Bazaar, Lahore"
+            />
+            <p className="form-hint">Printed at the bottom of every receipt, below the total.</p>
+          </div>
+
           <div className="form-group">
             <label>Restaurant Logo</label>
             <div className="logo-upload-row">

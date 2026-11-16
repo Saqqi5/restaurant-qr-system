@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { PLANS, getPlanLimit, normalizePlan } from "../../config/plans";
+import CurrencySelect from "./CurrencySelect";
 
 export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
   const [form, setForm] = useState({
     name: "", table_count: 10, logo_url: "", plan: "basic",
+    currency: "$", address: "",
     theme: { primary: "#20C997", accent: "#17A884" },
     ...(initial || {}),
   });
@@ -60,6 +62,17 @@ export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="form-group">
+              <label>Currency</label>
+              <CurrencySelect value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} />
+              <p className="form-hint">Shown on every bill and in revenue. Default is US Dollar ($).</p>
+            </div>
+            <div className="form-group">
+              <label>Address (optional — shows on the receipt)</label>
+              <input value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder="e.g. 12 Main Bazaar, Lahore" />
             </div>
             <div className="form-row">
               <div className="form-group">

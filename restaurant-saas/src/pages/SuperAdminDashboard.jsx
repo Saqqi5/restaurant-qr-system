@@ -12,6 +12,7 @@ import { buildQrUrl } from "../config/tenantResolver";
 import AdminLayout from "../components/admin/AdminLayout";
 import RestaurantCard from "../components/admin/RestaurantCard";
 import CreateRestaurantModal from "../components/admin/CreateRestaurantModal";
+import CurrencySelect from "../components/admin/CurrencySelect";
 import StaffModal from "../components/admin/StaffModal";
 import QRModal from "../components/admin/QRModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
@@ -447,6 +448,8 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
     logo_url: restaurant.logo_url || "",
     active: restaurant.active !== false,
     plan: normalizePlan(restaurant.plan),
+    currency: restaurant.currency || "$",
+    address: restaurant.address || "",
   });
   const editLimit = getPlanLimit(form.plan, null);
 
@@ -489,6 +492,17 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
             <input value={form.logo_url}
               onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
               placeholder="https://..." />
+          </div>
+          <div className="form-group">
+            <label>Currency</label>
+            <CurrencySelect value={form.currency} onChange={(v) => setForm({ ...form, currency: v })} />
+            <p className="form-hint">Shown on every bill and in revenue.</p>
+          </div>
+          <div className="form-group">
+            <label>Address (shows on the receipt)</label>
+            <input value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="e.g. 12 Main Bazaar, Lahore" />
           </div>
           <div className="form-group-inline">
             <label>
