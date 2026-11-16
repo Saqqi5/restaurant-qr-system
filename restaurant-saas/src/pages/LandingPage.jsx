@@ -13,6 +13,7 @@ const TELEGRAM = "https://t.me/Saqlyndigital";
 export default function LandingPage() {
   const [demos, setDemos] = useState({});
   const [liveRestaurants, setLiveRestaurants] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -180,8 +181,17 @@ export default function LandingPage() {
         <p className="section-label">Simple Pricing</p>
         <h2 className="section-title">Choose your plan</h2>
         <div className="pricing-grid">
-          {PLANS.map((plan, i) => (
-            <div key={i} className={`pricing-card ${plan.featured ? "featured" : ""}`}>
+          {PLANS.map((plan, i) => {
+            const selected = selectedPlan === plan.key;
+            return (
+            <div
+              key={i}
+              className={`pricing-card ${plan.featured ? "featured" : ""} ${selected ? "selected" : ""}`}
+              onClick={() => setSelectedPlan(plan.key)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPlan(plan.key); } }}
+            >
               {plan.featured && <div className="pricing-badge">MOST POPULAR</div>}
               <div className="pricing-plan">{plan.name}</div>
               <div className="pricing-price">
@@ -198,14 +208,22 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link
-                to={`/get-started?plan=${plan.key}`}
-                className={`btn-pricing ${plan.featured ? "filled" : "outline"}`}
-              >
+              {/* Trial label — visual only, NOT clickable; highlights when this plan is selected */}
+              <div className={`btn-pricing ${selected ? "filled" : "outline"}`}>
                 {plan.cta}
-              </Link>
+              </div>
+              {selected && (
+                <Link
+                  to={`/get-started?plan=${plan.key}`}
+                  className="btn-pricing-continue"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Continue with {plan.name} →
+                </Link>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
