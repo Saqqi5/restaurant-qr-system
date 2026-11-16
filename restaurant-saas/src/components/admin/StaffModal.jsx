@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { getRestaurantUsers, subscribeToPlatformSettings, deleteUser } from "../../config/db";
+import { getRestaurantUsers, subscribeToPlatformSettings, deleteUser, setUserDisabled } from "../../config/db";
 import { getStaffLimit, getPlanLabel, normalizePlan } from "../../config/plans";
 import { getDemoRemovedStaff, removeDemoStaff, restoreDemoStaff } from "../../utils/session";
 import ConfirmModal from "./ConfirmModal";
@@ -26,6 +26,7 @@ export default function StaffModal({ restaurant, onClose }) {
   const [pendingReset, setPendingReset] = useState(null); // staff member awaiting password reset
   const [resetResult, setResetResult] = useState(null); // { name, password } after a reset
   const [resetting, setResetting] = useState(false);
+  const [disabling, setDisabling] = useState(null); // member id being disabled/enabled
   const [copied, setCopied] = useState(false);
 
   const plan = normalizePlan(restaurant?.plan);
@@ -99,6 +100,25 @@ export default function StaffModal({ restaurant, onClose }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch { /* clipboard unavailable — the password can still be selected */ }
+  }
+
+  // Disable / enable ONE staff login (super admin only). Disabled: that
+  // login is blocked with "Your account is disabled. Please contact your
+  // administrator." — live, even if they are signed in right now. One
+  // click enables them again.
+  async function handleToggleDisabled(member) {
+    setDisabling(member.id);
+    setError("");
+    setSuccess("");
+    try {
+      const disabled = !member.is_disabled;
+      await setUserDisabled(member.id, disabled);
+      setStaff((prev) => prev.map((m) => (m.id === member.id ? { ...m, is_disabled: disabled } : m)));
+      setSuccess(`${member.name} ${disabled ? "disabled — their login is now blocked." : "enabled — they can sign in again."}`);
+    } catch (e) {
+      setError(e.message || "Failed to update staff member");
+    }
+    setDisabling(null);
   }
 
   async function confirmRemove() {
@@ -196,6 +216,22 @@ export default function StaffModal({ restaurant, onClose }) {
                   <span className={`role-badge role-${member.role}`}>
                     {getRoleIcon(member.role)} {getRoleLabel(member.role)}
                   </span>
+                  {member.is_disabled && (
+                    <span className="disabled-badge" title="This login is disabled">
+                      🚫 Disabled
+                    </span>
+                  )}
+                  {isSuperAdmin && member.id !== currentUser?.uid && (
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      title={member.is_disabled ? "Enable this login" : "Disable this login"}
+                      onClick={() => handleToggleDisabled(member)}
+                      disabled={disabling === member.id}
+                    >
+                      {member.is_disabled ? "✅" : "🚫"}
+                    </button>
+                  )}
                   {isSuperAdmin && member.id !== currentUser?.uid && (
                     <button
                       type="button"

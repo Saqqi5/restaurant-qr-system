@@ -11,10 +11,14 @@ import {
 } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { auth, firebaseConfig } from "../config/firebase";
-import { getUser, createUser, getRestaurant, subscribeToRestaurant } from "../config/db";
+import { getUser, createUser, getRestaurant, subscribeToRestaurant, subscribeToUser } from "../config/db";
 import { getExpiryInfo, formatExpiryDate, getPlanLabel } from "../config/plans";
 
 const AuthContext = createContext(null);
+
+// One message for every disabled login — a disabled staff account and a
+// frozen restaurant both show exactly this.
+export const ACCOUNT_DISABLED_MESSAGE = "Your account is disabled. Please contact your administrator.";
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
@@ -26,6 +30,13 @@ export function AuthProvider({ children }) {
   // super admin continues the plan.
   const [trialInfo, setTrialInfo] = useState(null);
   const trialBlocked = trialInfo?.expired === true;
+  // Live freeze/disable state. frozenBlocked = the signed-in user's
+  // restaurant is frozen by the super admin; accountDisabled = this login
+  // itself was disabled. Either one blocks every dashboard (ProtectedRoute)
+  // with the disabled message — the super admin is never blocked.
+  const frozenBlocked = trialInfo?.is_frozen === true;
+  const accountDisabled = userProfile?.is_disabled === true;
+  const accountBlocked = frozenBlocked || accountDisabled;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -47,16 +58,38 @@ export function AuthProvider({ children }) {
       setTrialInfo(null);
       return;
     }
-    const unsub = subscribeToRestaurant(rid, (doc) => setTrialInfo({ ...getExpiryInfo(doc), plan: doc?.plan }));
+    const unsub = subscribeToRestaurant(rid, (doc) => setTrialInfo({ ...getExpiryInfo(doc), plan: doc?.plan, is_frozen: doc?.is_frozen === true }));
     return unsub;
   }, [userProfile?.restaurant_id, userProfile?.role]);
+
+  // Live-watch the signed-in user's own doc: if the super admin disables
+  // this login while the user is signed in, the profile updates here and
+  // ProtectedRoute blocks them immediately (no re-login needed).
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsub = subscribeToUser(currentUser.uid, (doc) => {
+      if (doc) setUserProfile(doc);
+    });
+    return unsub;
+  }, [currentUser]);
 
   async function login(email, password) {
     const result = await signInWithEmailAndPassword(auth, email, password);
     const profile = await getUser(result.user.uid);
-    // A restaurant whose period has ended may not sign in at all.
+    // A disabled login may not sign in at all — not even to see a dashboard.
+    if (profile?.is_disabled === true) {
+      await signOut(auth);
+      setUserProfile(null);
+      throw new Error(ACCOUNT_DISABLED_MESSAGE);
+    }
+    // A restaurant frozen by the super admin may not sign in at all.
     if (profile?.restaurant_id && profile?.role !== "super_admin") {
       const restaurant = await getRestaurant(profile.restaurant_id);
+      if (restaurant?.is_frozen === true) {
+        await signOut(auth);
+        setUserProfile(null);
+        throw new Error(ACCOUNT_DISABLED_MESSAGE);
+      }
       const info = getExpiryInfo(restaurant);
       if (info.expired) {
         await signOut(auth);
@@ -177,6 +210,9 @@ export function AuthProvider({ children }) {
     restaurantId: userProfile?.restaurant_id,
     trialInfo,
     trialBlocked,
+    accountBlocked,
+    frozenBlocked,
+    accountDisabled,
   };
 
   return (

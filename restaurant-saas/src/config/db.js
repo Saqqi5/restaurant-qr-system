@@ -106,6 +106,14 @@ export async function updateRestaurant(restaurantId, data) {
   await updateDoc(restaurantDoc(restaurantId), { ...data, updated_at: serverTimestamp() });
 }
 
+// Freeze / unfreeze a whole restaurant (super admin only — the rules block
+// a general admin from changing is_frozen). Frozen: every staff login of
+// that restaurant is blocked and the public menu hides. Unfreezing restores
+// everything at once.
+export async function setRestaurantFrozen(restaurantId, frozen) {
+  await updateDoc(restaurantDoc(restaurantId), { is_frozen: frozen, updated_at: serverTimestamp() });
+}
+
 // ── Platform Settings (super admin) ────────────────────────────────────────
 // Doc `platform_settings/platform`: { basic, standard, premium } — the
 // table cap per plan (Premium 50) plus { *_staff } staff caps,
@@ -235,10 +243,11 @@ export async function getAllRestaurants() {
 
 // Homepage directory: ONLY the sample demo restaurants (is_demo). Real
 // customer restaurants must never appear on the public homepage — they
-// are reached only through their own QR codes / direct links.
+// are reached only through their own QR codes / direct links. A frozen
+// demo is hidden too (its menu shows "unavailable" anyway).
 export async function getDemoRestaurants() {
   const snap = await getDocs(query(restaurantsCol(), where("is_demo", "==", true)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => r.is_frozen !== true);
 }
 
 export function subscribeToRestaurant(restaurantId, callback) {
@@ -640,6 +649,22 @@ export async function createUser(userId, data) {
 export async function getUser(userId) {
   const snap = await getDoc(userDoc(userId));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+// Live-watch one user's doc (used by AuthContext so a staff member who is
+// disabled while signed in is blocked immediately, not on next login).
+export function subscribeToUser(userId, callback) {
+  return onSnapshot(userDoc(userId), (snap) => {
+    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+  });
+}
+
+// Disable / enable ONE staff login (super admin only — the rules block a
+// user from changing their own is_disabled). Disabled: that login is
+// blocked with "Your account is disabled. Please contact your
+// administrator." until the super admin enables it again.
+export async function setUserDisabled(userId, disabled) {
+  await updateDoc(userDoc(userId), { is_disabled: disabled, updated_at: serverTimestamp() });
 }
 
 export async function deleteUser(userId) {

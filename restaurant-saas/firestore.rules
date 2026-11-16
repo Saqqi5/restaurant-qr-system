@@ -125,6 +125,16 @@ service cloud.firestore {
     function planUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['plan']);
     }
+    // A restaurant's general admin may never freeze or unfreeze their own
+    // restaurant — only the super admin touches is_frozen.
+    function frozenUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['is_frozen']);
+    }
+    // A user may never disable or enable their own login — only the super
+    // admin touches is_disabled.
+    function disabledUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['is_disabled']);
+    }
     function tableCountWithinLimit() {
       let oldCount = resource.data.get('table_count', 0);
       let newCount = request.resource.data.get('table_count', oldCount);
@@ -150,7 +160,9 @@ service cloud.firestore {
             && getUserData().restaurant_id == resource.data.restaurant_id)
       );
       allow create: if isSuperAdmin() || isStaffCreateAllowed();
-      allow update: if isSuperAdmin() || request.auth.uid == userId;
+      // Super admin can change anything (incl. disabling a login). A user
+      // may update their own record but never their own disabled flag.
+      allow update: if isSuperAdmin() || (request.auth.uid == userId && disabledUnchanged());
       allow delete: if isSuperAdmin() || isStaffDeleteAllowed();
     }
 
@@ -164,9 +176,10 @@ service cloud.firestore {
 
       // Super admin can change anything. A restaurant's general admin can
       // update everything except the plan, and may not raise the table count
-      // above the plan's limit (lowering it is always allowed).
+      // above the plan's limit (lowering it is always allowed). They may
+      // never touch the plan expiry or the freeze flag.
       allow update: if isSuperAdmin()
-        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged());
+        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged() && frozenUnchanged());
 
       // ── Menu Items ──────────────────────────────────────────
       match /menu/{itemId} {

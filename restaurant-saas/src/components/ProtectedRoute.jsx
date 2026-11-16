@@ -11,13 +11,29 @@ const ROLE_REDIRECTS = {
 };
 
 export default function ProtectedRoute({ children, role }) {
-  const { isAuthenticated, userProfile, loading, trialBlocked, trialInfo, logout } = useAuth();
+  const { isAuthenticated, userProfile, loading, trialBlocked, trialInfo, accountBlocked, logout } = useAuth();
   const location = useLocation();
 
   if (loading) return <div className="app-loading"><div className="spinner" /></div>;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Frozen by the super admin, or this login disabled one by one: every
+  // dashboard stops here with the same message, live (no re-login needed).
+  if (accountBlocked) {
+    return (
+      <div className="trial-blocked">
+        <div className="trial-blocked-card">
+          <h2>⛔ Account Disabled</h2>
+          <p>
+            Your account is disabled. Please contact your administrator.
+          </p>
+          <button className="btn-primary" onClick={logout}>Sign Out</button>
+        </div>
+      </div>
+    );
   }
 
   if (trialBlocked) {

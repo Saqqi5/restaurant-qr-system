@@ -275,6 +275,19 @@ export default function CustomerMenu() {
     );
   }
 
+  // Frozen by the super admin: the whole restaurant stops publicly — no
+  // menu, no ordering — until it is unfrozen. The super admin can still
+  // preview the menu.
+  if (restaurant?.is_frozen === true && userProfile?.role !== "super_admin") {
+    return (
+      <div className="error-state">
+        <div className="error-icon">🧊</div>
+        <h2>This restaurant is currently unavailable</h2>
+        <p>Ordering is paused for this restaurant. Please contact the restaurant for more information.</p>
+      </div>
+    );
+  }
+
   // Staff of one restaurant must never see another restaurant's menu or
   // its table orders. The customer menu is public for real customers
   // (anonymous), but a signed-in staff member belongs to exactly one

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getPlanLabel, getExpiryInfo, formatExpiryDate } from "../../config/plans";
-import { continuePlan, startDemo, resetDemoRestaurant } from "../../config/db";
+import { continuePlan, startDemo, resetDemoRestaurant, setRestaurantFrozen } from "../../config/db";
 import ConfirmModal from "./ConfirmModal";
 
 export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain, onDelete }) {
@@ -10,7 +10,13 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
   const [demoStarted, setDemoStarted] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null); // "demo" | "reset"
+  const [confirmAction, setConfirmAction] = useState(null); // "demo" | "reset" | "freeze"
+  // Frozen state lives here so the button + badge update at once; it stays
+  // in sync if the parent list refreshes.
+  const [frozen, setFrozen] = useState(restaurant.is_frozen === true);
+  const [freezing, setFreezing] = useState(false);
+  const [freezeDone, setFreezeDone] = useState(false);
+  useEffect(() => { setFrozen(restaurant.is_frozen === true); }, [restaurant.is_frozen]);
   const expiry = getExpiryInfo(restaurant);
 
   async function handleContinue() {
@@ -63,6 +69,39 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
     }
   }
 
+  // Freeze the whole restaurant in one click: every staff login stops
+  // working, the public menu hides, and customers see it as unavailable.
+  // Unfreezing restores everything at once. Ask first — this stops a
+  // live restaurant.
+  async function handleFreeze() {
+    setConfirmAction("freeze");
+  }
+
+  async function confirmFreeze() {
+    setConfirmAction(null);
+    setFreezing(true);
+    try {
+      await setRestaurantFrozen(restaurant.id, true);
+      setFrozen(true);
+      setFreezeDone(true);
+      setTimeout(() => setFreezeDone(false), 3000);
+    } finally {
+      setFreezing(false);
+    }
+  }
+
+  async function handleUnfreeze() {
+    setFreezing(true);
+    try {
+      await setRestaurantFrozen(restaurant.id, false);
+      setFrozen(false);
+      setFreezeDone(true);
+      setTimeout(() => setFreezeDone(false), 3000);
+    } finally {
+      setFreezing(false);
+    }
+  }
+
   return (
     <div className={`restaurant-card ${!restaurant.active ? "inactive" : ""}`}>
       <div className="rc-header">
@@ -77,6 +116,9 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
         <span className={`rc-status ${restaurant.active ? "active" : "inactive"}`}>
           {restaurant.active ? "Active" : "Inactive"}
         </span>
+        {frozen && (
+          <span className="rc-status frozen">🧊 Frozen</span>
+        )}
       </div>
 
       <div className="rc-meta">
@@ -122,6 +164,15 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
             ↺ {resetDone ? "Demo reset ✓" : resetting ? "Resetting…" : "Reset demo"}
           </button>
         )}
+        {frozen ? (
+          <button className="rc-btn" onClick={handleUnfreeze} disabled={freezing} title="Restore all staff logins and the public menu">
+            ▶️ {freezeDone ? "Unfrozen ✓" : freezing ? "Unfreezing…" : "Unfreeze restaurant"}
+          </button>
+        ) : (
+          <button className="rc-btn" onClick={handleFreeze} disabled={freezing} title="Stop all staff logins and hide the public menu in one click">
+            🧊 {freezeDone ? "Frozen ✓" : freezing ? "Freezing…" : "Freeze restaurant"}
+          </button>
+        )}
       </div>
       {confirmAction === "demo" && (
         <ConfirmModal
@@ -139,6 +190,16 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
           confirmLabel="Reset demo"
           danger
           onConfirm={confirmResetDemo}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+      {confirmAction === "freeze" && (
+        <ConfirmModal
+          title="Freeze restaurant?"
+          message={`Freeze ${restaurant.name}? All staff logins stop working, the public menu hides, and customers see the restaurant as unavailable. You can unfreeze it anytime.`}
+          confirmLabel="Freeze restaurant"
+          danger
+          onConfirm={confirmFreeze}
           onCancel={() => setConfirmAction(null)}
         />
       )}
