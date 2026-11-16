@@ -268,22 +268,27 @@ export default {
       }
     }
     // Serve static assets; fall back to index.html for SPA routes.
-    // DIAGNOSTIC (temporary): surface the real ASSETS errors so the
-    // fallback failure can be fixed for good instead of guessed at.
-    let firstError = null;
+    // The ASSETS binding THROWS for paths with no matching file (it does
+    // not return a 404 and not_found_handling does not cover it), so the
+    // single-page fallback has to happen here — otherwise every deep link
+    // (/demo, /login, /r/...) dies with Error 1101 while / still works.
+    // NOTE: the fallback request must be a PLAIN new Request — copying the
+    // original request as init (new Request(url, request)) makes the
+    // fallback fetch throw too, which is why /admin/super showed
+    // "Site unavailable" even after the first fix deployed.
+    // The binding itself must exist: wrangler.toml [assets] needs
+    // binding = "ASSETS" or env.ASSETS is undefined on the live Worker.
     try {
       return await env.ASSETS.fetch(request);
-    } catch (e) {
-      firstError = `${e?.name || "Error"}: ${e?.message || e}`;
-    }
-    try {
-      const indexReq = new Request(new URL("/", request.url));
-      return await env.ASSETS.fetch(indexReq);
-    } catch (e) {
-      return new Response(
-        `Site unavailable. first=${firstError} | fallback=${e?.name || "Error"}: ${e?.message || e}`,
-        { status: 500, headers: { "Content-Type": "text/plain" } }
-      );
+    } catch {
+      try {
+        return await env.ASSETS.fetch(new Request(new URL("/", request.url)));
+      } catch {
+        return new Response("Site unavailable. Please try again.", {
+          status: 500,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
     }
   },
 };
