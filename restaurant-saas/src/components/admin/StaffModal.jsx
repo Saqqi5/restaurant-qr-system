@@ -213,45 +213,47 @@ export default function StaffModal({ restaurant, onClose }) {
                     <span className="staff-name">{member.name}</span>
                     <span className="staff-email">{member.email}</span>
                   </div>
-                  <span className={`role-badge role-${member.role}`}>
-                    {getRoleIcon(member.role)} {getRoleLabel(member.role)}
-                  </span>
-                  {member.is_disabled && (
-                    <span className="disabled-badge" title="This login is disabled">
-                      🚫 Disabled
+                  <div className="staff-actions">
+                    <span className={`role-badge role-${member.role}`}>
+                      {getRoleIcon(member.role)} {getRoleLabel(member.role)}
                     </span>
-                  )}
-                  {isSuperAdmin && member.id !== currentUser?.uid && (
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title={member.is_disabled ? "Enable this login" : "Disable this login"}
-                      onClick={() => handleToggleDisabled(member)}
-                      disabled={disabling === member.id}
-                    >
-                      {member.is_disabled ? "✅" : "🚫"}
-                    </button>
-                  )}
-                  {isSuperAdmin && member.id !== currentUser?.uid && (
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="Reset password"
-                      onClick={() => handleReset(member)}
-                    >
-                      🔑
-                    </button>
-                  )}
-                  {member.id !== currentUser?.uid && (
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="Remove staff member"
-                      onClick={() => handleRemove(member)}
-                    >
-                      🗑️
-                    </button>
-                  )}
+                    {member.is_disabled && (
+                      <span className="disabled-badge" title="This login is disabled">
+                        🚫 Disabled
+                      </span>
+                    )}
+                    {isSuperAdmin && member.id !== currentUser?.uid && (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title={member.is_disabled ? "Enable this login" : "Disable this login"}
+                        onClick={() => handleToggleDisabled(member)}
+                        disabled={disabling === member.id}
+                      >
+                        {member.is_disabled ? "✅" : "🚫"}
+                      </button>
+                    )}
+                    {isSuperAdmin && member.id !== currentUser?.uid && (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Reset password"
+                        onClick={() => handleReset(member)}
+                      >
+                        🔑
+                      </button>
+                    )}
+                    {member.id !== currentUser?.uid && (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Remove staff member"
+                        onClick={() => handleRemove(member)}
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -267,17 +269,19 @@ export default function StaffModal({ restaurant, onClose }) {
                       <span className="staff-name">{member.name}</span>
                       <span className="staff-email">{member.email}</span>
                     </div>
-                    <span className={`role-badge role-${member.role}`}>
-                      {getRoleIcon(member.role)} {getRoleLabel(member.role)}
-                    </span>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="Restore staff member"
-                      onClick={() => handleRestoreStaff(member)}
-                    >
-                      ↩️
-                    </button>
+                    <div className="staff-actions">
+                      <span className={`role-badge role-${member.role}`}>
+                        {getRoleIcon(member.role)} {getRoleLabel(member.role)}
+                      </span>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        title="Restore staff member"
+                        onClick={() => handleRestoreStaff(member)}
+                      >
+                        ↩️
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
