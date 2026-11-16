@@ -262,36 +262,6 @@ async function handleResetPassword(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    // TEMPORARY DIAGNOSTIC (remove after the secrets issue is settled):
-    // super-admin-only; lists the env var NAMES this Worker sees and whether
-    // each expected secret is present (non-empty) — NEVER the values.
-    if (url.pathname === "/api/admin/env-check") {
-      if (request.method !== "GET") return json({ error: "Method not allowed." }, 405);
-      const auth = request.headers.get("Authorization") || "";
-      const idToken = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-      if (!idToken) return json({ error: "Sign-in required." }, 401);
-      let caller;
-      try {
-        caller = await verifyIdToken(idToken);
-      } catch {
-        return json({ error: "Could not verify the sign-in." }, 401);
-      }
-      if (!caller) return json({ error: "Sign-in expired or invalid. Please sign in again." }, 401);
-      let callerDoc;
-      try {
-        callerDoc = await getUserDoc(caller.user_id, idToken);
-      } catch {
-        return json({ error: "Could not verify the caller." }, 500);
-      }
-      if (!callerDoc || callerDoc.role !== "super_admin") {
-        return json({ error: "Only the super admin can reset passwords." }, 403);
-      }
-      return json({
-        env_keys: Object.keys(env).filter((k) => k !== "ASSETS"),
-        email_present: Boolean(env.FIREBASE_SERVICE_ACCOUNT_EMAIL),
-        key_present: Boolean(env.FIREBASE_SERVICE_ACCOUNT_KEY),
-      });
-    }
     if (url.pathname === "/api/admin/reset-password") {
       if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
       try {
