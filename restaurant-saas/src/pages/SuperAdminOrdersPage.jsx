@@ -52,13 +52,18 @@ export default function SuperAdminOrdersPage() {
   const restMap = {};
   restaurants.forEach((r) => { restMap[r.id] = r; });
 
+  // The restaurant dropdown filters INSTANTLY (client-side, like the status
+  // and payment dropdowns): the fetch below always loads every restaurant's
+  // orders for the chosen date range / order number, and `filtered` below
+  // narrows it to the selected restaurant. Only the date range and the
+  // order number change the Firestore query, so only those need Apply.
+  // (Before this, the restaurant filter only took effect on Apply — the
+  // dropdown looked broken: pick a restaurant, nothing changed.)
   async function fetchOrders(restList = restaurants) {
     setLoading(true);
     try {
       const num = parseInt(orderNo, 10);
-      const targets = restaurantFilter === "all"
-        ? restList
-        : restList.filter((r) => r.id === restaurantFilter);
+      const targets = restList;
       // One single-collection query per restaurant (proven to work under
       // the published rules); merged + sorted client-side.
       const snaps = await Promise.all(targets.map((r) => {
@@ -87,6 +92,7 @@ export default function SuperAdminOrdersPage() {
   }
 
   const filtered = orders.filter((o) =>
+    (restaurantFilter === "all" || o.restaurant_id === restaurantFilter) &&
     (statusFilter === "all" || o.status === statusFilter) &&
     (paymentFilter === "all" || o.payment_status === paymentFilter)
   );
