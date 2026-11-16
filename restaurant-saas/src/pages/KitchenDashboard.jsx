@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { subscribeToOrders, updateOrderStatus } from "../config/db";
+import { sortByBookedAt, sortForMaking } from "../utils/orderSort";
 import AdminLayout from "../components/admin/AdminLayout";
 import ReceiptModal from "../components/ReceiptModal";
 import { useNotifications, ToastContainer } from "../hooks/useNotifications";
@@ -65,11 +66,13 @@ export default function KitchenDashboard() {
   }
 
   const ordersByStatus = ORDER_STAGES.reduce((acc, stage) => {
-    // Add-on orders (a table that already had an order) sort first within
-    // their stage — the kitchen serves them on priority.
-    acc[stage.status] = orders
-      .filter((o) => o.status === stage.status)
-      .sort((a, b) => Number(b.is_addon === true) - Number(a.is_addon === true));
+    // Serving is strictly FIFO — but while MAKING, add-on orders come
+    // first (rushed while cooking). The ready column is pure FIFO:
+    // whoever booked first is served first.
+    const list = orders.filter((o) => o.status === stage.status);
+    acc[stage.status] = stage.status === "ready"
+      ? list.sort(sortByBookedAt)
+      : list.sort(sortForMaking);
     return acc;
   }, {});
 
@@ -93,6 +96,9 @@ export default function KitchenDashboard() {
       <div className="kitchen-kanban">
         {ORDER_STAGES.map((stage) => {
           const stageOrders = ordersByStatus[stage.status] || [];
+          // In the ready column the first card is the oldest booked order —
+          // that is the one to serve next.
+          const serveNextId = stage.status === "ready" ? stageOrders[0]?.id : null;
           return (
             <div key={stage.status} className="kanban-column">
               <div className="kanban-header" style={{ borderColor: stage.color }}>
@@ -119,6 +125,10 @@ export default function KitchenDashboard() {
 
                     {order.is_addon && (
                       <div className="addon-badge">➕ Add-on order — priority</div>
+                    )}
+
+                    {order.id === serveNextId && (
+                      <div className="serve-next-badge">🔺 Serve next — booked first</div>
                     )}
 
                     {isOverdue(order) && (

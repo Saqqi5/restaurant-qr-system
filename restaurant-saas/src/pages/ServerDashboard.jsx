@@ -5,6 +5,7 @@ import {
   subscribeToRestaurantPayments
 , getRestaurant } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
+import { sortByBookedAt } from "../utils/orderSort";
 import { isExpiredDemoItem } from "../config/db";
 import { getDemoHiddenDishes } from "../utils/session";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -110,7 +111,13 @@ export default function ServerDashboard() {
   }
 
   // Cancelled orders never show in the active list (they live in history).
-  const activeOrders = orders.filter((o) => !["served", "paid", "cancelled"].includes(o.status));
+  // Serving order is strictly FIFO — oldest booked first — so the server
+  // works down the list and whoever booked first is served first.
+  const activeOrders = orders
+    .filter((o) => !["served", "paid", "cancelled"].includes(o.status))
+    .sort(sortByBookedAt);
+  // The oldest READY order is the one to serve next.
+  const serveNextId = activeOrders.find((o) => o.status === "ready")?.id;
   const filteredMenu = menuItems.filter((i) =>
     i.name.toLowerCase().includes(searchTerm.toLowerCase()) && i.available && !i.deleted
     // On a demo restaurant, dishes hidden in THIS browser (localStorage, 24h)
@@ -173,6 +180,12 @@ export default function ServerDashboard() {
                 <span className="order-total-display">{formatPrice(order.total, currency)}</span>
                 {getPaymentPill(order)}
               </div>
+              {order.created_at?.toDate && (
+                <div className="order-booked">🕐 Booked {order.created_at.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+              )}
+              {order.id === serveNextId && (
+                <div className="serve-next-badge">🔺 Serve next — booked first</div>
+              )}
               {order.is_addon && (
                 <div className="addon-badge">➕ Add-on order — priority</div>
               )}
