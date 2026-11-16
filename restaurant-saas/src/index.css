@@ -413,6 +413,11 @@ a { color: var(--color-primary); text-decoration: none; }
 .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; }
 .pricing-features li { font-size: 14px; display: flex; align-items: center; gap: 10px; }
 .pricing-check { color: var(--color-primary); font-size: 16px; flex-shrink: 0; }
+.pricing-feature-off { color: var(--color-muted); text-decoration: line-through; }
+.pricing-check-off { color: var(--color-muted); font-size: 16px; flex-shrink: 0; }
+.pricing-converted-note { font-size: 12px; color: var(--color-muted); }
+.gs-feature-off { color: var(--color-muted); text-decoration: line-through; }
+.gs-converted-note { font-size: 12px; color: var(--color-muted); }
 .btn-pricing {
   width: 100%; padding: 13px; border-radius: var(--radius-sm); font-family: var(--font);
   font-size: 14px; font-weight: 700; text-align: center; display: block;

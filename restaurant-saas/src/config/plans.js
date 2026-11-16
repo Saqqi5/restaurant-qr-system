@@ -4,7 +4,8 @@
 // values here are the defaults.
 // Tables: Basic 10 / Standard 20 / Premium 50 (his 2026-11-14 decision).
 // Staff logins: Basic 4 / Standard 10 / Premium 30.
-// Menu items: Basic 30 / Standard 100 / Premium unlimited (0 = unlimited).
+// Menu items: Basic 20 / Standard 50 / Premium unlimited (his 2026-11-15
+// decision; 0 = unlimited in settings).
 // Prices (PKR/month): Basic 5,000 / Standard 8,000 / Premium 12,000
 // (his 2026-11-14 decision; Premium was my pick).
 // Data backup (his 2026-11-16 decision): Basic 30 days / Standard 90 days
@@ -19,7 +20,7 @@ export const PLANS = {
 
 export const DEFAULT_PLAN_LIMITS = { basic: 10, standard: 20, premium: 50 };
 export const DEFAULT_STAFF_LIMITS = { basic: 4, standard: 10, premium: 30 };
-export const DEFAULT_MENU_LIMITS = { basic: 30, standard: 100, premium: 0 };
+export const DEFAULT_MENU_LIMITS = { basic: 20, standard: 50, premium: 0 };
 export const DEFAULT_PLAN_PRICES = { basic: 5000, standard: 8000, premium: 12000 };
 export const DEFAULT_BACKUP_DAYS = { basic: 30, standard: 90, premium: 365 };
 
@@ -90,6 +91,46 @@ export function getBackupDays(plan, overrides) {
 
 // "Data backup: 30 days" (365 days shows as "1 year") — the line shown on
 // pricing cards when a restaurant chooses a plan.
+
+// Custom logo: free on Premium, a one-time add-on on Standard, not on
+// Basic. Amount is my pick — PKR 2,000 one-time — change it in one place.
+export const CUSTOM_LOGO_ADDON_PKR = 2000;
+
+// The FULL feature list every plan card shows (LandingPage + GetStarted
+// share it, so the cards can never drift apart). Included features render
+// with a green check; a plan that does NOT include a feature shows it
+// struck-through, so a buyer compares plans at a glance. Order = card order.
+export function getPlanFeatures(planKey) {
+  const key = normalizePlan(planKey);
+  const tables = getPlanLimit(key, null);
+  const staff = getStaffLimit(key, null);
+  const menu = getMenuItemLimit(key, null);
+  const std = key !== "basic"; // Standard + Premium
+  const prem = key === "premium";
+  return [
+    { text: `${tables} tables`, included: true },
+    { text: `${staff} staff logins`, included: true },
+    { text: menu === null ? "Unlimited menu items" : `${menu} menu items`, included: true },
+    { text: "QR code ordering", included: true },
+    { text: "Kitchen & cash dashboards", included: true },
+    { text: "Tax & discount billing", included: true },
+    { text: "Payment proof uploads", included: true },
+    { text: "Server dashboard", included: std },
+    { text: "Advanced analytics", included: std },
+    { text: "Order Taker mode", included: std },
+    {
+      text: prem
+        ? "Custom logo — Free"
+        : std
+          ? `Custom logo — PKR ${CUSTOM_LOGO_ADDON_PKR.toLocaleString("en-US")} one-time`
+          : "Custom logo",
+      included: prem || std,
+    },
+    { text: "Custom domain", included: prem },
+    { text: getBackupLabel(key, null), included: true },
+    { text: PLANS[key].support, included: true },
+  ];
+}
 export function getBackupLabel(plan, overrides) {
   const days = getBackupDays(plan, overrides);
   const span = days >= 365 && days % 365 === 0
@@ -100,7 +141,7 @@ export function getBackupLabel(plan, overrides) {
 
 // ── Trial / subscription period ──────────────────────────────────────────
 // Every new restaurant starts with a 7-day free trial, on ANY plan. At
-// expiry the login is blocked until the super admin continues the plan
+// expiry the login is blocked until the administrator continues the plan
 // (one click, +30 days — a paid month). A restaurant with no
 // plan_expires_at (older data) never expires.
 // Paid periods (Continue, verified plan payment) are always 30 days —

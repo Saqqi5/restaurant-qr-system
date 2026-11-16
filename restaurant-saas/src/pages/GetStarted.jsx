@@ -4,13 +4,12 @@ import {
   PLANS,
   getPlanPrice,
   getPlanLimit,
-  getStaffLimit,
-  getMenuItemLimit,
-  getBackupLabel,
   TRIAL_DAYS,
   normalizePlan,
 } from "../config/plans";
 import { createSignupRequest } from "../config/db";
+import PlanPrice from "../components/PlanPrice";
+import PlanFeatures from "../components/PlanFeatures";
 
 // Sales go through this page now — the hero "Get Started" button lands
 // here instead of bouncing straight to Telegram (t.me often just sits on
@@ -23,21 +22,6 @@ import { createSignupRequest } from "../config/db";
 const TELEGRAM = "https://t.me/Saqlyndigital";
 const CUISINES = ["Desi / Pakistani", "BBQ & Grill", "Fast Food", "Italian", "Chinese", "Cafe & Desserts", "Other"];
 const PLAN_ORDER = ["basic", "standard", "premium"];
-
-function planFeatures(key) {
-  const tables = getPlanLimit(key, null);
-  const staff = getStaffLimit(key, null);
-  const menu = getMenuItemLimit(key, null);
-  return [
-    `${tables} tables`,
-    `${staff} staff logins`,
-    menu === null ? "Unlimited menu items" : `${menu} menu items`,
-    "QR code ordering",
-    "Kitchen & cash dashboards",
-    getBackupLabel(key, null),
-    PLANS[key].support,
-  ];
-}
 
 function formatRs(amount) {
   return `Rs. ${amount.toLocaleString("en-US")}`;
@@ -167,13 +151,9 @@ export default function GetStarted() {
                     >
                       {featured && <span className="gs-badge">MOST POPULAR</span>}
                       <span className="gs-plan-name">{p.label}</span>
-                      <span className="gs-plan-price">{formatRs(pPrice)}<small>/month</small></span>
+                      <PlanPrice pkr={pPrice} variant="getstarted" />
                       <span className="gs-trial">{TRIAL_DAYS}-day free trial</span>
-                      <ul>
-                        {planFeatures(key).map((f) => (
-                          <li key={f}>✓ {f}</li>
-                        ))}
-                      </ul>
+                      <PlanFeatures plan={key} variant="getstarted" />
                     </button>
                     {plan === key && (
                       <button

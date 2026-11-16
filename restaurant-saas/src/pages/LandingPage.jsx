@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import { getDocs } from "firebase/firestore";
 import { getDemoRestaurants, menuCol, sortMenuItems } from "../config/db";
 import { formatPrice } from "../utils/currency";
+import PlanPrice from "../components/PlanPrice";
+import PlanFeatures from "../components/PlanFeatures";
 
 // Sales go through Telegram — restaurants contact Saqlain directly,
-// and the super admin creates the restaurant (incl. the 7-day trial).
+// and the administrator creates the restaurant (incl. the 7-day trial).
 // New prospects start on the /get-started page instead: they pick a plan
 // and leave their details, and the request lands in `signup_requests`.
 const TELEGRAM = "https://t.me/Saqlyndigital";
@@ -195,19 +197,11 @@ export default function LandingPage() {
               {plan.featured && <div className="pricing-badge">MOST POPULAR</div>}
               <div className="pricing-plan">{plan.name}</div>
               <div className="pricing-price">
-                <span className="pricing-currency">{plan.currency}</span>
-                <span className="pricing-amount">{plan.price}</span>
+                <PlanPrice pkr={plan.pricePkr} variant="landing" />
               </div>
               <div className="pricing-period">per month</div>
               <p className="pricing-desc">{plan.desc}</p>
-              <ul className="pricing-features">
-                {plan.features.map((f, j) => (
-                  <li key={j}>
-                    <span className="pricing-check">✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
+              <PlanFeatures plan={plan.key} variant="landing" />
               {/* Trial label — visual only, NOT clickable; highlights when this plan is selected */}
               <div className={`btn-pricing ${selected ? "filled" : "outline"}`}>
                 {plan.cta}
@@ -297,54 +291,25 @@ const PLANS = [
   {
     key: "basic",
     name: "Basic",
-    price: "5,000",
-    currency: "Rs.",
+    pricePkr: 5000,
     desc: "Perfect for small restaurants getting started with digital ordering.",
     featured: false,
     cta: "Start 7-day free trial",
-    features: [
-      "10 tables",
-      "4 staff logins",
-      "QR code ordering",
-      "Kitchen & cash dashboards",
-      "Tax & discount billing",
-      "Payment proof uploads",
-      "Data backup: 30 days",
-      "WhatsApp support",
-    ],
   },
   {
     key: "standard",
     name: "Standard",
-    price: "8,000",
-    currency: "Rs.",
+    pricePkr: 8000,
     desc: "For growing restaurants that need more tables, more staff and the server dashboard.",
     featured: true,
     cta: "Start 7-day free trial",
-    features: [
-      "20 tables",
-      "10 staff logins",
-      "Everything in Basic",
-      "Server dashboard",
-      "Advanced analytics",
-      "Data backup: 90 days",
-      "Priority WhatsApp support",
-    ],
   },
   {
     key: "premium",
     name: "Premium",
-    price: "12,000",
-    currency: "Rs.",
+    pricePkr: 12000,
     desc: "For busy restaurants — 50 tables, 30 staff logins, with priority support.",
     featured: false,
     cta: "Start 7-day free trial",
-    features: [
-      "50 tables",
-      "30 staff logins",
-      "Everything in Standard",
-      "Data backup: 1 year",
-      "Priority support + phone calls",
-    ],
   },
 ];
