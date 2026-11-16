@@ -7,7 +7,7 @@ import {
   subscribeToSignupRequests, updateSignupRequest,
   subscribeToDemoLeads
 } from "../config/db";
-import { PLANS, getPlanLimit, getPlanLabel, normalizePlan } from "../config/plans";
+import { PLANS, getPlanLimit, getPlanLabel, normalizePlan, DOMAIN_CHARGE_PKR_PER_YEAR } from "../config/plans";
 import { buildQrUrl } from "../config/tenantResolver";
 import AdminLayout from "../components/admin/AdminLayout";
 import RestaurantCard from "../components/admin/RestaurantCard";
@@ -742,8 +742,9 @@ function DomainModal({ restaurant, onClose, onSave }) {
                       ) : (
                         <div style={{ marginTop: 8 }}>
                           <div style={{ marginBottom: 8 }}>
-                            This charges {check.price ? `$${check.price}` : "the domain price"} to the SAQLYN card.
-                            Registrations are non-refundable.
+                            This charges {check.price ? `$${check.price}` : "the domain price"} a year to the SAQLYN card.
+                            Registrations are non-refundable. The customer pays PKR {DOMAIN_CHARGE_PKR_PER_YEAR.toLocaleString("en-US")} a year
+                            for the domain, charged separately from the plan.
                           </div>
                           <div style={{ display: "flex", gap: 8 }}>
                             <button className="btn-primary" onClick={handleBuy} disabled={!!busy}>

@@ -1,7 +1,8 @@
-// A plan price in the VISITOR's currency (converted from PKR). PKR visitors
-// see exactly what they saw before ("Rs. 5,000"); everyone else sees the
-// converted price with the PKR price underneath as the reference. If the
-// rate lookup fails, it stays PKR. The actual charge is always PKR.
+// A plan price in the VISITOR's currency ONLY (converted from PKR). PKR
+// visitors see exactly what they saw before ("Rs. 5,000"); everyone else
+// sees just their own currency — no PKR reference line. If the rate lookup
+// fails, it stays PKR. The actual charge is always PKR (until international
+// cards are added — the payable amount is a separate matter).
 import { useEffect, useState } from "react";
 import {
   detectVisitorCurrency, getExchangeRates, convertPkr, formatMoney,
@@ -46,7 +47,6 @@ export default function PlanPrice({ pkr, variant }) {
     return (
       <>
         {formatMoney(converted.amount, converted.currency)}/mo
-        <span className="plan-converted-note">≈ {formatMoney(pkr, "PKR")}/mo</span>
       </>
     );
   }
@@ -57,7 +57,6 @@ export default function PlanPrice({ pkr, variant }) {
         <span className="gs-plan-price">
           {formatMoney(converted.amount, converted.currency)}<small>/month</small>
         </span>
-        <span className="gs-converted-note">≈ {formatMoney(pkr, "PKR")}/month</span>
       </>
     );
   }
@@ -66,7 +65,6 @@ export default function PlanPrice({ pkr, variant }) {
       <span className="pricing-amount">
         {formatMoney(converted.amount, converted.currency)}
       </span>
-      <span className="pricing-converted-note">≈ {formatMoney(pkr, "PKR")}/mo</span>
     </>
   );
 }

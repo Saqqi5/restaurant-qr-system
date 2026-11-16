@@ -95,6 +95,12 @@ export function getBackupDays(plan, overrides) {
 // Custom logo: free on Premium, a one-time add-on on Standard, not on
 // Basic. Amount is my pick — PKR 2,000 one-time — change it in one place.
 export const CUSTOM_LOGO_ADDON_PKR = 2000;
+// What the customer pays SAQLYN for a custom domain, per year, on top of
+// the plan. The registrar charges us ~$10-15/year (~PKR 2,800-4,200);
+// PKR 3,500 covers the common .com price with a small margin. Premium
+// TLDs (.io/.ai) cost more at the registrar — the super admin sees the
+// live price in the buy dialog before paying.
+export const DOMAIN_CHARGE_PKR_PER_YEAR = 3500;
 
 // Each plan card shows ITS OWN features (LandingPage + GetStarted share
 // this, so the cards can never drift apart). Included features render with
@@ -126,7 +132,7 @@ export function getPlanFeatures(planKey) {
       { text: "Order Taker mode", included: true },
     );
   }
-  if (prem) own.push({ text: "Custom domain", included: true });
+  if (prem) own.push({ text: `Custom domain — PKR ${DOMAIN_CHARGE_PKR_PER_YEAR.toLocaleString("en-US")}/year`, included: true });
   // Custom logo: free on Premium; on Basic and Standard the customer can
   // buy it from us for the one-time fee (his 2026-11-16 order — the line
   // shows on every plan, so a Basic customer can ask for it too).

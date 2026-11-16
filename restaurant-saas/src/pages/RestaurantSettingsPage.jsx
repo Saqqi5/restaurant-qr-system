@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTenant } from "../contexts/TenantContext";
 import { updateRestaurant, getRestaurant, subscribeToPlatformSettings, createPlanPayment, subscribeToRestaurantPlanPayments } from "../config/db";
-import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, getBackupLabel, PLANS } from "../config/plans";
+import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, getBackupLabel, PLANS, DOMAIN_CHARGE_PKR_PER_YEAR } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 import PlanPrice from "../components/PlanPrice";
@@ -323,7 +323,6 @@ export default function RestaurantSettingsPage() {
         .plan-card.selected { border-color: var(--color-primary); background: rgba(32, 201, 151, 0.08); }
         .plan-card-name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
         .plan-card-price { font-size: 18px; font-weight: 700; color: var(--color-primary); margin-bottom: 6px; }
-        .plan-converted-note { display: block; font-size: 12px; font-weight: 400; color: var(--color-muted); margin-top: 2px; }
         .plan-card-limits { font-size: 12px; color: var(--color-muted); line-height: 1.6; }
       `}</style>
     </AdminLayout>
@@ -386,6 +385,7 @@ function DomainRequestSection({ restaurantId, plan, domainInfo, onRequested }) {
       {normalizePlan(plan) !== "premium" && (
         <p className="form-hint">Custom domain is a Premium feature — request it here and the administrator will buy and link it for you.</p>
       )}
+      <p className="form-hint">A custom domain costs PKR {DOMAIN_CHARGE_PKR_PER_YEAR.toLocaleString("en-US")} a year, charged separately from the plan.</p>
       {sent || domainInfo.domain_request ? (
         <p className="form-hint">
           ✅ Request sent for <strong>{domainInfo.domain_request}</strong> — the administrator will buy and link it for you.
