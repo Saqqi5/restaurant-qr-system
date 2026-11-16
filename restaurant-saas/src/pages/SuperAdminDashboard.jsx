@@ -13,6 +13,7 @@ import AdminLayout from "../components/admin/AdminLayout";
 import RestaurantCard from "../components/admin/RestaurantCard";
 import CreateRestaurantModal from "../components/admin/CreateRestaurantModal";
 import CurrencySelect from "../components/admin/CurrencySelect";
+import { THEME_PRESETS, DEFAULT_THEME } from "../config/themes";
 import StaffModal from "../components/admin/StaffModal";
 import QRModal from "../components/admin/QRModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
@@ -450,6 +451,7 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
     plan: normalizePlan(restaurant.plan),
     currency: restaurant.currency || "$",
     address: restaurant.address || "",
+    theme: restaurant.theme || { ...DEFAULT_THEME },
   });
   const editLimit = getPlanLimit(form.plan, null);
 
@@ -503,6 +505,64 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
             <input value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               placeholder="e.g. 12 Main Bazaar, Lahore" />
+          </div>
+          <div className="form-group">
+            <label>🎨 Theme Colors — match the restaurant&apos;s logo</label>
+            <p className="form-hint">Only the super admin sets this. The restaurant&apos;s staff panels and customer menu use these colours.</p>
+            <div className="theme-presets">
+              {THEME_PRESETS.map((preset) => (
+                <button
+                  key={preset.name}
+                  type="button"
+                  className="theme-preset-btn"
+                  title={preset.name}
+                  onClick={() => setForm({ ...form, theme: { primary: preset.primary, accent: preset.accent } })}
+                  style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.accent})` }}
+                >
+                  {form.theme.primary === preset.primary && (
+                    <span className="theme-check">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="settings-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="form-group">
+                <label>Primary Color</label>
+                <div className="color-input-row">
+                  <input
+                    type="color"
+                    value={form.theme.primary}
+                    onChange={(e) => setForm({ ...form, theme: { ...form.theme, primary: e.target.value } })}
+                    className="color-swatch-input"
+                  />
+                  <input
+                    type="text"
+                    value={form.theme.primary}
+                    onChange={(e) => setForm({ ...form, theme: { ...form.theme, primary: e.target.value } })}
+                    placeholder="#e85d04"
+                    style={{ fontFamily: "monospace", width: "100%" }}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Accent Color</label>
+                <div className="color-input-row">
+                  <input
+                    type="color"
+                    value={form.theme.accent}
+                    onChange={(e) => setForm({ ...form, theme: { ...form.theme, accent: e.target.value } })}
+                    className="color-swatch-input"
+                  />
+                  <input
+                    type="text"
+                    value={form.theme.accent}
+                    onChange={(e) => setForm({ ...form, theme: { ...form.theme, accent: e.target.value } })}
+                    placeholder="#f48c06"
+                    style={{ fontFamily: "monospace", width: "100%" }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
           <div className="form-group-inline">
             <label>

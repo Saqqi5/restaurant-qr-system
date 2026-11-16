@@ -7,6 +7,7 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantTheme, setRestaurantTheme] = useState(null);
   const [pendingPayments, setPendingPayments] = useState([]);
   const [showToast, setShowToast] = useState(false);
   const [prevPendingCount, setPrevPendingCount] = useState(null);
@@ -17,7 +18,14 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
 
   useEffect(() => {
     if (!restaurantId || isSuperAdmin) return;
-    getRestaurant(restaurantId).then((r) => r?.name && setRestaurantName(r.name));
+    // The restaurant's own brand colours theme the whole staff panel —
+    // same mapping as the customer menu (primary colours the header, the
+    // brighter accent colours buttons and active states). Super admin
+    // panels keep the SAQLYN green default.
+    getRestaurant(restaurantId).then((r) => {
+      if (r?.name) setRestaurantName(r.name);
+      if (r?.theme) setRestaurantTheme(r.theme);
+    });
     const unsub = subscribeToRestaurantPayments(restaurantId, (payments) => {
       const pending = payments.filter(p => p.status === "pending");
       setPendingPayments(pending);
@@ -34,8 +42,14 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
 
   const pendingCount = pendingPayments.length;
 
+  const themeVars = restaurantTheme ? {
+    "--color-primary": restaurantTheme.accent || "#17A884",
+    "--color-primary-dark": restaurantTheme.primary || "#20C997",
+    "--color-green": restaurantTheme.primary || "#20C997",
+  } : undefined;
+
   return (
-    <div className={`admin-layout ${compact ? "compact" : ""}`}>
+    <div className={`admin-layout ${compact ? "compact" : ""}`} style={themeVars}>
       {/* Top Bar */}
       <header className="admin-topbar">
         <button className="menu-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>

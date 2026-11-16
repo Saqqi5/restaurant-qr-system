@@ -1454,7 +1454,7 @@ a { color: var(--color-primary); text-decoration: none; }
   width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #2a3a3a;
   background: #0e1a1a; color: #E2F0F0; font-size: 15px; outline: none; box-sizing: border-box;
 }
-.menu-search-input:focus { border-color: #20C997; }
+.menu-search-input:focus { border-color: var(--color-primary); }
 
 /* ── Receipt / KOT modal ── */
 .receipt-modal-overlay {
@@ -1470,7 +1470,26 @@ a { color: var(--color-primary); text-decoration: none; }
   margin-top: 12px; padding: 8px 14px; border-radius: 8px; border: 1px solid #2a3a3a;
   background: transparent; color: #E2F0F0; font-size: 13px; font-weight: 600; cursor: pointer;
 }
-.receipt-btn:hover { border-color: #20C997; color: #20C997; }
+.receipt-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* ── Theme picker (super admin Edit modal) ── */
+.theme-presets { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.theme-preset-btn {
+  width: 44px; height: 44px; border-radius: 10px;
+  border: 2px solid transparent; position: relative;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.theme-preset-btn:hover { transform: scale(1.1); }
+.theme-check {
+  position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  color: white; font-size: 16px; font-weight: 700;
+}
+.color-input-row { display: flex; gap: 10px; align-items: center; }
+.color-swatch-input {
+  width: 44px; height: 40px; padding: 2px; border-radius: 8px;
+  cursor: pointer; flex-shrink: 0; border: 1px solid var(--color-border);
+}
 
 @media print {
   /* The app is dark-themed, so the page/body background is near-black.

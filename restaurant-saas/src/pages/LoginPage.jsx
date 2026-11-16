@@ -44,7 +44,7 @@ export default function LoginPage() {
         <div className="login-logo">
           <span className="logo-mark">S</span>
           <div className="logo-brand">SAQL<span>YN</span></div>
-          <p>Restaurant Management Platform</p>
+          <p>Restaurant Management System</p>
         </div>
 
         <form onSubmit={handleLogin} className="login-form">
@@ -87,7 +87,7 @@ export default function LoginPage() {
           Staff? Ask your restaurant admin for your login.
         </div>
         <div className="login-footer" style={{ marginTop: 8 }}>
-          Password bhool gaye hain? Super admin se rabta karein —{" "}
+          Forgot your password? Contact the super admin —{" "}
           <a href="https://t.me/Saqlyndigital" target="_blank" rel="noreferrer">
             Telegram @SAQLYNDIGITAL
           </a>

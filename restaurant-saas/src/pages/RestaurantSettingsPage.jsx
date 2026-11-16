@@ -6,15 +6,6 @@ import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit,
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 
-const PRESET_THEMES = [
-  { name: "Ember",     primary: "#e85d04", accent: "#f48c06" },
-  { name: "Ocean",     primary: "#0077b6", accent: "#00b4d8" },
-  { name: "Forest",    primary: "#2d6a4f", accent: "#52b788" },
-  { name: "Plum",      primary: "#7b2d8b", accent: "#c77dff" },
-  { name: "Slate",     primary: "#2b2d42", accent: "#8d99ae" },
-  { name: "Rose",      primary: "#c1121f", accent: "#e63946" },
-];
-
 export default function RestaurantSettingsPage() {
   const { userProfile, restaurantId, logout } = useAuth();
   const { restaurant } = useTenant();
@@ -22,8 +13,6 @@ export default function RestaurantSettingsPage() {
   const [platformLimits, setPlatformLimits] = useState(null);
   const [plan, setPlan] = useState("standard");
   const [form, setForm] = useState({
-    name: "", table_count: 10, logo_url: "", address: "",
-    theme: { primary: "#20C997", accent: "#17A884" },
     tax_rate: 0, discount_rate: 0,
     payment_easypaisa_number: "",
     payment_easypaisa_name: "",
@@ -53,9 +42,6 @@ export default function RestaurantSettingsPage() {
         setForm({
           name: r.name || "",
           table_count: r.table_count || 10,
-          logo_url: r.logo_url || "",
-          address: r.address || "",
-          theme: r.theme || { primary: "#20C997", accent: "#17A884" },
           tax_rate: Number(r.tax_rate) || 0,
           discount_rate: Number(r.discount_rate) || 0,
           // No demo fallbacks: an empty account means "not configured" and
@@ -85,10 +71,6 @@ export default function RestaurantSettingsPage() {
     if (!file) return;
     setLogoFile(file);
     setLogoPreview(URL.createObjectURL(file));
-  }
-
-  function applyPreset(preset) {
-    setForm((f) => ({ ...f, theme: { primary: preset.primary, accent: preset.accent } }));
   }
 
   async function handleSave(e) {
@@ -122,12 +104,6 @@ export default function RestaurantSettingsPage() {
       </AdminLayout>
     );
   }
-
-  // Live theme preview on the page
-  const previewStyle = {
-    "--preview-primary": form.theme.primary,
-    "--preview-accent":  form.theme.accent,
-  };
 
   return (
     <AdminLayout
@@ -286,99 +262,6 @@ export default function RestaurantSettingsPage() {
           </div>
         </section>
 
-        {/* ── Theme ─────────────────────────────────────────────── */}
-        <section className="settings-section">
-          <h2 className="settings-section-title">🎨 Theme Colors</h2>
-
-          {/* Preset swatches */}
-          <div className="theme-presets">
-            {PRESET_THEMES.map((preset) => (
-              <button
-                key={preset.name}
-                type="button"
-                className="theme-preset-btn"
-                title={preset.name}
-                onClick={() => applyPreset(preset)}
-                style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.accent})` }}
-              >
-                {form.theme.primary === preset.primary && (
-                  <span className="theme-check">✓</span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          <div className="settings-grid">
-            <div className="form-group">
-              <label>Primary Color</label>
-              <div className="color-input-row">
-                <input
-                  type="color"
-                  value={form.theme.primary}
-                  onChange={(e) => setForm({ ...form, theme: { ...form.theme, primary: e.target.value } })}
-                  className="color-swatch-input"
-                />
-                <input
-                  type="text"
-                  value={form.theme.primary}
-                  onChange={(e) => setForm({ ...form, theme: { ...form.theme, primary: e.target.value } })}
-                  placeholder="#e85d04"
-                  style={{ fontFamily: "monospace" }}
-                />
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Accent Color</label>
-              <div className="color-input-row">
-                <input
-                  type="color"
-                  value={form.theme.accent}
-                  onChange={(e) => setForm({ ...form, theme: { ...form.theme, accent: e.target.value } })}
-                  className="color-swatch-input"
-                />
-                <input
-                  type="text"
-                  value={form.theme.accent}
-                  onChange={(e) => setForm({ ...form, theme: { ...form.theme, accent: e.target.value } })}
-                  placeholder="#f48c06"
-                  style={{ fontFamily: "monospace" }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Live preview card */}
-          <div className="theme-preview-card" style={previewStyle}>
-            <div className="theme-preview-header"
-              style={{ background: form.theme.primary }}>
-              <span style={{ fontWeight: 700, color: "white", fontSize: 15 }}>
-                {form.name || "Restaurant Name"}
-              </span>
-              <span style={{
-                background: "rgba(255,255,255,0.2)", color: "white",
-                padding: "3px 10px", borderRadius: 20, fontSize: 12
-              }}>
-                Table 4
-              </span>
-            </div>
-            <div className="theme-preview-body">
-              <div className="theme-preview-item">
-                <span>Margherita Pizza</span>
-                <button style={{
-                  background: form.theme.primary, color: "white",
-                  padding: "5px 14px", borderRadius: 6, fontSize: 12, border: "none"
-                }}>Add</button>
-              </div>
-              <div className="theme-preview-item">
-                <span>Tiramisu</span>
-                <button style={{
-                  background: form.theme.primary, color: "white",
-                  padding: "5px 14px", borderRadius: 6, fontSize: 12, border: "none"
-                }}>Add</button>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* ── Save ──────────────────────────────────────────────── */}
         <div className="settings-footer">
@@ -419,37 +302,6 @@ export default function RestaurantSettingsPage() {
         }
         .logo-preview-img { width: 100%; height: 100%; object-fit: cover; }
         .logo-placeholder { font-size: 32px; }
-        .theme-presets { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .theme-preset-btn {
-          width: 44px; height: 44px; border-radius: 10px;
-          border: 2px solid transparent; position: relative;
-          transition: transform 0.15s, border-color 0.15s;
-        }
-        .theme-preset-btn:hover { transform: scale(1.1); }
-        .theme-check {
-          position: absolute; inset: 0; display: flex;
-          align-items: center; justify-content: center;
-          color: white; font-size: 16px; font-weight: 700;
-        }
-        .color-input-row { display: flex; gap: 10px; align-items: center; }
-        .color-swatch-input {
-          width: 44px; height: 40px; padding: 2px; border-radius: 8px;
-          cursor: pointer; flex-shrink: 0; border: 1px solid var(--color-border);
-        }
-        .theme-preview-card {
-          border-radius: 12px; overflow: hidden;
-          border: 1px solid var(--color-border); margin-top: 16px;
-        }
-        .theme-preview-header {
-          padding: 14px 16px; display: flex;
-          justify-content: space-between; align-items: center;
-        }
-        .theme-preview-body { background: var(--color-surface2); padding: 14px; }
-        .theme-preview-item {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 10px 0; border-bottom: 1px solid var(--color-border); font-size: 14px;
-        }
-        .theme-preview-item:last-child { border-bottom: none; }
         .settings-footer { display: flex; justify-content: flex-end; padding-top: 8px; }
         .plan-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
         @media (max-width: 600px) { .plan-cards { grid-template-columns: 1fr; } }
