@@ -3,14 +3,14 @@
 // saved with status "cancelled" + who cancelled them, so any order can be
 // found later by its order number or by date and handed to the restaurant.
 //
-// Queries use a collectionGroup on "orders" with single-field filters only
-// (a date range + orderBy on created_at, or an equality on order_number),
-// so no Firestore composite index is needed; the rest is filtered
-// client-side.
+// NOTE (verified live 2026-11-16): a collectionGroup query on "orders"
+// returns 403 under the published rules, even though a plain list on one
+// restaurant's orders subcollection returns 200. So this page queries each
+// restaurant's orders subcollection separately (in parallel) and merges the
+// results client-side. Same filters, no rules change needed.
 import { useState, useEffect } from "react";
-import { collectionGroup, getDocs, query, where, orderBy, Timestamp } from "firebase/firestore";
-import { db } from "../config/firebase";
-import { getAllRestaurants } from "../config/db";
+import { getDocs, query, where, orderBy, Timestamp } from "firebase/firestore";
+import { getAllRestaurants, ordersCol } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -42,35 +42,42 @@ export default function SuperAdminOrdersPage() {
   const [paymentFilter, setPaymentFilter] = useState("all");
 
   useEffect(() => {
-    getAllRestaurants().then(setRestaurants).catch(() => setRestaurants([]));
+    getAllRestaurants().then((list) => {
+      setRestaurants(list);
+      fetchOrders(list);
+    }).catch(() => setRestaurants([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const restMap = {};
   restaurants.forEach((r) => { restMap[r.id] = r; });
 
-  async function fetchOrders() {
+  async function fetchOrders(restList = restaurants) {
     setLoading(true);
     try {
       const num = parseInt(orderNo, 10);
-      let snap;
-      if (Number.isFinite(num)) {
-        // Order-number search: equality only, no orderBy (no index needed).
-        snap = await getDocs(query(collectionGroup(db, "orders"), where("order_number", "==", num)));
-      } else {
+      const targets = restaurantFilter === "all"
+        ? restList
+        : restList.filter((r) => r.id === restaurantFilter);
+      // One single-collection query per restaurant (proven to work under
+      // the published rules); merged + sorted client-side.
+      const snaps = await Promise.all(targets.map((r) => {
+        if (Number.isFinite(num)) {
+          return getDocs(query(ordersCol(r.id), where("order_number", "==", num)));
+        }
         const from = Timestamp.fromDate(startOfDay(new Date(dateFrom)));
         const to = Timestamp.fromDate(endOfDay(new Date(dateTo)));
-        snap = await getDocs(query(
-          collectionGroup(db, "orders"),
+        return getDocs(query(
+          ordersCol(r.id),
           where("created_at", ">=", from),
           where("created_at", "<=", to),
           orderBy("created_at", "desc")
         ));
-      }
-      let list = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-        restaurant_id: d.ref.parent?.parent?.id || null,
       }));
+      let list = [];
+      snaps.forEach((snap, i) => {
+        snap.docs.forEach((d) => list.push({ id: d.id, ...d.data(), restaurant_id: targets[i].id }));
+      });
       list.sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
       setOrders(list);
     } catch (e) {
@@ -79,10 +86,7 @@ export default function SuperAdminOrdersPage() {
     setLoading(false);
   }
 
-  useEffect(() => { fetchOrders(); }, []);
-
   const filtered = orders.filter((o) =>
-    (restaurantFilter === "all" || o.restaurant_id === restaurantFilter) &&
     (statusFilter === "all" || o.status === statusFilter) &&
     (paymentFilter === "all" || o.payment_status === paymentFilter)
   );
@@ -175,7 +179,7 @@ export default function SuperAdminOrdersPage() {
             <option value="unpaid">Unpaid</option>
           </select>
         </div>
-        <button className="btn-primary" onClick={fetchOrders} disabled={loading}>
+        <button className="btn-primary" onClick={() => fetchOrders()} disabled={loading}>
           {loading ? "Loading…" : "Apply"}
         </button>
         <button className="btn-secondary" onClick={exportCSV} disabled={!filtered.length}>
