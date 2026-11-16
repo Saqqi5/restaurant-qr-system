@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { getPlatformSettings, updatePlatformSettings } from "../config/db";
-import { DEFAULT_PLAN_LIMITS, DEFAULT_STAFF_LIMITS, DEFAULT_MENU_LIMITS, DEFAULT_PLAN_PRICES } from "../config/plans";
+import { DEFAULT_PLAN_LIMITS, DEFAULT_STAFF_LIMITS, DEFAULT_MENU_LIMITS, DEFAULT_PLAN_PRICES, DEFAULT_BACKUP_DAYS } from "../config/plans";
 import AdminLayout from "../components/admin/AdminLayout";
 
-// Super admin only: the table cap, staff cap, menu-item cap and monthly
-// price for each plan, plus the platform's own payment accounts (the
-// accounts owners pay into when they buy a plan). Restaurant owners can
-// lower their table count anytime, but cannot raise it above their plan's
-// limit — these numbers are that limit.
+// Super admin only: the table cap, staff cap, menu-item cap, data-backup
+// days and monthly price for each plan, plus the platform's own payment
+// accounts (the accounts owners pay into when they buy a plan). Restaurant
+// owners can lower their table count anytime, but cannot raise it above
+// their plan's limit — these numbers are that limit.
 export default function PlatformSettingsPage() {
   const { userProfile, logout } = useAuth();
   const [form, setForm] = useState({
@@ -24,6 +24,9 @@ export default function PlatformSettingsPage() {
     basic_price: DEFAULT_PLAN_PRICES.basic,
     standard_price: DEFAULT_PLAN_PRICES.standard,
     premium_price: DEFAULT_PLAN_PRICES.premium,
+    basic_backup: DEFAULT_BACKUP_DAYS.basic,
+    standard_backup: DEFAULT_BACKUP_DAYS.standard,
+    premium_backup: DEFAULT_BACKUP_DAYS.premium,
     platform_easypaisa_number: "",
     platform_easypaisa_name: "",
     platform_jazzcash_number: "",
@@ -55,6 +58,9 @@ export default function PlatformSettingsPage() {
             basic_price: Number(s.basic_price ?? DEFAULT_PLAN_PRICES.basic),
             standard_price: Number(s.standard_price ?? DEFAULT_PLAN_PRICES.standard),
             premium_price: Number(s.premium_price ?? DEFAULT_PLAN_PRICES.premium),
+            basic_backup: Number(s.basic_backup ?? DEFAULT_BACKUP_DAYS.basic),
+            standard_backup: Number(s.standard_backup ?? DEFAULT_BACKUP_DAYS.standard),
+            premium_backup: Number(s.premium_backup ?? DEFAULT_BACKUP_DAYS.premium),
             platform_easypaisa_number: s.platform_easypaisa_number || "",
             platform_easypaisa_name: s.platform_easypaisa_name || "",
             platform_jazzcash_number: s.platform_jazzcash_number || "",
@@ -86,6 +92,9 @@ export default function PlatformSettingsPage() {
         basic_price: Math.max(1, Math.floor(form.basic_price) || DEFAULT_PLAN_PRICES.basic),
         standard_price: Math.max(1, Math.floor(form.standard_price) || DEFAULT_PLAN_PRICES.standard),
         premium_price: Math.max(1, Math.floor(form.premium_price) || DEFAULT_PLAN_PRICES.premium),
+        basic_backup: Math.max(1, Math.floor(form.basic_backup) || DEFAULT_BACKUP_DAYS.basic),
+        standard_backup: Math.max(1, Math.floor(form.standard_backup) || DEFAULT_BACKUP_DAYS.standard),
+        premium_backup: Math.max(1, Math.floor(form.premium_backup) || DEFAULT_BACKUP_DAYS.premium),
         platform_easypaisa_number: form.platform_easypaisa_number.trim(),
         platform_easypaisa_name: form.platform_easypaisa_name.trim(),
         platform_jazzcash_number: form.platform_jazzcash_number.trim(),
@@ -195,6 +204,33 @@ export default function PlatformSettingsPage() {
                 <p className="form-hint">
                   {form.premium_menu === 0 ? "∞ Unlimited — Premium has no menu item limit." : `${form.premium_menu} menu items max.`}
                 </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h2 className="settings-section-title">💾 Plans & Data Backup</h2>
+            <p className="form-hint">
+              How many days of order history each plan keeps. This is the
+              promise shown to the restaurant when they choose a plan
+              (Basic 30 days, Standard 90 days, Premium 365 days). Nothing is
+              auto-deleted — the number is the backup kept for the plan.
+            </p>
+            <div className="settings-grid">
+              <div className="form-group">
+                <label>Basic plan — backup (days)</label>
+                <input type="number" min="1" value={form.basic_backup}
+                  onChange={(e) => setForm({ ...form, basic_backup: parseInt(e.target.value) || 1 })} />
+              </div>
+              <div className="form-group">
+                <label>Standard plan — backup (days)</label>
+                <input type="number" min="1" value={form.standard_backup}
+                  onChange={(e) => setForm({ ...form, standard_backup: parseInt(e.target.value) || 1 })} />
+              </div>
+              <div className="form-group">
+                <label>Premium plan — backup (days)</label>
+                <input type="number" min="1" value={form.premium_backup}
+                  onChange={(e) => setForm({ ...form, premium_backup: parseInt(e.target.value) || 1 })} />
               </div>
             </div>
           </section>

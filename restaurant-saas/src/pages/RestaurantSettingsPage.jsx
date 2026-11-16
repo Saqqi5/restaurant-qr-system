@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTenant } from "../contexts/TenantContext";
 import { updateRestaurant, getRestaurant, subscribeToPlatformSettings, createPlanPayment, subscribeToRestaurantPlanPayments } from "../config/db";
-import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, PLANS } from "../config/plans";
+import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, getBackupLabel, PLANS } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 
@@ -566,7 +566,7 @@ function PlanUpgradeSection({ restaurantId, restaurantName, currentPlan, platfor
     const tables = getPlanLimit(key, platformSettings);
     const staff = getStaffLimit(key, platformSettings);
     const menu = getMenuItemLimit(key, platformSettings);
-    return `${tables === null ? "∞" : tables} tables · ${staff} staff logins · ${menu === null ? "∞" : menu} menu items`;
+    return `${tables === null ? "∞" : tables} tables · ${staff} staff logins · ${menu === null ? "∞" : menu} menu items · ${getBackupLabel(key, platformSettings)}`;
   };
 
   return (

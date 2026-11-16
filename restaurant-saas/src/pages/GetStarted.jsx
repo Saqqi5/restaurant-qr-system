@@ -6,6 +6,7 @@ import {
   getPlanLimit,
   getStaffLimit,
   getMenuItemLimit,
+  getBackupLabel,
   TRIAL_DAYS,
   normalizePlan,
 } from "../config/plans";
@@ -33,6 +34,7 @@ function planFeatures(key) {
     menu === null ? "Unlimited menu items" : `${menu} menu items`,
     "QR code ordering",
     "Kitchen & cash dashboards",
+    getBackupLabel(key, null),
     PLANS[key].support,
   ];
 }

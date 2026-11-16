@@ -7,16 +7,21 @@
 // Menu items: Basic 30 / Standard 100 / Premium unlimited (0 = unlimited).
 // Prices (PKR/month): Basic 5,000 / Standard 8,000 / Premium 12,000
 // (his 2026-11-14 decision; Premium was my pick).
+// Data backup (his 2026-11-16 decision): Basic 30 days / Standard 90 days
+// / Premium 365 days — the order history a plan keeps, shown to the owner
+// when they choose a plan. Nothing is auto-deleted; the number is the
+// promise shown at plan-choosing time.
 export const PLANS = {
-  basic:    { key: "basic",    label: "Basic",    defaultTableLimit: 10,   defaultStaffLimit: 4,  defaultMenuItemLimit: 20,   defaultPrice: 5000, support: "WhatsApp support" },
-  standard: { key: "standard", label: "Standard", defaultTableLimit: 20,   defaultStaffLimit: 10, defaultMenuItemLimit: 50,   defaultPrice: 8000, support: "Priority WhatsApp support" },
-  premium:  { key: "premium",  label: "Premium",  defaultTableLimit: 50,   defaultStaffLimit: 30, defaultMenuItemLimit: null, defaultPrice: 12000, support: "Priority support + phone calls" },
+  basic:    { key: "basic",    label: "Basic",    defaultTableLimit: 10,   defaultStaffLimit: 4,  defaultMenuItemLimit: 20,   defaultPrice: 5000, defaultBackupDays: 30,  support: "WhatsApp support" },
+  standard: { key: "standard", label: "Standard", defaultTableLimit: 20,   defaultStaffLimit: 10, defaultMenuItemLimit: 50,   defaultPrice: 8000, defaultBackupDays: 90,  support: "Priority WhatsApp support" },
+  premium:  { key: "premium",  label: "Premium",  defaultTableLimit: 50,   defaultStaffLimit: 30, defaultMenuItemLimit: null, defaultPrice: 12000, defaultBackupDays: 365, support: "Priority support + phone calls" },
 };
 
 export const DEFAULT_PLAN_LIMITS = { basic: 10, standard: 20, premium: 50 };
 export const DEFAULT_STAFF_LIMITS = { basic: 4, standard: 10, premium: 30 };
 export const DEFAULT_MENU_LIMITS = { basic: 30, standard: 100, premium: 0 };
 export const DEFAULT_PLAN_PRICES = { basic: 5000, standard: 8000, premium: 12000 };
+export const DEFAULT_BACKUP_DAYS = { basic: 30, standard: 90, premium: 365 };
 
 // Legacy values ("saas"/"standalone"/"unlimited") predate tiers.
 export function normalizePlan(plan) {
@@ -70,6 +75,27 @@ export function getStaffLimit(plan, overrides) {
     : PLANS[key].defaultStaffLimit;
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : PLANS[key].defaultStaffLimit;
+}
+
+// Data backup for a plan, in days. overrides: { basic_backup,
+// standard_backup, premium_backup } from platform settings.
+export function getBackupDays(plan, overrides) {
+  const key = normalizePlan(plan);
+  const raw = overrides && overrides[`${key}_backup`] !== undefined && overrides[`${key}_backup`] !== null
+    ? overrides[`${key}_backup`]
+    : PLANS[key].defaultBackupDays;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : PLANS[key].defaultBackupDays;
+}
+
+// "Data backup: 30 days" (365 days shows as "1 year") — the line shown on
+// pricing cards when a restaurant chooses a plan.
+export function getBackupLabel(plan, overrides) {
+  const days = getBackupDays(plan, overrides);
+  const span = days >= 365 && days % 365 === 0
+    ? `${days / 365} year${days / 365 > 1 ? "s" : ""}`
+    : `${days} days`;
+  return `Data backup: ${span}`;
 }
 
 // ── Trial / subscription period ──────────────────────────────────────────
