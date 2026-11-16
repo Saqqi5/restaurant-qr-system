@@ -211,7 +211,7 @@ async function handleResetPassword(request, env) {
     return json({ error: "Could not verify the caller." }, 500);
   }
   if (!callerDoc || callerDoc.role !== "super_admin") {
-    return json({ error: "Only the super admin can reset passwords." }, 403);
+    return json({ error: "Only the administrator can reset passwords." }, 403);
   }
 
   let body;

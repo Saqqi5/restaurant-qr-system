@@ -40,7 +40,7 @@ export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
               {createLimit !== null && (
                 <p className="form-hint">The {form.plan} plan allows up to {createLimit} tables.</p>
               )}
-              <p className="form-hint">Every plan starts with a 7-day free trial. After expiry the login is blocked until the super admin continues the plan.</p>
+              <p className="form-hint">Every plan starts with a 7-day free trial. After expiry the login is blocked until the administrator continues the plan.</p>
               <p className="form-hint">4 staff logins (Admin, Kitchen, Cashier, Waiter) are created automatically with the default passwords.</p>
             </div>
             <div className="form-group">

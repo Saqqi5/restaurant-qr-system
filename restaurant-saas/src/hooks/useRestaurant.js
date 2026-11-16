@@ -32,7 +32,7 @@ export function useRestaurant(restaurantId) {
 /**
  * useAllRestaurants()
  * ════════════════════
- * One-time load of all restaurants. Used by Super Admin.
+ * One-time load of all restaurants. Used by the administrator.
  */
 export function useAllRestaurants() {
   const [restaurants, setRestaurants] = useState([]);

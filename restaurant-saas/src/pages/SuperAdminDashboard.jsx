@@ -160,7 +160,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <AdminLayout
-      title="Super Admin"
+      title="Administrator"
       subtitle="Manage all restaurants on the platform"
       onLogout={logout}
       userProfile={userProfile}
@@ -509,7 +509,7 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
           </div>
           <div className="form-group">
             <label>🎨 Theme Colors — match the restaurant&apos;s logo</label>
-            <p className="form-hint">Only the super admin sets this. The restaurant&apos;s staff panels and customer menu use these colours.</p>
+            <p className="form-hint">Only the administrator sets this. The restaurant&apos;s staff panels and customer menu use these colours.</p>
             <div className="theme-presets">
               {THEME_PRESETS.map((preset) => (
                 <button

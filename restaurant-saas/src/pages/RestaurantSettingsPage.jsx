@@ -272,7 +272,7 @@ export default function RestaurantSettingsPage() {
 
       </form>
 
-      {/* ── Upgrade Plan (buy a plan, pay SAQLYN, super admin verifies) ── */}
+      {/* ── Upgrade Plan (buy a plan, pay SAQLYN, administrator verifies) ── */}
       <PlanUpgradeSection
         restaurantId={restaurantId}
         restaurantName={form.name || "My Restaurant"}
@@ -440,11 +440,11 @@ function PlanUpgradeSection({ restaurantId, restaurantName, currentPlan, platfor
         <p className="form-hint" style={{ marginBottom: 16 }}>
           You are on the <strong>{currentLabel}</strong> plan — {limitsLine(currentPlan)}.
           Pick a plan, pay the SAQLYN account below and upload the payment
-          screenshot. The super admin verifies it and your plan activates for 30 days.
+          screenshot. The administrator verifies it and your plan activates for 30 days.
         </p>
 
         {success && !pendingPayment && (
-          <div className="success-banner">✅ Payment proof sent! The super admin will verify it and your plan will be activated.</div>
+          <div className="success-banner">✅ Payment proof sent! The administrator will verify it and your plan will be activated.</div>
         )}
 
         {pendingPayment && (
@@ -452,7 +452,7 @@ function PlanUpgradeSection({ restaurantId, restaurantName, currentPlan, platfor
             <div className="success-banner" style={{ background: "rgba(32,201,151,0.12)", color: "var(--color-text)" }}>
               ⏳ Your <strong>{getPlanLabel(pendingPayment.plan)}</strong> plan payment
               (Rs. {pendingPayment.amount?.toLocaleString?.() || pendingPayment.amount}) is awaiting
-              verification by the super admin. Once verified, your plan activates for 30 days.
+              verification by the administrator. Once verified, your plan activates for 30 days.
             </div>
             {pendingPayment.proofImage && (
               <img src={pendingPayment.proofImage} alt="Payment proof" style={{ maxWidth: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 8, marginTop: 10 }} />
@@ -463,7 +463,7 @@ function PlanUpgradeSection({ restaurantId, restaurantName, currentPlan, platfor
         {lastPayment && lastPayment.status === "rejected" && !pendingPayment && (
           <div className="error-banner">
             Your last {getPlanLabel(lastPayment.plan)} plan payment was not verified
-            by the super admin. You can submit a new payment below.
+            by the administrator. You can submit a new payment below.
           </div>
         )}
 
