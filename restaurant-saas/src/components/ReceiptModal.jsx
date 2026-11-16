@@ -45,6 +45,14 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, curr
                 <span>Date</span><span>{dateStr}</span>
               </div>
             )}
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Status</span><strong style={{ textTransform: "capitalize" }}>{order.status || "—"}</strong>
+            </div>
+            {order.status === "cancelled" && order.cancelled_by_name && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Cancelled by</span><span>{order.cancelled_by_name}</span>
+              </div>
+            )}
           </div>
 
           <div style={{ padding: "10px 0", borderBottom: "1px dashed #ccc" }}>
@@ -83,12 +91,6 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, curr
                 <span>Payment</span>
                 <span>{order.payment_status === "paid" ? `Paid (${order.payment_method || "—"})` : "Unpaid"}</span>
               </div>
-            </div>
-          )}
-
-          {isKot && (
-            <div style={{ textAlign: "center", fontSize: 12, color: "#666", paddingTop: 10 }}>
-              Status: {order.status}
             </div>
           )}
 

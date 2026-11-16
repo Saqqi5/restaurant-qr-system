@@ -14,6 +14,7 @@ import { getAllRestaurants, ordersCol } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import AdminLayout from "../components/admin/AdminLayout";
+import ReceiptModal from "../components/ReceiptModal";
 
 function startOfDay(date) {
   const d = new Date(date);
@@ -40,6 +41,7 @@ export default function SuperAdminOrdersPage() {
   const [orderNo, setOrderNo] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [slipOrder, setSlipOrder] = useState(null);
 
   useEffect(() => {
     getAllRestaurants().then((list) => {
@@ -208,6 +210,10 @@ export default function SuperAdminOrdersPage() {
         </div>
       </div>
 
+      <p className="form-hint" style={{ marginBottom: 12 }}>
+        Click any order to view its slip — status, items and bill.
+      </p>
+
       {loading ? (
         <div className="empty-state"><p>Loading orders…</p></div>
       ) : filtered.length === 0 ? (
@@ -232,7 +238,12 @@ export default function SuperAdminOrdersPage() {
             </thead>
             <tbody>
               {filtered.map((order) => (
-                <tr key={`${order.restaurant_id}-${order.id}`} style={order.status === "cancelled" ? { opacity: 0.65 } : undefined}>
+                <tr
+                  key={`${order.restaurant_id}-${order.id}`}
+                  onClick={() => setSlipOrder(order)}
+                  title="Click to view slip"
+                  style={{ cursor: "pointer", ...(order.status === "cancelled" ? { opacity: 0.65 } : {}) }}
+                >
                   <td className="ht-mono">#{order.order_number ?? order.id?.slice(-6).toUpperCase()}</td>
                   <td>{restMap[order.restaurant_id]?.name || order.restaurant_id || "—"}</td>
                   <td className="ht-mono">{fmt(order.created_at)}</td>
@@ -261,6 +272,17 @@ export default function SuperAdminOrdersPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {slipOrder && (
+        <ReceiptModal
+          order={slipOrder}
+          restaurantId={slipOrder.restaurant_id}
+          restaurantName={restMap[slipOrder.restaurant_id]?.name}
+          currency={restMap[slipOrder.restaurant_id]?.currency || "$"}
+          mode="receipt"
+          onClose={() => setSlipOrder(null)}
+        />
       )}
 
       <style>{`
