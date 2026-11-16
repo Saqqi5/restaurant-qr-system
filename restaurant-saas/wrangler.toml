@@ -7,6 +7,11 @@ main = "src/worker.js"
 
 [assets]
 directory = "./dist"
+# The Worker serves SPA routes via env.ASSETS — WITHOUT this binding line
+# the deployed Worker sees env.ASSETS as undefined (TypeError on every
+# deep link) while / still works, because the platform serves existing
+# files directly and only invokes the Worker for missing paths.
+binding = "ASSETS"
 not_found_handling = "single-page-application"
 
 # Trigger rebuild with corrected build settings (root restaurant-saas, npm run build).
