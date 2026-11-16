@@ -65,7 +65,11 @@ export default function KitchenDashboard() {
   }
 
   const ordersByStatus = ORDER_STAGES.reduce((acc, stage) => {
-    acc[stage.status] = orders.filter((o) => o.status === stage.status);
+    // Add-on orders (a table that already had an order) sort first within
+    // their stage — the kitchen serves them on priority.
+    acc[stage.status] = orders
+      .filter((o) => o.status === stage.status)
+      .sort((a, b) => Number(b.is_addon === true) - Number(a.is_addon === true));
     return acc;
   }, {});
 
@@ -106,12 +110,16 @@ export default function KitchenDashboard() {
                 {stageOrders.map((order) => (
                   <div
                     key={order.id}
-                    className={`kitchen-card ${isOverdue(order) ? "overdue" : ""}`}
+                    className={`kitchen-card ${isOverdue(order) ? "overdue" : ""} ${order.is_addon ? "addon" : ""}`}
                   >
                     <div className="kitchen-card-header">
                       <span className="table-badge">Table {order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
                       <span className="order-age">{getOrderAge(order.created_at)}</span>
                     </div>
+
+                    {order.is_addon && (
+                      <div className="addon-badge">➕ Add-on order — priority</div>
+                    )}
 
                     {isOverdue(order) && (
                       <div className="overdue-warning">⚠️ Overdue!</div>

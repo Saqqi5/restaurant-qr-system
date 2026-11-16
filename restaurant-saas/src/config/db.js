@@ -387,6 +387,9 @@ export async function createOrder(restaurantId, data) {
     estimated_ready: estimatedReady,
     notes: (data.notes || "").trim(),
     created_by: data.created_by || "customer",
+    // Add-on order: the table already had an active (unpaid) order when
+    // this one was placed, so the kitchen serves it on priority.
+    is_addon: data.is_addon === true,
   };
   await setDoc(ref, order);
   return order;

@@ -89,6 +89,9 @@ export default function ServerDashboard() {
   async function placeManualOrder() {
     if (!cart.length) return;
     setPlacing(true);
+    // Add-on: this table already has an active order, so the kitchen
+    // serves this one on priority.
+    const isAddon = activeOrders.some((o) => Number(o.table_number) === Number(selectedTable));
     await createOrder(restaurantId, {
       table_number: selectedTable,
       items: cart.map((i) => ({
@@ -98,6 +101,7 @@ export default function ServerDashboard() {
       })),
       notes,
       created_by: userProfile?.id || "server",
+      is_addon: isAddon,
     });
     setCart([]);
     setNotes("");
@@ -169,6 +173,9 @@ export default function ServerDashboard() {
                 <span className="order-total-display">{formatPrice(order.total, currency)}</span>
                 {getPaymentPill(order)}
               </div>
+              {order.is_addon && (
+                <div className="addon-badge">➕ Add-on order — priority</div>
+              )}
               <div className="server-order-items">
                 {order.items?.map((item, i) => (
                   <span key={i} className="mini-item">

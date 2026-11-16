@@ -126,11 +126,15 @@ export default function OrderTakerPage() {
     setPlacing(true);
     setError("");
     try {
+      const isAddon = orders.some(
+        (o) => Number(o.table_number) === Number(selectedTable) && o.payment_status === "unpaid" && o.status !== "cancelled"
+      );
       const order = await createOrder(restaurantId, {
         table_number: selectedTable,
         items: cartItems.map((i) => ({ ...i, quantity: i.qty })),
         notes: note,
         created_by: userProfile?.id || "staff",
+        is_addon: isAddon,
       });
       // Open the slip for the new order (print it for the customer if needed).
       setReceiptOrder(order);

@@ -177,6 +177,9 @@ export default function CustomerMenu() {
           prep_time_minutes: i.prep_time_minutes,
         })),
         created_by: mySessionId,
+        // Add-on: this table already has an active order, so the kitchen
+        // serves this one on priority.
+        is_addon: activeOrders.length > 0,
       });
       // The cart clears the moment the order is confirmed — the selected
       // items are gone at once, so there is nothing left to re-place.
@@ -413,6 +416,11 @@ export default function CustomerMenu() {
       {view === "orders" && (
         <>
           <OrderTracker orders={tableOrders} currency={currency} restaurantId={restaurantId} sessionId={mySessionId} />
+          <div className="order-more-section">
+            <button className="btn-order-more" onClick={() => setView("menu")}>
+              ➕ Order more items
+            </button>
+          </div>
           {activeOrders.length > 0 && (
             <div className="pay-now-section">
               <button

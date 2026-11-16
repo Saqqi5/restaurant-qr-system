@@ -58,6 +58,9 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
               {isKot ? "KITCHEN ORDER TICKET" : "RECEIPT"}
             </div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#0b7a55", marginTop: 6 }}>Order {orderNo}</div>
+            {isKot && order.is_addon && (
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#b45309", marginTop: 6 }}>➕ ADD-ON ORDER — PRIORITY</div>
+            )}
           </div>
 
           <div style={{ fontSize: 13, lineHeight: 1.7, borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "8px 0" }}>
