@@ -136,6 +136,13 @@ service cloud.firestore {
     function frozenUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['is_frozen']);
     }
+    // A restaurant's general admin may never set their own custom domain —
+    // only the super admin (or the Worker) links one, after it is bought
+    // and attached. They MAY request one (domain_request) — that is the
+    // intended flow in Settings and it passes the update rule below.
+    function customDomainUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['custom_domain']);
+    }
     // A user may never disable or enable their own login — only the super
     // admin touches is_disabled.
     function disabledUnchanged() {
@@ -183,9 +190,9 @@ service cloud.firestore {
       // Super admin can change anything. A restaurant's general admin can
       // update everything except the plan, and may not raise the table count
       // above the plan's limit (lowering it is always allowed). They may
-      // never touch the plan expiry or the freeze flag.
+      // never touch the plan expiry, the freeze flag, or the custom domain.
       allow update: if isSuperAdmin()
-        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged() && frozenUnchanged());
+        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged() && frozenUnchanged() && customDomainUnchanged());
 
       // ── Menu Items ──────────────────────────────────────────
       match /menu/{itemId} {
