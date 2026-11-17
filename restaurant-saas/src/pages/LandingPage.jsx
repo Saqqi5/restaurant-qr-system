@@ -69,6 +69,10 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="hero">
+        <div className="hero-brand">
+          <img src="/images/saqlyn-logo.png" alt="Saqlyn" className="hero-logo" />
+          <p className="hero-tagline">SCAN · ORDER · PAY</p>
+        </div>
         <div className="hero-content">
           <div className="hero-eyebrow">
             <span className="hero-eyebrow-dot" />
@@ -122,10 +126,6 @@ export default function LandingPage() {
               <div className="mock-cart-bar">🛒 2 items · $19.50</div>
             </div>
           </div>
-        </div>
-        <div className="hero-brand">
-          <img src="/images/saqlyn-logo.png" alt="Saqlyn" className="hero-logo" />
-          <p className="hero-tagline">SCAN · ORDER · PAY</p>
         </div>
       </section>
 

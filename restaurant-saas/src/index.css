@@ -1945,7 +1945,7 @@ html.capacitor-app { zoom: 1.12; }
 /* Saqlyn brand assets — Saqlain's own logo/banner (2026-11-17) */
 .nav-logo { height: 38px; width: auto; display: block; }
 /* Hero brand: the SAQLYN logo only, tagline under it (no banner card). */
-.hero-brand { grid-column: 1 / -1; text-align: center; margin-top: 72px; }
+.hero-brand { grid-column: 1 / -1; text-align: center; }
 .hero-logo { width: min(420px, 82%); height: auto; }
 .hero-tagline {
   margin-top: 16px; font-size: 14px; font-weight: 600;
