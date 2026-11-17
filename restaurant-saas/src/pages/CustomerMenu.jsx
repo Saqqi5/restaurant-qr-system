@@ -691,7 +691,7 @@ export default function CustomerMenu() {
                   </div>
                   {billDiscount > 0 && (
                     <div className="bill-row">
-                      <span>Discount</span>
+                      <span>Discount{activeOrders.some((o) => o.promo_applied) ? " (Promo 🎉)" : ""}</span>
                       <span>−{formatPrice(billDiscount, currency)}</span>
                     </div>
                   )}

@@ -66,7 +66,7 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
                 </div>
                 {bill.discount > 0 && (
                   <div className="cart-row">
-                    <span>Discount ({Number(restaurant?.discount_rate) || 0}%)</span>
+                    <span>Discount{effDiscount.active ? " (Promo 🎉)" : effDiscount.rate > 0 ? ` (${effDiscount.rate}%)` : ""}</span>
                     <span>−{formatPrice(bill.discount, currency)}</span>
                   </div>
                 )}

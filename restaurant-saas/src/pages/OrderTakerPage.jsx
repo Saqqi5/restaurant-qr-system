@@ -314,7 +314,7 @@ export default function OrderTakerPage() {
                   </div>
                   {bill.discount > 0 && (
                     <div className="taker-cart-row">
-                      <span>Discount</span><span>−{formatPrice(bill.discount, currency)}</span>
+                      <span>Discount{getEffectiveDiscount(restaurant).active ? " (Promo 🎉)" : ""}</span><span>−{formatPrice(bill.discount, currency)}</span>
                     </div>
                   )}
                   {bill.tax > 0 && (
