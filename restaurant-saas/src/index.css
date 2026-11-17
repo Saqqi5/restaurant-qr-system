@@ -501,16 +501,19 @@ a { color: var(--color-primary); text-decoration: none; }
 /* ═══ LOGIN PAGE ════════════════════════════════════════════════ */
 .login-page {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  position: relative; overflow: hidden;
-  background: radial-gradient(ellipse at 60% 40%, rgba(15,61,62,0.4) 0%, transparent 70%);
+  position: relative; overflow: hidden; padding: 20px;
+  /* Soft SAQLYN-green wash behind the card, over the deep teal glow. */
+  background:
+    radial-gradient(ellipse 62% 52% at 50% 42%, rgba(32,201,151,0.17) 0%, rgba(32,201,151,0.05) 48%, transparent 72%),
+    radial-gradient(ellipse at 60% 40%, rgba(15,61,62,0.4) 0%, transparent 70%);
 }
 .login-card {
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 20px; padding: 48px; width: 100%; max-width: 420px;
+  border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 360px;
   position: relative; z-index: 2;
   box-shadow: var(--shadow), var(--shadow-glow);
 }
-.login-logo { text-align: center; margin-bottom: 36px; }
+.login-logo { text-align: center; margin-bottom: 28px; }
 .logo-mark {
   display: inline-flex; align-items: center; justify-content: center;
   width: 56px; height: 56px; border-radius: 14px;
@@ -521,7 +524,7 @@ a { color: var(--color-primary); text-decoration: none; }
 .logo-brand { font-family: var(--font); font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
 .logo-brand span { color: var(--color-primary); }
 .login-logo p { color: var(--color-muted); font-size: 13px; margin-top: 4px; }
-.login-form h2 { font-family: var(--font); font-size: 20px; font-weight: 700; margin-bottom: 24px; }
+.login-form h2 { font-family: var(--font); font-size: 20px; font-weight: 700; margin-bottom: 20px; }
 .btn-login {
   width: 100%; background: var(--color-primary); color: #070C0C;
   padding: 13px; border-radius: var(--radius-sm); font-size: 15px;
@@ -530,8 +533,12 @@ a { color: var(--color-primary); text-decoration: none; }
   transition: background var(--transition), box-shadow var(--transition);
 }
 .btn-login:hover { background: var(--color-primary-dark); box-shadow: 0 4px 16px rgba(32,201,151,0.3); }
-.login-footer { text-align: center; margin-top: 24px; font-size: 13px; color: var(--color-muted); }
+.login-footer { text-align: center; margin-top: 20px; font-size: 13px; color: var(--color-muted); }
 .login-footer a { color: var(--color-primary); }
+@media (max-width: 480px) {
+  .login-card { padding: 28px 22px; }
+  .login-back-link { top: 12px; left: 12px; }
+}
 
 /* ═══ ADMIN LAYOUT ══════════════════════════════════════════════ */
 .admin-layout { min-height: 100vh; display: flex; flex-direction: column; }
