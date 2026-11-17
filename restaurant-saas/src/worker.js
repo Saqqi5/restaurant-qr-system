@@ -45,6 +45,31 @@ function json(data, status = 200) {
   });
 }
 
+// CORS for the Capacitor app: the native shell runs on https://localhost
+// (Android) or capacitor://localhost (iOS), so its /api/* calls are
+// cross-origin. Same-origin web calls never need CORS, but reflecting an
+// allowed origin is harmless for them. Only localhost-family origins are
+// ever reflected — no other site can call the admin endpoints cross-origin.
+const CORS_ALLOWED_ORIGINS = ["https://localhost", "capacitor://localhost"];
+function corsOrigin(request) {
+  const origin = request.headers.get("Origin") || "";
+  if (CORS_ALLOWED_ORIGINS.includes(origin)) return origin;
+  if (origin === "http://localhost" || origin.startsWith("http://localhost:")) return origin;
+  return null;
+}
+function withCors(request, response) {
+  const origin = corsOrigin(request);
+  if (!origin) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Vary", "Origin");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 function newPassword() {
   const rnd = new Uint32Array(3);
   crypto.getRandomValues(rnd);
@@ -582,12 +607,29 @@ async function handleDomainUnlink(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // CORS preflight for /api/* (Capacitor app only — web calls are
+    // same-origin and never preflight). Unknown origins get no CORS headers,
+    // so the browser blocks them; auth still happens in the handlers.
+    if (url.pathname.startsWith("/api/") && request.method === "OPTIONS") {
+      const origin = corsOrigin(request);
+      if (!origin) return json({ error: "Forbidden." }, 403);
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": origin,
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "authorization, content-type",
+          "Access-Control-Max-Age": "86400",
+          "Vary": "Origin",
+        },
+      });
+    }
     if (url.pathname === "/api/admin/reset-password") {
-      if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+      if (request.method !== "POST") return withCors(request, json({ error: "Method not allowed." }, 405));
       try {
-        return await handleResetPassword(request, env);
+        return withCors(request, await handleResetPassword(request, env));
       } catch (e) {
-        return json({ error: e?.message || "Password reset failed." }, 500);
+        return withCors(request, json({ error: e?.message || "Password reset failed." }, 500));
       }
     }
     const domainHandlers = {
@@ -597,11 +639,11 @@ export default {
       "/api/admin/domain/unlink": handleDomainUnlink,
     };
     if (domainHandlers[url.pathname]) {
-      if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
+      if (request.method !== "POST") return withCors(request, json({ error: "Method not allowed." }, 405));
       try {
-        return await domainHandlers[url.pathname](request, env);
+        return withCors(request, await domainHandlers[url.pathname](request, env));
       } catch (e) {
-        return json({ error: e?.message || "Custom domain failed." }, 500);
+        return withCors(request, json({ error: e?.message || "Custom domain failed." }, 500));
       }
     }
     // Serve static assets; fall back to index.html for SPA routes.

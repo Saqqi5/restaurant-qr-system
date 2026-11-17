@@ -219,13 +219,19 @@ export function AuthProvider({ children }) {
     await updatePassword(currentUser, newPassword);
   }
 
+  // Worker API base: the Capacitor app runs on https://localhost, so relative
+  // /api/... calls would hit the app itself instead of the Worker. VITE_APP_URL
+  // (set in .env for local/Capacitor builds) points them at the live Worker;
+  // on the web build it is unset and calls stay same-origin relative.
+  const WORKER_API_BASE = (import.meta.env.VITE_APP_URL || "").replace(/\/$/, "");
+
   // One-click staff password reset (super admin only). The browser SDK
   // cannot change another user's password, so this calls the Worker
   // endpoint, which uses the Firebase service account. Returns the new
   // password (generated server-side) so the super admin can share it.
   async function resetStaffPassword(staffUid) {
     const token = await currentUser.getIdToken();
-    const res = await fetch("/api/admin/reset-password", {
+    const res = await fetch(`${WORKER_API_BASE}/api/admin/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ uid: staffUid }),
@@ -240,7 +246,7 @@ export function AuthProvider({ children }) {
   async function callWorkerApi(path, body) {
     if (!currentUser) throw new Error("Not signed in.");
     const token = await currentUser.getIdToken();
-    const res = await fetch(path, {
+    const res = await fetch(`${WORKER_API_BASE}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body || {}),
