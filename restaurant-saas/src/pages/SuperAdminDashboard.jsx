@@ -17,6 +17,7 @@ import CurrencySelect from "../components/admin/CurrencySelect";
 import { THEME_PRESETS, DEFAULT_THEME } from "../config/themes";
 import { downscaleImage } from "../utils/image";
 import StaffModal from "../components/admin/StaffModal";
+import MenuManagerModal from "../components/admin/MenuManagerModal";
 import QRModal from "../components/admin/QRModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
 import StatsBar from "../components/admin/StatsBar";
@@ -27,7 +28,7 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [modalType, setModalType] = useState(null); // "staff" | "qr" | "edit" | "domain"
+  const [modalType, setModalType] = useState(null); // "staff" | "qr" | "edit" | "domain" | "menu"
   const [searchTerm, setSearchTerm] = useState("");
   const [deleting, setDeleting] = useState(null); // restaurant awaiting delete confirm
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -363,6 +364,7 @@ export default function SuperAdminDashboard() {
               onManageStaff={() => openModal(restaurant, "staff")}
               onViewQR={() => openModal(restaurant, "qr")}
               onMapDomain={() => openModal(restaurant, "domain")}
+              onManageMenu={() => openModal(restaurant, "menu")}
               onDelete={() => setDeleting(restaurant)}
             />
           ))}
@@ -391,6 +393,13 @@ export default function SuperAdminDashboard() {
 
       {modalType === "staff" && selectedRestaurant && (
         <StaffModal
+          restaurant={selectedRestaurant}
+          onClose={() => setModalType(null)}
+        />
+      )}
+
+      {modalType === "menu" && selectedRestaurant && (
+        <MenuManagerModal
           restaurant={selectedRestaurant}
           onClose={() => setModalType(null)}
         />

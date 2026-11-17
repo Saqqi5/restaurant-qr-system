@@ -3,7 +3,7 @@ import { getPlanLabel, getExpiryInfo, formatExpiryDate } from "../../config/plan
 import { continuePlan, startDemo, resetDemoRestaurant, setRestaurantFrozen } from "../../config/db";
 import ConfirmModal from "./ConfirmModal";
 
-export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain, onDelete }) {
+export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onViewQR, onMapDomain, onManageMenu, onDelete }) {
   const [continuing, setContinuing] = useState(false);
   const [continued, setContinued] = useState(false);
   const [demoing, setDemoing] = useState(false);
@@ -154,6 +154,7 @@ export default function RestaurantCard({ restaurant, onEdit, onManageStaff, onVi
         <button className="rc-btn" onClick={onManageStaff} title="Staff">👥 Staff</button>
         <button className="rc-btn" onClick={onViewQR} title="QR Codes">📱 QR</button>
         <button className="rc-btn" onClick={onMapDomain} title="Domain">🌐 Domain</button>
+        <button className="rc-btn" onClick={onManageMenu} title="Add, edit or hide this restaurant's dishes">🍽️ Menu</button>
         <button className="rc-btn" onClick={onDelete} title="Delete restaurant"
           style={{ color: "#ff6b6b" }}>🗑️ Delete</button>
       </div>
