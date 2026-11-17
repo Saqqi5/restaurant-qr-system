@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatPrice } from "../../utils/currency";
-import { cancelOrder } from "../../config/db";
+import { cancelOrder, getOrderPayable } from "../../config/db";
 import ReceiptModal from "../ReceiptModal";
 import RestaurantLogo from "./RestaurantLogo";
 
@@ -102,7 +102,7 @@ export default function OrderTracker({ orders, currency, restaurantId, sessionId
             <div key={order.id} className="order-track-card cancelled">
               <div className="order-track-header">
                 <span className="order-track-id">Order #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
-                <span className="order-total-display">{formatPrice(order.total, currency)}</span>
+                <span className="order-total-display">{formatPrice(getOrderPayable(order).payable, currency)}</span>
               </div>
               <div className="cancelled-badge">❌ Cancelled</div>
               <div className="order-items-summary">
@@ -123,7 +123,7 @@ export default function OrderTracker({ orders, currency, restaurantId, sessionId
           <div key={order.id} className="order-track-card">
             <div className="order-track-header">
               <span className="order-track-id">Order #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
-              <span className="order-total-display">{formatPrice(order.total, currency)}</span>
+              <span className="order-total-display">{formatPrice(getOrderPayable(order).payable, currency)}</span>
             </div>
 
             {/* Progress Steps */}

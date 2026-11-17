@@ -1,10 +1,11 @@
 import { formatPrice } from "../../utils/currency";
-import { calculateBill } from "../../config/db";
+import { calculateBill, getEffectiveDiscount } from "../../config/db";
 import RestaurantLogo from "./RestaurantLogo";
 
 export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpdateNotes, onPlaceOrder, placing, restaurant, deliveryFee = 0, isDelivery = false }) {
   const currency = restaurant?.currency || "$";
-  const bill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0);
+  const effDiscount = getEffectiveDiscount(restaurant);
+  const bill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, effDiscount.rate, effDiscount.amount);
   const maxPrepTime = cart.length ? Math.max(...cart.map((i) => i.prep_time_minutes || 15)) : 0;
   const total = Number((bill.total + (deliveryFee || 0)).toFixed(2));
 

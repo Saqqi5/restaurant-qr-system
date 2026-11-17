@@ -4,7 +4,8 @@ import { useTenant } from "../contexts/TenantContext";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, createOrder, subscribeToTableOrders, subscribeToSessionOrders,
-  createPayment, subscribeToPayment, calculateBill, isExpiredDemoItem, sortCategories
+  createPayment, subscribeToPayment, calculateBill, isExpiredDemoItem, sortCategories,
+  getOrderPayable, getEffectiveDiscount
 } from "../config/db";
 import { canUseDelivery } from "../config/plans";
 import { formatPrice } from "../utils/currency";
@@ -21,6 +22,9 @@ export default function CustomerMenu() {
   const { userProfile, loading: authLoading, canAccessRestaurant } = useAuth();
   const navigate = useNavigate();
   const currency = restaurant?.currency || "$";
+  // Active promo (if any) replaces the regular discount rate — the
+  // cart preview, the FAB total and the placed order all use it.
+  const effDiscount = getEffectiveDiscount(restaurant);
   // Payment accounts come from the restaurant's own settings (editable in
   // Settings > Payment Methods). Only methods the restaurant actually
   // configured are offered — no demo fallback, so money never looks like
@@ -199,7 +203,7 @@ export default function CustomerMenu() {
         setDeliveryError("Please fill in your name, phone number and delivery address.");
         return;
       }
-      const cartBill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0);
+      const cartBill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, effDiscount.rate, effDiscount.amount);
       deliveryFeeForOrder = (freeDeliveryAbove > 0 && cartBill.total >= freeDeliveryAbove) ? 0 : deliveryFee;
     } else {
       if (!effectiveTable) return;
@@ -265,8 +269,9 @@ export default function CustomerMenu() {
     }
     setUploading(true);
     try {
-      // Calculate total from all active orders
-      const total = activeOrders.reduce((s, o) => s + (o.total || 0), 0);
+      // Calculate total from all active orders (after any per-order
+      // manual discount — the customer pays the payable, not the bill).
+      const total = activeOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0);
       const allItems = activeOrders.flatMap(o => o.items || []);
 
       // Compress the screenshot to a data URL stored in the payment record.
@@ -316,7 +321,7 @@ export default function CustomerMenu() {
   // the whole menu by scrolling, never by tapping every tab.
   const categories = sortCategories([...new Set(menuItems.map((i) => i.category))], restaurant);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
-  const orderTotal = activeOrders.reduce((s, o) => s + (o.total || 0), 0);
+  const orderTotal = activeOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0);
   const allOrderItems = activeOrders.flatMap(o => o.items || []);
   // Bill breakdown for the payment sheet (orders store these since the
   // tax/discount billing update; fall back gracefully for older orders).
@@ -324,8 +329,9 @@ export default function CustomerMenu() {
   const billDiscount = activeOrders.reduce((s, o) => s + (o.discount_amount || 0), 0);
   const billTax = activeOrders.reduce((s, o) => s + (o.tax_amount || 0), 0);
   const billDeliveryFee = activeOrders.reduce((s, o) => s + (o.delivery_fee || 0), 0);
+  const billManualDiscount = activeOrders.reduce((s, o) => s + getOrderPayable(o).discount, 0);
   // Fee for the CURRENT cart (delivery only): flat, free above the threshold.
-  const cartBill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0);
+  const cartBill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, effDiscount.rate, effDiscount.amount);
   const cartDeliveryFee = isDeliveryMode
     ? ((freeDeliveryAbove > 0 && cartBill.total >= freeDeliveryAbove) ? 0 : deliveryFee)
     : 0;
@@ -626,7 +632,7 @@ export default function CustomerMenu() {
           <span className="cart-fab-icon">🛒</span>
           <span className="cart-fab-count">{cartCount}</span>
           <span className="cart-fab-total">
-            {formatPrice(calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0).total + cartDeliveryFee, currency)}
+            {formatPrice(calculateBill(cart, Number(restaurant?.tax_rate) || 0, effDiscount.rate, effDiscount.amount).total + cartDeliveryFee, currency)}
           </span>
         </button>
       )}
@@ -687,6 +693,12 @@ export default function CustomerMenu() {
                     <div className="bill-row">
                       <span>Discount</span>
                       <span>−{formatPrice(billDiscount, currency)}</span>
+                    </div>
+                  )}
+                  {billManualDiscount > 0 && (
+                    <div className="bill-row">
+                      <span>Extra Discount</span>
+                      <span>−{formatPrice(billManualDiscount, currency)}</span>
                     </div>
                   )}
                   {billTax > 0 && (

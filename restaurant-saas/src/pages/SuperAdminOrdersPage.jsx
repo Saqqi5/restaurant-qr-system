@@ -10,7 +10,7 @@
 // results client-side. Same filters, no rules change needed.
 import { useState, useEffect } from "react";
 import { getDocs, query, where, orderBy, Timestamp } from "firebase/firestore";
-import { getAllRestaurants, ordersCol } from "../config/db";
+import { getAllRestaurants, ordersCol, getOrderPayable } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -104,7 +104,7 @@ export default function SuperAdminOrdersPage() {
 
   const totalRevenue = filtered
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
-    .reduce((s, o) => s + (o.total || 0), 0);
+    .reduce((s, o) => s + getOrderPayable(o).payable, 0);
   // Revenue is shown in the selected restaurant's currency. With "All
   // restaurants" the total mixes currencies — if every restaurant happens to
   // share one currency (e.g. all Rs.), use it; otherwise fall back to $.
@@ -151,7 +151,7 @@ export default function SuperAdminOrdersPage() {
         table: o.table_number,
         status: o.status,
         payment: o.payment_status,
-        total: typeof o.total === "number" ? o.total : "",
+        total: getOrderPayable(o).payable,
         date: o.created_at?.toDate?.() || "",
         cancelledBy: o.cancelled_by_name || "",
         items: o.items?.map((i) => `${i.name} x${i.quantity}`).join("; ") || "",
@@ -315,7 +315,7 @@ export default function SuperAdminOrdersPage() {
                   <td className="ht-items">
                     {order.items?.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
                   </td>
-                  <td className="ht-price">{formatPrice(order.total, restMap[order.restaurant_id]?.currency || "$")}</td>
+                  <td className="ht-price">{formatPrice(getOrderPayable(order).payable, restMap[order.restaurant_id]?.currency || "$")}</td>
                   <td>
                     <span className={`status-pill status-${order.status}`}>
                       {order.status}
@@ -345,9 +345,13 @@ export default function SuperAdminOrdersPage() {
           restaurantName={restMap[slipOrder.restaurant_id]?.name}
           restaurantLogo={restMap[slipOrder.restaurant_id]?.logo_url}
           restaurantAddress={restMap[slipOrder.restaurant_id]?.address}
+          deliveryPhone={restMap[slipOrder.restaurant_id]?.delivery_phone || ""}
+          complaintsPhone={restMap[slipOrder.restaurant_id]?.complaints_phone || ""}
           currency={restMap[slipOrder.restaurant_id]?.currency || "$"}
           mode="receipt"
           onClose={() => setSlipOrder(null)}
+          discountActor={userProfile ? { uid: userProfile.id, name: userProfile.name } : null}
+          onDiscountApplied={() => fetchOrders()}
         />
       )}
 

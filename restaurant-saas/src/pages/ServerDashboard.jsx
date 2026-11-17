@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders, createOrder, cancelOrder,
   subscribeToRestaurantPayments
-, getRestaurant } from "../config/db";
+, getRestaurant, getOrderPayable } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { sortByBookedAt } from "../utils/orderSort";
 import { isExpiredDemoItem } from "../config/db";
@@ -194,7 +194,7 @@ export default function ServerDashboard() {
               <div className="server-order-header">
                 <span className="table-badge">Table {order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
                 <span className={`status-pill status-${order.status}`}>{order.status}</span>
-                <span className="order-total-display">{formatPrice(order.total, currency)}</span>
+                <span className="order-total-display">{formatPrice(getOrderPayable(order).payable, currency)}</span>
                 {getPaymentPill(order)}
               </div>
               {order.created_at?.toDate && (

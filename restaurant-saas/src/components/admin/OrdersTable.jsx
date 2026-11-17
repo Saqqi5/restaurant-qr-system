@@ -1,7 +1,7 @@
 // OrdersTable.jsx
 import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { cancelOrder } from "../../config/db";
+import { cancelOrder, getOrderPayable } from "../../config/db";
 import { formatPrice, useRestaurantCurrency } from "../../utils/currency";
 import ConfirmModal from "./ConfirmModal";
 
@@ -72,7 +72,7 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
               </div>
             </div>
             <div className="order-row-right">
-              <span className="order-row-total">{formatPrice(order.total, order._currency || currency)}</span>
+              <span className="order-row-total">{formatPrice(getOrderPayable(order).payable, order._currency || currency)}</span>
               <span className="status-dot" style={{ background: STATUS_COLORS[order.status] || "#888" }}>
                 {order.status === "out_for_delivery" ? "out for delivery" : order.status}
               </span>

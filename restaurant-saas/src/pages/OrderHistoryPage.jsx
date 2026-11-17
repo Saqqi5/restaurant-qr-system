@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { getDocs, query, orderBy, where, Timestamp } from "firebase/firestore";
-import { ordersCol, subscribeToPlatformSettings } from "../config/db";
+import { ordersCol, subscribeToPlatformSettings, getOrderPayable } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { getBackupDays, getPlanLabel, getRetentionCutoffDate, isOrderWithinRetention } from "../config/plans";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -90,14 +90,14 @@ export default function OrderHistoryPage() {
 
   const totalRevenue = filtered
     .filter((o) => o.payment_status === "paid")
-    .reduce((s, o) => s + (o.total || 0), 0);
+    .reduce((s, o) => s + getOrderPayable(o).payable, 0);
   // Combined view: revenue per branch, each in its own currency.
   const revenueByBranch = isAllBranches
     ? filtered
         .filter((o) => o.payment_status === "paid")
         .reduce((acc, o) => {
           const bid = o._restaurantId || restaurantId;
-          acc[bid] = (acc[bid] || 0) + (o.total || 0);
+          acc[bid] = (acc[bid] || 0) + getOrderPayable(o).payable;
           return acc;
         }, {})
     : {};
@@ -113,7 +113,7 @@ export default function OrderHistoryPage() {
         o.order_type || "dine_in",
         o.status,
         o.payment_status,
-        o.total?.toFixed(2),
+        getOrderPayable(o).payable.toFixed(2),
         o.created_at?.toDate?.()?.toISOString?.() || "",
         o.cancelled_by_name || "",
         `"${o.items?.map((i) => `${i.name} x${i.quantity}`).join("; ")}"`,
@@ -250,7 +250,7 @@ export default function OrderHistoryPage() {
                   <td className="ht-items">
                     {order.items?.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
                   </td>
-                  <td className="ht-price">{formatPrice(order.total, order._currency || currency)}</td>
+                  <td className="ht-price">{formatPrice(getOrderPayable(order).payable, order._currency || currency)}</td>
                   <td>
                     <span className={`status-pill status-${order.status}`}>
                       {order.status === "out_for_delivery" ? "out for delivery" : order.status}

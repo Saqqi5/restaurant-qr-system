@@ -242,13 +242,18 @@ service cloud.firestore {
         // The kitchen may move an order along (confirm → serve) but may
         // NEVER cancel/delete one: a wrong confirmed order is deleted by
         // the cashier or the admin only (his 2026-11-16 decision).
+        // A per-order manual discount (manual_discount_* fields) may be
+        // set or removed ONLY by the restaurant admin or the super admin
+        // (his 2026-11-17 decision) — the cashier and the kitchen can
+        // still move statuses, they just cannot touch the discount.
         allow update: if isOrderUpdateAllowed(restaurantId)
           && isOrderStatusValid(request.resource.data.status)
           && isPaymentStatusValid(request.resource.data.payment_status)
           && (request.resource.data.status != 'cancelled' || !isKitchen(restaurantId))
           && request.resource.data.total == resource.data.total
           && request.resource.data.items == resource.data.items
-          && request.resource.data.table_number == resource.data.table_number;
+          && request.resource.data.table_number == resource.data.table_number
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['manual_discount_type', 'manual_discount_value', 'manual_discount_amount', 'manual_discount_by', 'manual_discount_by_name', 'manual_discount_at']) || isGeneralAdmin(restaurantId) || isSuperAdmin());
 
         // A server may cancel (soft-delete) an order, but ONLY while it is
         // still pending — before the kitchen confirms it. Nothing else may

@@ -6,7 +6,7 @@ import BranchRequired from "../components/admin/BranchRequired";
 import ReceiptModal from "../components/ReceiptModal";
 import {
   subscribeToRestaurant, subscribeToMenu, subscribeToOrders,
-  createOrder, calculateBill, CATEGORY_ORDER,
+  createOrder, calculateBill, CATEGORY_ORDER, getEffectiveDiscount,
 } from "../config/db";
 import { normalizePlan } from "../config/plans";
 import { formatPrice } from "../utils/currency";
@@ -106,7 +106,8 @@ export default function OrderTakerPage() {
       calculateBill(
         cartItems,
         Number(restaurant?.tax_rate) || 0,
-        Number(restaurant?.discount_rate) || 0
+        getEffectiveDiscount(restaurant).rate,
+        getEffectiveDiscount(restaurant).amount
       ),
     [cartItems, restaurant]
   );

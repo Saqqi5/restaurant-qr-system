@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToOrders, updateOrderStatus, updatePaymentStatus, cancelOrder,
-  subscribeToRestaurantPayments, verifyPayment
+  subscribeToRestaurantPayments, verifyPayment, getOrderPayable
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -112,7 +112,7 @@ export default function CashCounterDashboard() {
     return orderDate === today && o.payment_status === "paid" && o.status !== "cancelled";
   });
 
-  const todayRevenue = todayPaid.reduce((s, o) => s + (o.total || 0), 0);
+  const todayRevenue = todayPaid.reduce((s, o) => s + getOrderPayable(o).payable, 0);
   const unpaidCount = orders.filter((o) => o.payment_status === "unpaid" && o.status !== "pending" && o.status !== "cancelled").length;
   const pendingProofs = payments.filter(p => p.status === "pending");
   const verifiedProofs = payments.filter(p => p.status === "verified");
@@ -227,7 +227,7 @@ export default function CashCounterDashboard() {
                     <span className="order-time">{formatTime(order.created_at)}</span>
                   </div>
                   <div className="order-header-right">
-                    <span className="order-total">{formatPrice(order.total, currency)}</span>
+                    <span className="order-total">{formatPrice(getOrderPayable(order).payable, currency)}</span>
                     <span className={`payment-badge ${order.payment_status}`}>
                       {order.payment_status === "paid"
                         ? `✅ ${order.payment_method || "paid"}`
@@ -259,8 +259,14 @@ export default function CashCounterDashboard() {
                           </div>
                           {order.discount_amount > 0 && (
                             <div className="detail-item">
-                              <span>Discount{order.discount_rate ? ` (${order.discount_rate}%)` : ""}</span>
+                              <span>Discount{order.promo_applied ? " (Promo 🎉)" : order.discount_rate ? ` (${order.discount_rate}%)` : ""}</span>
                               <span>−{formatPrice(order.discount_amount, currency)}</span>
+                            </div>
+                          )}
+                          {getOrderPayable(order).discount > 0 && (
+                            <div className="detail-item">
+                              <span>Extra Discount</span>
+                              <span>−{formatPrice(getOrderPayable(order).discount, currency)}</span>
                             </div>
                           )}
                           {order.tax_amount > 0 && (
@@ -279,7 +285,7 @@ export default function CashCounterDashboard() {
                       )}
                       <div className="detail-total">
                         <span>Total</span>
-                        <span>{formatPrice(order.total, currency)}</span>
+                        <span>{formatPrice(getOrderPayable(order).payable, currency)}</span>
                       </div>
                       <button
                         type="button"

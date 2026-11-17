@@ -1,8 +1,9 @@
 import { formatPrice } from "../../utils/currency";
+import { getOrderPayable } from "../../config/db";
 
 export default function AnalyticsPanel({ orders, menuItems, currency }) {
   const paid = orders.filter((o) => o.payment_status === "paid");
-  const totalRevenue = paid.reduce((s, o) => s + (o.total || 0), 0);
+  const totalRevenue = paid.reduce((s, o) => s + getOrderPayable(o).payable, 0);
   const avgOrder = paid.length ? totalRevenue / paid.length : 0;
 
   // Top items by quantity sold

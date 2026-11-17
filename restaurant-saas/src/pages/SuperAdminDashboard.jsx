@@ -476,6 +476,13 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
     plan: normalizePlan(restaurant.plan),
     currency: restaurant.currency || "$",
     address: restaurant.address || "",
+    delivery_phone: restaurant.delivery_phone || "",
+    complaints_phone: restaurant.complaints_phone || "",
+    promo_enabled: restaurant.promo_enabled === true,
+    promo_type: restaurant.promo_type === "flat" ? "flat" : "percent",
+    promo_value: Number(restaurant.promo_value) || 0,
+    promo_start: restaurant.promo_start || "",
+    promo_end: restaurant.promo_end || "",
     order_taker_enabled: restaurant.order_taker_enabled === true,
     delivery_override: restaurant.delivery_override === true,
     ownerId: linkedOwnerId,
@@ -559,6 +566,54 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
             <input value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               placeholder="e.g. 12 Main Bazaar, Lahore" />
+          </div>
+          <div className="form-group">
+            <label>📞 Orders / Home Delivery Number (shows big on the receipt)</label>
+            <input value={form.delivery_phone}
+              onChange={(e) => setForm({ ...form, delivery_phone: e.target.value })}
+              placeholder="e.g. 0300-1234567" />
+          </div>
+          <div className="form-group">
+            <label>📞 Complaints &amp; Inquiries Number (shows big on the receipt)</label>
+            <input value={form.complaints_phone}
+              onChange={(e) => setForm({ ...form, complaints_phone: e.target.value })}
+              placeholder="e.g. 0300-7654321" />
+          </div>
+          <div className="form-group">
+            <label>🎉 Discount Promo</label>
+            <p className="form-hint">A time-limited discount for all customers. While active it replaces the restaurant&apos;s regular discount on every order.</p>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <input type="checkbox" checked={!!form.promo_enabled}
+                onChange={(e) => setForm({ ...form, promo_enabled: e.target.checked })} />
+              Enable Discount Promo
+            </label>
+            {form.promo_enabled && (
+              <div className="settings-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="form-group">
+                  <label>Type</label>
+                  <select value={form.promo_type}
+                    onChange={(e) => setForm({ ...form, promo_type: e.target.value })}>
+                    <option value="percent">Percent (%)</option>
+                    <option value="flat">Flat amount</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{form.promo_type === "flat" ? "Amount" : "Percent"}</label>
+                  <input type="number" min="0" step="any" value={form.promo_value}
+                    onChange={(e) => setForm({ ...form, promo_value: parseFloat(e.target.value) || 0 })} />
+                </div>
+                <div className="form-group">
+                  <label>Starts On</label>
+                  <input type="date" value={form.promo_start}
+                    onChange={(e) => setForm({ ...form, promo_start: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Ends On</label>
+                  <input type="date" value={form.promo_end}
+                    onChange={(e) => setForm({ ...form, promo_end: e.target.value })} />
+                </div>
+              </div>
+            )}
           </div>
           <div className="form-group">
             <label>🎨 Theme Colors — match the restaurant&apos;s logo</label>

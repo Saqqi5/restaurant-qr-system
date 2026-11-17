@@ -362,14 +362,19 @@ export async function createOrder(restaurantId, data) {
     throw new Error("Cannot create an order without at least one valid item.");
   }
 
-  // Billing: tax + discount rates come from the restaurant's settings (0 if unset)
-  let taxRate = 0, discountRate = 0;
+  // Billing: tax + discount rates come from the restaurant's settings (0 if unset).
+  // A time-limited promo (Settings → Discount Promo) replaces the regular
+  // discount rate while it is active — see getEffectiveDiscount below.
+  let taxRate = 0, discountRate = 0, discountAmount = 0, promoApplied = false;
   try {
     const r = await getRestaurant(restaurantId);
     taxRate = Number(r?.tax_rate) || 0;
-    discountRate = Number(r?.discount_rate) || 0;
+    const eff = getEffectiveDiscount(r);
+    discountRate = eff.rate;
+    discountAmount = eff.amount;
+    promoApplied = eff.active;
   } catch { /* keep 0 — bill without tax/discount */ }
-  const bill = calculateBill(sanitizedItems, taxRate, discountRate);
+  const bill = calculateBill(sanitizedItems, taxRate, discountRate, discountAmount);
 
   // Home delivery: no table (table_number 0), a flat delivery fee added
   // AFTER tax (fees are not taxed), and the customer's contact + address
@@ -399,6 +404,7 @@ export async function createOrder(restaurantId, data) {
     subtotal: bill.subtotal,
     discount_amount: bill.discount,
     discount_rate: discountRate,
+    promo_applied: promoApplied,
     tax_amount: bill.tax,
     tax_rate: taxRate,
     total: Number((bill.total + deliveryFee).toFixed(2)),
@@ -869,13 +875,88 @@ function calculateOrderTotal(items = []) {
 }
 
 // Subtotal -> discount -> tax -> total. Rates are percentages (e.g. 16 = 16%).
-export function calculateBill(items = [], taxRate = 0, discountRate = 0) {
+// discountAmount is a flat amount (Rs. 500 off) on top of the rate;
+// the total discount never exceeds the subtotal.
+export function calculateBill(items = [], taxRate = 0, discountRate = 0, discountAmount = 0) {
   const subtotal = Number(items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2));
-  const discount = Number((subtotal * (discountRate / 100)).toFixed(2));
+  const discount = Number(Math.min(subtotal, subtotal * (discountRate / 100) + (Number(discountAmount) || 0)).toFixed(2));
   const taxable = subtotal - discount;
   const tax = Number((taxable * (taxRate / 100)).toFixed(2));
   const total = Number((taxable + tax).toFixed(2));
   return { subtotal, discount, tax, total };
+}
+
+// ── Discounts ─────────────────────────────────────────────────────────────
+// A restaurant-wide, time-limited promo (Settings → Discount Promo).
+// While active it REPLACES the regular discount_rate — one discount line
+// on the slip, never a stacked surprise. Dates are plain YYYY-MM-DD
+// strings compared against the browser's local date.
+export function getEffectiveDiscount(restaurant) {
+  const r = restaurant || {};
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const value = Number(r.promo_value) || 0;
+  const active = r.promo_enabled === true && value > 0
+    && (!r.promo_start || today >= r.promo_start)
+    && (!r.promo_end || today <= r.promo_end);
+  if (active) {
+    return r.promo_type === "flat"
+      ? { rate: 0, amount: value, active: true, label: "Promo" }
+      : { rate: value, amount: 0, active: true, label: "Promo" };
+  }
+  return { rate: Number(r.discount_rate) || 0, amount: 0, active: false, label: null };
+}
+
+// What the customer actually pays for one order: the stored total minus
+// a per-order manual discount applied by the admin (see below). The
+// stored `total` never changes — the rules lock it — so every bill,
+// receipt and revenue sum reads through this helper instead.
+export function getOrderPayable(order) {
+  const total = Number(order?.total) || 0;
+  const discount = Math.max(0, Math.min(total, Number(order?.manual_discount_amount) || 0));
+  return { payable: Number((total - discount).toFixed(2)), discount };
+}
+
+// One-customer discount, applied by the restaurant admin or the super
+// admin to a single unpaid order (the app only shows the control to
+// them, and the Firestore rules enforce it too). Percent is converted
+// to a fixed amount against the order's total at apply time, so the
+// slip always shows the exact rupees taken off.
+export async function applyOrderDiscount(restaurantId, orderId, { type, value, byUid, byName }) {
+  const ref = doc(ordersCol(restaurantId), orderId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Order not found.");
+  const order = snap.data();
+  if (order.payment_status === "paid") throw new Error("This order is already paid.");
+  if (order.status === "cancelled") throw new Error("This order is cancelled.");
+  const total = Number(order.total) || 0;
+  const v = Math.max(0, Number(value) || 0);
+  const amount = Number(Math.min(total, type === "percent" ? total * (v / 100) : v).toFixed(2));
+  if (amount <= 0) throw new Error("Enter a discount above zero.");
+  await updateDoc(ref, {
+    manual_discount_type: type,
+    manual_discount_value: v,
+    manual_discount_amount: amount,
+    manual_discount_by: byUid || null,
+    manual_discount_by_name: byName || null,
+    manual_discount_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  });
+  return amount;
+}
+
+// Undo a per-order discount (admin / super admin only, same as applying).
+export async function removeOrderDiscount(restaurantId, orderId) {
+  const ref = doc(ordersCol(restaurantId), orderId);
+  await updateDoc(ref, {
+    manual_discount_type: null,
+    manual_discount_value: null,
+    manual_discount_amount: 0,
+    manual_discount_by: null,
+    manual_discount_by_name: null,
+    manual_discount_at: null,
+    updated_at: serverTimestamp(),
+  });
 }
 
 function slugify(str) {

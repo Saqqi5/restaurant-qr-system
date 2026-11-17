@@ -9,7 +9,7 @@ import {
   verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
-import { cleanupExpiredDemoItems, isExpiredDemoItem } from "../config/db";
+import { cleanupExpiredDemoItems, isExpiredDemoItem, getOrderPayable } from "../config/db";
 import { hideDemoDish, unhideDemoDish, getDemoHiddenDishes } from "../utils/session";
 import { formatExpiryDate, getPlanLabel, getMenuItemLimit, getBackupDays, getExpiryInfo, isOrderWithinRetention } from "../config/plans";
 import { downscaleImage } from "../utils/image";
@@ -269,14 +269,14 @@ export default function GeneralAdminDashboard() {
   // Cancelled orders never count as revenue (they stay in history only).
   const todayRevenue = todayOrders
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
-    .reduce((s, o) => s + (o.total || 0), 0);
+    .reduce((s, o) => s + getOrderPayable(o).payable, 0);
   // Combined view: today's revenue per branch, each in its own currency.
   const todayRevenueByBranch = isAllBranches
     ? todayOrders
         .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
         .reduce((acc, o) => {
           const bid = o._restaurantId || restaurantId;
-          acc[bid] = (acc[bid] || 0) + (o.total || 0);
+          acc[bid] = (acc[bid] || 0) + getOrderPayable(o).payable;
           return acc;
         }, {})
     : {};
@@ -739,9 +739,12 @@ export default function GeneralAdminDashboard() {
           restaurantName={branchFor(receiptOrder).name || restaurant?.name}
           restaurantLogo={branchFor(receiptOrder).logo_url || restaurant?.logo_url}
           restaurantAddress={branchFor(receiptOrder).address || restaurant?.address}
+          deliveryPhone={branchFor(receiptOrder).delivery_phone || ""}
+          complaintsPhone={branchFor(receiptOrder).complaints_phone || ""}
           currency={branchFor(receiptOrder).currency || currency}
           mode="receipt"
           onClose={() => setReceiptOrder(null)}
+          discountActor={userProfile ? { uid: userProfile.id, name: userProfile.name } : null}
         />
       )}
     </AdminLayout>

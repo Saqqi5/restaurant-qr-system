@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { subscribeToOrders, updateRestaurant, subscribeToPlatformSettings } from "../config/db";
+import { subscribeToOrders, updateRestaurant, subscribeToPlatformSettings, getOrderPayable } from "../config/db";
 import { getPlanLimit, getPlanLabel, normalizePlan } from "../config/plans";
 import { formatPrice } from "../utils/currency";
 import { getRestaurant } from "../config/db";
@@ -201,7 +201,7 @@ export default function TableManagementPage() {
             const status = getTableStatus(num);
             const cfg = TABLE_STATUS[status];
             const tableOrders = getTableOrders(num);
-            const total = tableOrders.reduce((s, o) => s + (o.total || 0), 0);
+            const total = tableOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0);
 
             return (
               <div
@@ -257,7 +257,7 @@ export default function TableManagementPage() {
                       <span className={`status-dot status-${order.status}`}>
                         {order.status}
                       </span>
-                      <span className="tdp-order-total">{formatPrice(order.total, currency)}</span>
+                      <span className="tdp-order-total">{formatPrice(getOrderPayable(order).payable, currency)}</span>
                     </div>
                     {order.items?.map((item, j) => (
                       <div key={j} className="tdp-item">
@@ -269,7 +269,7 @@ export default function TableManagementPage() {
                 ))}
                 <div className="tdp-grand-total">
                   Grand Total: <strong>
-                    {formatPrice(selectedOrders.reduce((s, o) => s + (o.total || 0), 0), currency)}
+                    {formatPrice(selectedOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0), currency)}
                   </strong>
                 </div>
               </div>

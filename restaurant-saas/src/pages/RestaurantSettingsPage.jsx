@@ -27,6 +27,13 @@ export default function RestaurantSettingsPage() {
     delivery_fee: 0,
     free_delivery_above: 0,
     delivery_areas: "",
+    delivery_phone: "",
+    complaints_phone: "",
+    promo_enabled: false,
+    promo_type: "percent",
+    promo_value: 0,
+    promo_start: "",
+    promo_end: "",
   });
   // Home Delivery is a Premium feature: the plan must allow it (Premium,
   // or the administrator's override) before the owner can switch it on.
@@ -97,6 +104,13 @@ export default function RestaurantSettingsPage() {
           delivery_fee: Number(r.delivery_fee) || 0,
           free_delivery_above: Number(r.free_delivery_above) || 0,
           delivery_areas: r.delivery_areas || "",
+          delivery_phone: r.delivery_phone || "",
+          complaints_phone: r.complaints_phone || "",
+          promo_enabled: r.promo_enabled === true,
+          promo_type: r.promo_type === "flat" ? "flat" : "percent",
+          promo_value: Number(r.promo_value) || 0,
+          promo_start: r.promo_start || "",
+          promo_end: r.promo_end || "",
           // No demo fallbacks: an empty account means "not configured" and
           // the customer sees "pay at the counter". Account names default
           // to the restaurant's own name, never "Saqlyn Payments".
@@ -272,9 +286,64 @@ export default function RestaurantSettingsPage() {
                 value={form.discount_rate}
                 onChange={(e) => setForm({ ...form, discount_rate: parseFloat(e.target.value) || 0 })}
               />
-              <p className="form-hint">Default discount applied to every bill.</p>
+              <p className="form-hint">Default discount applied to every bill. A Discount Promo below replaces it while the promo is active.</p>
             </div>
           </div>
+        </section>
+
+        {/* ── Discount Promo ──────────────────────────────────────── */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">🎉 Discount Promo</h2>
+          <p className="form-hint">A time-limited discount for all customers — e.g. 10% off for a week, or Rs. 500 off for the weekend. While the promo is active it replaces the regular Discount (%) above on every order, and the slip shows “Discount (Promo 🎉)”.</p>
+          <div className="form-group-inline" style={{ marginBottom: 14 }}>
+            <label>
+              <input type="checkbox" checked={!!form.promo_enabled}
+                onChange={(e) => setForm({ ...form, promo_enabled: e.target.checked })} />
+              Enable Discount Promo
+            </label>
+          </div>
+          {form.promo_enabled && (
+            <>
+              <div className="settings-grid">
+                <div className="form-group">
+                  <label>Promo Type</label>
+                  <select
+                    value={form.promo_type}
+                    onChange={(e) => setForm({ ...form, promo_type: e.target.value })}
+                  >
+                    <option value="percent">Percent (%)</option>
+                    <option value="flat">Flat amount ({deliveryCurrency})</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{form.promo_type === "flat" ? `Discount Amount (${deliveryCurrency})` : "Discount (%)"}</label>
+                  <input
+                    type="number" min="0" max={form.promo_type === "flat" ? undefined : 100} step="any"
+                    value={form.promo_value}
+                    onChange={(e) => setForm({ ...form, promo_value: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Starts On</label>
+                  <input
+                    type="date"
+                    value={form.promo_start}
+                    onChange={(e) => setForm({ ...form, promo_start: e.target.value })}
+                  />
+                  <p className="form-hint">Leave empty for no start limit.</p>
+                </div>
+                <div className="form-group">
+                  <label>Ends On</label>
+                  <input
+                    type="date"
+                    value={form.promo_end}
+                    onChange={(e) => setForm({ ...form, promo_end: e.target.value })}
+                  />
+                  <p className="form-hint">Leave empty for no end limit. After this date the promo stops by itself.</p>
+                </div>
+              </div>
+            </>
+          )}
         </section>
 
         {/* ── Home Delivery ───────────────────────────────────────── */}
@@ -335,6 +404,34 @@ export default function RestaurantSettingsPage() {
               )}
             </>
           )}
+        </section>
+
+        {/* ── Phone Numbers on the Slip ───────────────────────────── */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">📞 Phone Numbers on the Slip</h2>
+          <p className="form-hint">Printed big on every receipt, below “Thank you for dining with us!” — so a customer takes the numbers home. Each number shows only when it is filled in.</p>
+          <div className="settings-grid">
+            <div className="form-group">
+              <label>Orders / Home Delivery Number</label>
+              <input
+                type="text"
+                value={form.delivery_phone}
+                onChange={(e) => setForm({ ...form, delivery_phone: e.target.value })}
+                placeholder="e.g. 0300-1234567"
+              />
+              <p className="form-hint">Shown under “For Home Delivery, call us on:”.</p>
+            </div>
+            <div className="form-group">
+              <label>Complaints &amp; Inquiries Number</label>
+              <input
+                type="text"
+                value={form.complaints_phone}
+                onChange={(e) => setForm({ ...form, complaints_phone: e.target.value })}
+                placeholder="e.g. 0300-7654321"
+              />
+              <p className="form-hint">Shown under “For Complaints &amp; Inquiries, call us on:”.</p>
+            </div>
+          </div>
         </section>
 
         {/* ── Menu Categories ─────────────────────────────────────── */}
