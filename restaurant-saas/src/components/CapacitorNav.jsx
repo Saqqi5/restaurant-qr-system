@@ -1,8 +1,16 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { App as CapApp } from "@capacitor/app";
+
+// Bottom tab bar (app only): the four main destinations, one tap away.
+const BOTTOM_TABS = [
+  { label: "Home", icon: "🏠", to: "/" },
+  { label: "Try Demo", icon: "🍽️", to: "/demo" },
+  { label: "Buy a Plan", icon: "💰", to: "/get-started" },
+  { label: "Login", icon: "🔑", to: "/login" },
+];
 
 /**
  * CapacitorNav — native-app only (renders nothing on the website).
@@ -19,6 +27,7 @@ import { App as CapApp } from "@capacitor/app";
  */
 export default function CapacitorNav() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return undefined;
@@ -61,5 +70,21 @@ export default function CapacitorNav() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return null;
+  if (!Capacitor.isNativePlatform()) return null;
+
+  return (
+    <nav className="cap-bottombar" data-testid="capacitor-bottombar">
+      {BOTTOM_TABS.map((tab) => (
+        <button
+          key={tab.label}
+          className={`cap-bottombar-tab${location.pathname === tab.to ? " active" : ""}`}
+          onClick={() => navigate(tab.to)}
+          aria-label={tab.label}
+        >
+          <span className="cap-bottombar-icon">{tab.icon}</span>
+          <span className="cap-bottombar-label">{tab.label}</span>
+        </button>
+      ))}
+    </nav>
+  );
 }

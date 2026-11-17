@@ -1959,7 +1959,31 @@ html.capacitor-app { zoom: 1.12; }
    so the layout guarantees it instead: env(safe-area-inset-top) is the
    status-bar height when the WebView overlays it, and 0 when the WebView
    is already inset below it — so this never double-offsets. */
-html.capacitor-app body { padding-top: env(safe-area-inset-top, 0px); }
+html.capacitor-app body {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+}
+/* Cart button floats above the bottom bar in the app, not behind it. */
+html.capacitor-app .cart-fab { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+
+/* Bottom tab bar — app only (rendered by CapacitorNav). Four main
+   destinations, one tap away. Matches the frozen header's dark chrome. */
+.cap-bottombar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  display: flex; background: rgba(7, 12, 12, 0.96);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(32, 201, 151, 0.25);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.cap-bottombar-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 0 8px; background: none; border: none; cursor: pointer;
+  color: rgba(232, 245, 239, 0.6); font-size: 11px; font-weight: 600;
+  font-family: var(--font);
+}
+.cap-bottombar-tab.active { color: #20c997; }
+.cap-bottombar-icon { font-size: 22px; line-height: 1; }
+.cap-bottombar-tab:active { opacity: 0.7; }
 html.capacitor-app .landing-nav,
 html.capacitor-app .admin-topbar,
 html.capacitor-app .restaurant-header { top: env(safe-area-inset-top, 0px); }
@@ -1968,3 +1992,12 @@ html.capacitor-app .category-tabs { top: calc(124px + env(safe-area-inset-top, 0
 html.capacitor-app .kanban-header,
 html.capacitor-app .cart-panel { top: calc(70px + env(safe-area-inset-top, 0px)); }
 html.capacitor-app .cap-drawer { padding-top: env(safe-area-inset-top, 0px); }
+/* Solid bar over the status-bar strip: without it, page content scrolling
+   up shows THROUGH the transparent status bar, above the frozen header.
+   Same dark as the header (#070C0C). Height 0 when the WebView is already
+   inset, so it is invisible there. */
+html.capacitor-app body::before {
+  content: ""; position: fixed; top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top, 0px); background: #070C0C;
+  z-index: 200; pointer-events: none;
+}
