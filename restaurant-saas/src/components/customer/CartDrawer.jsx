@@ -1,5 +1,6 @@
 import { formatPrice } from "../../utils/currency";
 import { calculateBill } from "../../config/db";
+import RestaurantLogo from "./RestaurantLogo";
 
 export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpdateNotes, onPlaceOrder, placing, restaurant, deliveryFee = 0, isDelivery = false }) {
   const currency = restaurant?.currency || "$";
@@ -14,7 +15,13 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
       <div className="cart-overlay" onClick={onClose} />
       <div className="cart-drawer">
         <div className="cart-header">
-          <h3>Your Order</h3>
+          <div>
+            <div className="cart-restaurant">
+              <RestaurantLogo restaurant={restaurant} size={32} />
+              <span className="cart-restaurant-name">{restaurant?.name}</span>
+            </div>
+            <h3 style={{ marginTop: 6 }}>Your Order</h3>
+          </div>
           <button className="cart-close" onClick={onClose}>✕</button>
         </div>
 

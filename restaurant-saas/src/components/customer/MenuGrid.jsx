@@ -95,7 +95,7 @@ export default function MenuGrid({ items, categories, cart, onAdd, onRemove, cur
     if (searchActive) return;
     function onScroll() {
       if (scrollingToRef.current) return;
-      const bandTop = 120;
+      const bandTop = 186; // just below the frozen header (76) + nav (48) + tabs (~54)
       const bandBottom = window.innerHeight * 0.35;
       let current = null;
       for (const cat of categories) {

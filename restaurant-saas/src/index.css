@@ -231,7 +231,10 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 
 /* ═══ LANDING PAGE ══════════════════════════════════════════════ */
-.landing { min-height: 100vh; background: var(--color-bg); overflow-x: hidden; }
+/* overflow-x: clip (not hidden) — hidden makes this a scroll container
+   and breaks the sticky landing nav below it; clip hides overflow
+   without creating one, so the nav stays frozen while scrolling. */
+.landing { min-height: 100vh; background: var(--color-bg); overflow-x: clip; }
 
 .landing-nav {
   display: flex; justify-content: space-between; align-items: center;
@@ -1072,7 +1075,11 @@ a { color: var(--color-primary); text-decoration: none; }
 /* ═══ CUSTOMER APP ══════════════════════════════════════════════ */
 .customer-app { min-height: 100vh; background: var(--color-bg); display: flex; flex-direction: column; }
 
-.restaurant-header { background: var(--color-green); padding: 16px 20px; }
+/* Frozen customer header: stays visible while the menu scrolls (76px
+   tall: 16px padding + 44px logo + 16px padding). The Menu/My Orders
+   nav sticks right below it (top: 76px) and the category tabs below
+   that (top: 124px), so the whole header stack stays on screen. */
+.restaurant-header { background: var(--color-green); padding: 16px 20px; position: sticky; top: 0; z-index: 20; }
 .restaurant-header-inner { display: flex; align-items: center; gap: 14px; max-width: 600px; margin: 0 auto; }
 .restaurant-logo { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; }
 .restaurant-logo-monogram {
@@ -1082,12 +1089,12 @@ a { color: var(--color-primary); text-decoration: none; }
   font-family: var(--font); font-size: 20px; font-weight: 800;
 }
 .restaurant-logo-placeholder { font-size: 28px; }
-.restaurant-name { font-family: var(--font); font-size: 18px; font-weight: 700; color: white; }
+.restaurant-name { font-family: var(--font); font-size: 18px; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .table-indicator { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 2px; }
 
 .customer-nav {
   display: flex; border-bottom: 1px solid var(--color-border);
-  position: sticky; top: 0; background: var(--color-bg); z-index: 10;
+  position: sticky; top: 76px; background: var(--color-bg); z-index: 10;
 }
 .nav-tab {
   flex: 1; padding: 14px; font-size: 14px; font-weight: 600;
@@ -1109,7 +1116,7 @@ a { color: var(--color-primary); text-decoration: none; }
 .category-tabs {
   display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto;
   -webkit-overflow-scrolling: touch; scrollbar-width: none;
-  position: sticky; top: 48px; background: var(--color-bg); z-index: 9;
+  position: sticky; top: 124px; background: var(--color-bg); z-index: 9;
   border-bottom: 1px solid var(--color-border);
 }
 .category-tabs::-webkit-scrollbar { display: none; }
@@ -1126,11 +1133,22 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 
 /* ── Scrollable menu: one section per category, chips follow the scroll ── */
-.menu-category-section { scroll-margin-top: 112px; }
+.menu-category-section { scroll-margin-top: 186px; }
 .menu-category-title {
   max-width: 700px; margin: 0 auto; padding: 20px 16px 0;
   font-size: 17px; font-weight: 800;
 }
+
+/* ── Restaurant logo + name, wherever the customer sees it ── */
+.cart-restaurant, .tracker-restaurant, .payment-restaurant {
+  display: flex; align-items: center; gap: 10px;
+}
+.cart-restaurant-name { font-size: 15px; font-weight: 700; }
+.tracker-restaurant { margin-bottom: 12px; }
+.tracker-restaurant-name { font-size: 15px; font-weight: 700; }
+.payment-restaurant { justify-content: center; margin: 4px 0 12px; }
+.payment-restaurant-name { font-size: 15px; font-weight: 700; }
+.demo-card-brand { display: flex; align-items: center; gap: 12px; }
 
 /* ── Settings: menu category order rows ── */
 .category-order-row {
@@ -1456,7 +1474,9 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 
 /* ── Back buttons (customer header + login) ── */
-.restaurant-header { position: relative; }
+/* Sticky (not relative) so the header stays frozen on phones too;
+   sticky is still a positioned ancestor for the absolute back button. */
+.restaurant-header { position: sticky; top: 0; z-index: 20; }
 .header-back-btn {
   position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
   width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;

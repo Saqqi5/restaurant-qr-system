@@ -15,6 +15,7 @@ import RestaurantCard from "../components/admin/RestaurantCard";
 import CreateRestaurantModal from "../components/admin/CreateRestaurantModal";
 import CurrencySelect from "../components/admin/CurrencySelect";
 import { THEME_PRESETS, DEFAULT_THEME } from "../config/themes";
+import { downscaleImage } from "../utils/image";
 import StaffModal from "../components/admin/StaffModal";
 import QRModal from "../components/admin/QRModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
@@ -482,6 +483,27 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
     theme: restaurant.theme || { ...DEFAULT_THEME },
   });
   const editLimit = getPlanLimit(form.plan, null);
+  // Logo: upload a file (stored as a compressed data URL) or paste a URL.
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(form.logo_url || "");
+  const [saving, setSaving] = useState(false);
+
+  function handleLogoChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    let logo_url = form.logo_url;
+    if (logoFile) {
+      logo_url = await downscaleImage(logoFile, 400, 0.8);
+    }
+    await onSave({ ...form, logo_url });
+    setSaving(false);
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -518,10 +540,14 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
               onChange={(e) => setForm({ ...form, table_count: parseInt(e.target.value) })} />
           </div>
           <div className="form-group">
-            <label>Logo URL</label>
-            <input value={form.logo_url}
-              onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
-              placeholder="https://..." />
+            <label>Logo (shows with the name on the menu, cart, bill and receipt)</label>
+            {logoPreview && (
+              <img src={logoPreview} alt="Logo preview" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", display: "block", marginBottom: 8 }} />
+            )}
+            <input type="file" accept="image/*" onChange={handleLogoChange} />
+            <input value={form.logo_url} style={{ marginTop: 8 }}
+              onChange={(e) => { setForm({ ...form, logo_url: e.target.value }); setLogoPreview(e.target.value); }}
+              placeholder="…or paste a logo URL https://..." />
           </div>
           <div className="form-group">
             <label>Currency</label>
@@ -633,7 +659,7 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
         </div>
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={() => onSave(form)}>Save Changes</button>
+          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save Changes"}</button>
         </div>
       </div>
     </div>

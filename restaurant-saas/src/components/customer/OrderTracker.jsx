@@ -2,6 +2,7 @@ import { useState } from "react";
 import { formatPrice } from "../../utils/currency";
 import { cancelOrder } from "../../config/db";
 import ReceiptModal from "../ReceiptModal";
+import RestaurantLogo from "./RestaurantLogo";
 
 const STATUS_STEPS = [
   { key: "pending", label: "Order Received", icon: "📋" },
@@ -25,7 +26,7 @@ const DELIVERY_STEPS = [
 const STATUS_INDEX = STATUS_STEPS.reduce((acc, s, i) => ({ ...acc, [s.key]: i }), {});
 const DELIVERY_INDEX = DELIVERY_STEPS.reduce((acc, s, i) => ({ ...acc, [s.key]: i }), {});
 
-export default function OrderTracker({ orders, currency, restaurantId, sessionId }) {
+export default function OrderTracker({ orders, currency, restaurantId, sessionId, restaurant }) {
   const [receiptOrder, setReceiptOrder] = useState(null);
   // Which order's Cancel button is armed (first tap asks, second tap cancels).
   const [armingCancelId, setArmingCancelId] = useState(null);
@@ -55,6 +56,12 @@ export default function OrderTracker({ orders, currency, restaurantId, sessionId
   if (orders.length === 0) {
     return (
       <div className="order-tracker-empty">
+        {restaurant && (
+          <div className="tracker-restaurant">
+            <RestaurantLogo restaurant={restaurant} size={32} />
+            <span className="tracker-restaurant-name">{restaurant.name}</span>
+          </div>
+        )}
         <div className="empty-icon">📋</div>
         <h3>No active orders</h3>
         <p>Your orders will appear here once placed.</p>
@@ -73,6 +80,12 @@ export default function OrderTracker({ orders, currency, restaurantId, sessionId
 
   return (
     <div className="order-tracker">
+      {restaurant && (
+        <div className="tracker-restaurant">
+          <RestaurantLogo restaurant={restaurant} size={32} />
+          <span className="tracker-restaurant-name">{restaurant.name}</span>
+        </div>
+      )}
       {cancelError && <div className="cancel-error">{cancelError}</div>}
       {orders.map((order) => {
         const isDelivery = order.order_type === "delivery";

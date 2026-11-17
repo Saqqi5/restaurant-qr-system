@@ -14,6 +14,7 @@ import CartDrawer from "../components/customer/CartDrawer";
 import MenuGrid from "../components/customer/MenuGrid";
 import OrderTracker from "../components/customer/OrderTracker";
 import RestaurantHeader from "../components/customer/RestaurantHeader";
+import RestaurantLogo from "../components/customer/RestaurantLogo";
 
 export default function CustomerMenu() {
   const { restaurant, tableNumber, restaurantId, loading } = useTenant();
@@ -405,19 +406,24 @@ export default function CustomerMenu() {
     // message exactly as before.
     if (!deliveryOffered) {
       return (
-        <div className="error-state">
-          <div className="error-icon">🪑</div>
-          <h2>No table assigned</h2>
-          <p>Please scan the QR code on your table to start ordering.</p>
+        <div className="customer-app" style={themeVars}>
+          <RestaurantHeader restaurant={restaurant} hideIndicator />
+          <div className="error-state">
+            <div className="error-icon">🪑</div>
+            <h2>No table assigned</h2>
+            <p>Please scan the QR code on your table to start ordering.</p>
+          </div>
         </div>
       );
     }
     if (orderMode === null) {
       return (
-        <div className="error-state">
-          <div className="error-icon">🍽️</div>
-          <h2>Welcome to {restaurant?.name}</h2>
-          <p>How would you like to order?</p>
+        <div className="customer-app" style={themeVars}>
+          <RestaurantHeader restaurant={restaurant} hideIndicator />
+          <div className="error-state">
+            <div className="error-icon">🍽️</div>
+            <h2>Welcome to {restaurant?.name}</h2>
+            <p>How would you like to order?</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 320, marginTop: 8 }}>
             <button className="btn-primary" onClick={() => setOrderMode("dine_in")}>
               🍽️ Dine-in at the restaurant
@@ -429,12 +435,15 @@ export default function CustomerMenu() {
           {restaurant?.delivery_areas && (
             <p style={{ fontSize: 13, color: "var(--color-muted)" }}>Delivers to: {restaurant.delivery_areas}</p>
           )}
+          </div>
         </div>
       );
     }
     if (orderMode === "dine_in" && !tableConfirmed) {
       return (
-        <div className="error-state">
+        <div className="customer-app" style={themeVars}>
+          <RestaurantHeader restaurant={restaurant} hideIndicator />
+          <div className="error-state">
           <div className="error-icon">🪑</div>
           <h2>Your table number</h2>
           <p>Enter the number on your table to start ordering.</p>
@@ -457,12 +466,15 @@ export default function CustomerMenu() {
           <button className="btn-secondary" style={{ marginTop: 12 }} onClick={() => { setOrderMode(null); setTypedTable(""); }}>
             ← Back
           </button>
+          </div>
         </div>
       );
     }
     if (orderMode === "delivery" && !deliveryStarted) {
       return (
-        <div className="error-state">
+        <div className="customer-app" style={themeVars}>
+          <RestaurantHeader restaurant={restaurant} modeLabel="Home Delivery" />
+          <div className="error-state">
           <div className="error-icon">🛵</div>
           <h2>Home Delivery</h2>
           <p>Your details — the rider needs these to reach you.</p>
@@ -510,6 +522,7 @@ export default function CustomerMenu() {
             {freeDeliveryAbove > 0 ? ` · Free above ${formatPrice(freeDeliveryAbove, currency)}` : ""}
             {restaurant?.delivery_areas ? ` · Delivers to: ${restaurant.delivery_areas}` : ""}
           </p>
+          </div>
         </div>
       );
     }
@@ -522,10 +535,13 @@ export default function CustomerMenu() {
   // clears this screen automatically the moment the table frees up.
   if (isTableReserved) {
     return (
-      <div className="error-state">
-        <div className="error-icon">🪑</div>
-        <h2>Table {tableNumber} is reserved</h2>
-        <p>Another customer is currently ordering at this table. It will open again automatically after they pay.</p>
+      <div className="customer-app" style={themeVars}>
+        <RestaurantHeader restaurant={restaurant} tableNumber={tableNumber} />
+        <div className="error-state">
+          <div className="error-icon">🪑</div>
+          <h2>Table {tableNumber} is reserved</h2>
+          <p>Another customer is currently ordering at this table. It will open again automatically after they pay.</p>
+        </div>
       </div>
     );
   }
@@ -585,7 +601,7 @@ export default function CustomerMenu() {
 
       {view === "orders" && (
         <>
-          <OrderTracker orders={tableOrders} currency={currency} restaurantId={restaurantId} sessionId={mySessionId} />
+          <OrderTracker orders={tableOrders} currency={currency} restaurantId={restaurantId} sessionId={mySessionId} restaurant={restaurant} />
           <div className="order-more-section">
             <button className="btn-order-more" onClick={() => setView("menu")}>
               ➕ Order more items
@@ -634,6 +650,12 @@ export default function CustomerMenu() {
         <div className="payment-overlay">
           <div className="payment-sheet">
             <div className="payment-sheet-handle" />
+            {restaurant && (
+              <div className="payment-restaurant">
+                <RestaurantLogo restaurant={restaurant} size={32} />
+                <span className="payment-restaurant-name">{restaurant.name}</span>
+              </div>
+            )}
 
             {/* BILL STAGE */}
             {paymentStage === "bill" && (

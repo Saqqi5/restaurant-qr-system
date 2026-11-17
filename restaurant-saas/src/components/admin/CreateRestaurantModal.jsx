@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PLANS, getPlanLimit, normalizePlan } from "../../config/plans";
 import CurrencySelect from "./CurrencySelect";
+import { downscaleImage } from "../../utils/image";
 
 export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
   const [form, setForm] = useState({
@@ -11,11 +12,26 @@ export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
   });
   const createLimit = getPlanLimit(normalizePlan(form.plan), null);
   const [loading, setLoading] = useState(false);
+  // Logo: upload a file (stored as a compressed data URL, no Storage
+  // needed) or paste a URL. The preview shows what the customer will see.
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(form.logo_url || "");
+
+  function handleLogoChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
-    await onCreate(form);
+    let logo_url = form.logo_url;
+    if (logoFile) {
+      logo_url = await downscaleImage(logoFile, 400, 0.8);
+    }
+    await onCreate({ ...form, logo_url });
     setLoading(false);
   }
 
@@ -44,10 +60,14 @@ export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
               <p className="form-hint">4 staff logins (Admin, Kitchen, Cashier, Waiter) are created automatically with the default passwords.</p>
             </div>
             <div className="form-group">
-              <label>Logo URL (optional)</label>
-              <input type="url" value={form.logo_url}
-                onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
-                placeholder="https://..." />
+              <label>Logo (optional — shows with the name on the menu, cart, bill and receipt)</label>
+              {logoPreview && (
+                <img src={logoPreview} alt="Logo preview" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", display: "block", marginBottom: 8 }} />
+              )}
+              <input type="file" accept="image/*" onChange={handleLogoChange} />
+              <input type="url" value={form.logo_url} style={{ marginTop: 8 }}
+                onChange={(e) => { setForm({ ...form, logo_url: e.target.value }); setLogoPreview(e.target.value); }}
+                placeholder="…or paste a logo URL https://..." />
             </div>
             <div className="form-group">
               <label>Plan</label>

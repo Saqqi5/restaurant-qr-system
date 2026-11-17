@@ -5,6 +5,7 @@ import { getDemoRestaurants, menuCol, sortMenuItems } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import PlanPrice from "../components/PlanPrice";
 import PlanFeatures, { PlanLimitsLine, SharedFeaturesStrip } from "../components/PlanFeatures";
+import RestaurantLogo from "../components/customer/RestaurantLogo";
 
 // Sales go through Telegram — restaurants contact Saqlain directly,
 // and the administrator creates the restaurant (incl. the 7-day trial).
@@ -134,7 +135,10 @@ export default function LandingPage() {
             return (
               <div key={r.id} className="demo-card">
                 <div className="demo-card-head" style={{ background: r.theme }}>
-                  <div className="demo-card-name">{r.name}</div>
+                  <div className="demo-card-brand">
+                    <RestaurantLogo restaurant={r} size={44} />
+                    <div className="demo-card-name">{r.name}</div>
+                  </div>
                   <div className="demo-card-cuisine">{r.cuisine}</div>
                   <div className="demo-card-tag">{r.tagline}</div>
                 </div>
