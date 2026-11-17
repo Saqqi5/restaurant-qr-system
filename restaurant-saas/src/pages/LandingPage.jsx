@@ -4,7 +4,7 @@ import { getDocs } from "firebase/firestore";
 import { getDemoRestaurants, menuCol, sortMenuItems } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import PlanPrice from "../components/PlanPrice";
-import PlanFeatures from "../components/PlanFeatures";
+import PlanFeatures, { PlanLimitsLine, SharedFeaturesStrip } from "../components/PlanFeatures";
 
 // Sales go through Telegram — restaurants contact Saqlain directly,
 // and the administrator creates the restaurant (incl. the 7-day trial).
@@ -182,6 +182,7 @@ export default function LandingPage() {
       <section id="pricing" className="pricing">
         <p className="section-label">Simple Pricing</p>
         <h2 className="section-title">Choose your plan</h2>
+        <SharedFeaturesStrip variant="landing" />
         <div className="pricing-grid">
           {PLANS.map((plan, i) => {
             const selected = selectedPlan === plan.key;
@@ -200,6 +201,7 @@ export default function LandingPage() {
                 <PlanPrice pkr={plan.pricePkr} variant="landing" />
               </div>
               <div className="pricing-period">per month</div>
+              <PlanLimitsLine plan={plan.key} variant="landing" />
               <p className="pricing-desc">{plan.desc}</p>
               <PlanFeatures plan={plan.key} variant="landing" />
               {/* Trial label — visual only, NOT clickable; highlights when this plan is selected */}

@@ -410,6 +410,8 @@ a { color: var(--color-primary); text-decoration: none; }
 .pricing-currency { font-size: 24px; font-weight: 600; color: var(--color-muted); }
 .pricing-period { font-size: 14px; color: var(--color-muted); margin-bottom: 24px; }
 .pricing-desc { font-size: 14px; color: var(--color-muted); margin-bottom: 28px; line-height: 1.6; }
+.pricing-shared { text-align: center; font-size: 14px; color: var(--color-muted); margin-bottom: 28px; }
+.pricing-limits { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
 .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; }
 .pricing-features li { font-size: 14px; display: flex; align-items: center; gap: 10px; }
 .pricing-check { color: var(--color-primary); font-size: 16px; flex-shrink: 0; }
@@ -1610,6 +1612,8 @@ a { color: var(--color-primary); text-decoration: none; }
 .gs-plan-price small { font-size: 14px; font-weight: 500; color: var(--color-muted); margin-left: 2px; }
 .gs-trial { display: inline-block; font-size: 12px; font-weight: 700; color: var(--color-primary); background: rgba(32,201,151,0.1); border-radius: 999px; padding: 3px 10px; margin: 4px 0 8px; align-self: flex-start; }
 .gs-plan ul { list-style: none; display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+.gs-shared { text-align: center; font-size: 13px; color: var(--color-muted); margin-bottom: 16px; }
+.gs-limits { font-size: 13px; font-weight: 700; margin: 6px 0 4px; align-self: flex-start; }
 .gs-plan li { font-size: 13px; color: var(--color-muted); }
 .gs-plan.selected li { color: var(--color-text); }
 .gs-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }

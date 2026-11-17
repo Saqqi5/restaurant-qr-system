@@ -102,29 +102,42 @@ export const CUSTOM_LOGO_ADDON_PKR = 2000;
 // live price in the buy dialog before paying.
 export const DOMAIN_CHARGE_PKR_PER_YEAR = 3500;
 
-// Each plan card shows ITS OWN features (LandingPage + GetStarted share
-// this, so the cards can never drift apart). Included features render with
-// a green check. On top, Basic and Standard each show one or two headline
-// Premium features struck-through, so a buyer sees what the next plan
-// unlocks (his 2026-11-16 order — the full list on every card is gone).
-// Basic teasers: Order Taker mode + Custom domain. Standard teaser:
-// Custom domain. Order = card order.
-export function getPlanFeatures(planKey) {
+// The 4 features EVERY plan has — shown once, in a strip above the
+// pricing cards, instead of repeated on every card (his 2026-11-17 order:
+// the lists were too long and looked cluttered).
+export const SHARED_FEATURES = [
+  "QR code ordering",
+  "Kitchen & cash dashboards",
+  "Tax & discount billing",
+  "Payment proof uploads",
+];
+
+// "10 tables · 4 staff logins · 20 menu items" — the compact spec line
+// shown at the top of each pricing card, instead of three list rows.
+export function getPlanLimitsLine(planKey) {
   const key = normalizePlan(planKey);
   const tables = getPlanLimit(key, null);
   const staff = getStaffLimit(key, null);
   const menu = getMenuItemLimit(key, null);
+  const menuText = menu === null ? "Unlimited menu items" : `${menu} menu items`;
+  return `${tables} tables · ${staff} staff logins · ${menuText}`;
+}
+
+// Each plan card shows only the features that DIFFER (LandingPage +
+// GetStarted share this, so the cards can never drift apart). The shared
+// features live in the strip above the cards and the limits in the spec
+// line at the top of each card — so Basic shows 5 lines, Standard and
+// Premium 7, instead of 12–14. Included features render with a green
+// check. On top, Basic and Standard each show one or two headline Premium
+// features struck-through, so a buyer sees what the next plan unlocks
+// (his 2026-11-16 order — the full list on every card is gone).
+// Basic teasers: Order Taker mode + Custom domain. Standard teaser:
+// Custom domain. Order = card order.
+export function getPlanFeatures(planKey) {
+  const key = normalizePlan(planKey);
   const std = key !== "basic"; // Standard + Premium
   const prem = key === "premium";
-  const own = [
-    { text: `${tables} tables`, included: true },
-    { text: `${staff} staff logins`, included: true },
-    { text: menu === null ? "Unlimited menu items" : `${menu} menu items`, included: true },
-    { text: "QR code ordering", included: true },
-    { text: "Kitchen & cash dashboards", included: true },
-    { text: "Tax & discount billing", included: true },
-    { text: "Payment proof uploads", included: true },
-  ];
+  const own = [];
   if (std) {
     own.push(
       { text: "Server dashboard", included: true },

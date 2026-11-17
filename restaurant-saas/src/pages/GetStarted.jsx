@@ -9,7 +9,7 @@ import {
 } from "../config/plans";
 import { createSignupRequest } from "../config/db";
 import PlanPrice from "../components/PlanPrice";
-import PlanFeatures from "../components/PlanFeatures";
+import PlanFeatures, { PlanLimitsLine, SharedFeaturesStrip } from "../components/PlanFeatures";
 
 // Sales go through this page now — the hero "Get Started" button lands
 // here instead of bouncing straight to Telegram (t.me often just sits on
@@ -137,6 +137,7 @@ export default function GetStarted() {
 
         {step === "plan" && (
           <>
+            <SharedFeaturesStrip variant="getstarted" />
             <div className="gs-plans">
               {PLAN_ORDER.map((key) => {
                 const p = PLANS[key];
@@ -153,6 +154,7 @@ export default function GetStarted() {
                       <span className="gs-plan-name">{p.label}</span>
                       <PlanPrice pkr={pPrice} variant="getstarted" />
                       <span className="gs-trial">{TRIAL_DAYS}-day free trial</span>
+                      <PlanLimitsLine plan={key} variant="getstarted" />
                       <PlanFeatures plan={key} variant="getstarted" />
                     </button>
                     {plan === key && (
