@@ -99,6 +99,9 @@ export default function ServerDashboard() {
       table_number: selectedTable,
       items: cart.map((i) => ({
         item_id: i.id, name: i.name, price: i.price,
+        // The struck-through original price when the dish was on a
+        // promo offer — the slip shows it next to the charged price.
+        original_price: i.original_price || 0,
         quantity: i.quantity, notes: i.notes,
         prep_time_minutes: i.prep_time_minutes,
       })),
