@@ -85,20 +85,33 @@ export default function MenuGrid({ items, categories, cart, onAdd, onRemove, cur
     }
   }, [categories, activeCategory]);
 
-  // Scroll-spy: the last section whose top has passed below the sticky
-  // header + chip bar owns the highlight. Runs on window scroll (the
-  // customer page scrolls as a normal document).
+  // Scroll-spy: the chip follows the section on screen. A section owns
+  // the highlight while its heading sits in the band just below the
+  // sticky chip bar (120px to 35% of the viewport); between sections the
+  // last heading that already passed the bar keeps it. The last section
+  // can never reach the band — the page ends first — so at the very
+  // bottom of the page it owns the highlight outright.
   useEffect(() => {
     if (searchActive) return;
     function onScroll() {
       if (scrollingToRef.current) return;
-      const offset = 140; // below the sticky header + chip bar
-      let current = categories[0];
+      const bandTop = 120;
+      const bandBottom = window.innerHeight * 0.35;
+      let current = null;
       for (const cat of categories) {
         const el = sectionRefs.current[cat];
-        if (el && el.getBoundingClientRect().top <= offset) current = cat;
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top;
+        if (top >= bandTop && top <= bandBottom) current = cat;
       }
-      setActiveCategory(current);
+      if (current) { setActiveCategory(current); return; }
+      let passed = categories[0];
+      for (const cat of categories) {
+        const el = sectionRefs.current[cat];
+        if (el && el.getBoundingClientRect().top <= bandTop) passed = cat;
+      }
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      setActiveCategory(atBottom ? categories[categories.length - 1] : passed);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
