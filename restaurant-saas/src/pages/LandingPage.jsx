@@ -56,7 +56,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="landing-nav">
         <Link to="/" className="nav-brand">
-          SAQL<span className="nav-brand-dot">YN</span>
+          <img src="/images/saqlyn-logo.png" alt="SAQLYN" className="nav-logo" />
         </Link>
         <div className="nav-links">
           <a href="#demos" className="nav-link">Demo Restaurants</a>
@@ -123,6 +123,7 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+        <img src="/images/saqlyn-banner.png" alt="Saqlyn — Scan, Order, Pay" className="hero-banner" />
       </section>
 
       {/* Demo Restaurants */}
