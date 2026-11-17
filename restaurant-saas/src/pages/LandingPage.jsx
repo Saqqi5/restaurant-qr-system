@@ -6,6 +6,7 @@ import { formatPrice } from "../utils/currency";
 import PlanPrice from "../components/PlanPrice";
 import PlanFeatures, { PlanLimitsLine, SharedFeaturesStrip } from "../components/PlanFeatures";
 import RestaurantLogo from "../components/customer/RestaurantLogo";
+import SiteDrawer from "../components/SiteDrawer";
 
 // Sales go through Telegram — restaurants contact Saqlain directly,
 // and the administrator creates the restaurant (incl. the 7-day trial).
@@ -17,6 +18,7 @@ export default function LandingPage() {
   const [demos, setDemos] = useState({});
   const [liveRestaurants, setLiveRestaurants] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -53,19 +55,17 @@ export default function LandingPage() {
         liveRestaurants.some((r) => r.id === d.id && r.active !== false));
   return (
     <div className="landing">
-      {/* Nav */}
+      {/* Nav — one ☰ menu button (left), SAQLYN logo centered, Staff Login (right) */}
       <nav className="landing-nav">
+        <button className="site-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Menu">
+          ☰
+        </button>
         <Link to="/" className="nav-brand">
           <img src="/images/saqlyn-logo.png" alt="SAQLYN" className="nav-logo" />
         </Link>
-        <div className="nav-links">
-          <a href="#demos" className="nav-link">Demo Restaurants</a>
-          <Link to="/demo" className="nav-link">Try Demo</Link>
-          <a href="#features" className="nav-link">Features</a>
-          <a href="#pricing" className="nav-link">Pricing</a>
-          <Link to="/login" className="nav-login">Staff Login</Link>
-        </div>
+        <Link to="/login" className="nav-login">Staff Login</Link>
       </nav>
+      <SiteDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       {/* Hero */}
       <section className="hero">
@@ -123,7 +123,10 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-        <img src="/images/saqlyn-banner.png" alt="Saqlyn — Scan, Order, Pay" className="hero-banner" />
+        <div className="hero-brand">
+          <img src="/images/saqlyn-logo.png" alt="Saqlyn" className="hero-logo" />
+          <p className="hero-tagline">SCAN · ORDER · PAY</p>
+        </div>
       </section>
 
       {/* Demo Restaurants */}

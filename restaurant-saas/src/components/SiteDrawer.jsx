@@ -1,0 +1,130 @@
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Browser } from "@capacitor/browser";
+
+const TELEGRAM = "https://t.me/Saqlyndigital";
+const APP_VERSION = "1.5";
+
+const MENU_ITEMS = [
+  { label: "Home", icon: "🏠", to: "/" },
+  { label: "Demo Restaurants", icon: "🍽️", href: "#demos" },
+  { label: "Try Demo", icon: "🍽️", to: "/demo" },
+  { label: "Features", icon: "✨", href: "#features" },
+  { label: "Pricing", icon: "🏷️", href: "#pricing" },
+  { label: "Buy a Plan", icon: "💰", to: "/get-started" },
+  { label: "Staff Login", icon: "🔑", to: "/login" },
+];
+
+const BOTTOM_ITEMS = [
+  { label: "Contact", icon: "💬", href: TELEGRAM },
+  { label: "About", icon: "ℹ️", about: true },
+];
+
+async function openTelegram() {
+  try {
+    await Browser.open({ url: TELEGRAM });
+  } catch (e) {
+    window.open(TELEGRAM, "_blank", "noopener");
+  }
+}
+
+/**
+ * SiteDrawer — the ONE menu for the website AND the app.
+ * Opens from the ☰ button in the landing header (top-left). The phone's
+ * hardware back button closes it first (CapacitorNav dispatches the
+ * saqlyn:close-menu / saqlyn:close-about events). Reuses the proven
+ * .cap-drawer / .cap-about styling.
+ */
+export default function SiteDrawer({ open, onClose }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [aboutOpen, setAboutOpen] = useState(false);
+
+  useEffect(() => {
+    const closeMenu = () => onClose();
+    const closeAbout = () => setAboutOpen(false);
+    window.addEventListener("saqlyn:close-menu", closeMenu);
+    window.addEventListener("saqlyn:close-about", closeAbout);
+    return () => {
+      window.removeEventListener("saqlyn:close-menu", closeMenu);
+      window.removeEventListener("saqlyn:close-about", closeAbout);
+    };
+  }, [onClose]);
+
+  const go = (item) => {
+    onClose();
+    if (item.about) { setAboutOpen(true); return; }
+    if (item.href === TELEGRAM) { openTelegram(); return; }
+    navigate(item.to);
+  };
+
+  return (
+    <>
+      {open && (
+        <div className="cap-drawer-backdrop" onClick={onClose} />
+      )}
+      <div className={`cap-drawer${open ? " open" : ""}`} data-testid="site-menu">
+        <div className="cap-drawer-head">
+          <span className="cap-drawer-logo">SAQLYN</span>
+          <button className="cap-drawer-close" onClick={onClose} aria-label="Close menu">
+            ✕
+          </button>
+        </div>
+        {MENU_ITEMS.map((item) => (
+          item.href && item.href !== TELEGRAM ? (
+            <a
+              key={item.label}
+              className="cap-drawer-item"
+              href={item.href}
+              onClick={onClose}
+            >
+              <span className="cap-drawer-icon">{item.icon}</span>
+              {item.label}
+            </a>
+          ) : (
+            <button
+              key={item.label}
+              className={`cap-drawer-item${item.to && location.pathname === item.to ? " active" : ""}`}
+              onClick={() => go(item)}
+            >
+              <span className="cap-drawer-icon">{item.icon}</span>
+              {item.label}
+            </button>
+          )
+        ))}
+        <div className="cap-drawer-bottom">
+          {BOTTOM_ITEMS.map((item) => (
+            <button key={item.label} className="cap-drawer-item" onClick={() => go(item)}>
+              <span className="cap-drawer-icon">{item.icon}</span>
+              {item.label}
+              {item.href && <span className="cap-drawer-ext">↗</span>}
+            </button>
+          ))}
+        </div>
+        <div className="cap-drawer-foot">Table QR v{APP_VERSION}</div>
+      </div>
+
+      {aboutOpen && (
+        <div className="cap-about-backdrop" onClick={() => setAboutOpen(false)}>
+          <div className="cap-about" data-testid="site-about" onClick={(e) => e.stopPropagation()}>
+            <div className="cap-about-logo">SAQLYN</div>
+            <div className="cap-about-title">Table QR</div>
+            <div className="cap-about-version">Version {APP_VERSION}</div>
+            <p className="cap-about-text">
+              Scan. Order. Pay. — restaurants ke liye QR code ordering system.
+              Customer table se QR scan kar ke order kare, kitchen aur cash
+              counter par live dekhein, aur payment proof ke saath bill clear karein.
+            </p>
+            <p className="cap-about-text">Made by Saqlyn Digital Services.</p>
+            <button className="cap-about-telegram" onClick={openTelegram}>
+              💬 Contact on Telegram
+            </button>
+            <button className="cap-about-close" onClick={() => setAboutOpen(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

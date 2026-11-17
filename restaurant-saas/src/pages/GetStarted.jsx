@@ -110,7 +110,7 @@ export default function GetStarted() {
           <Link to="/" className="nav-link">← Back to homepage</Link>
         </div>
         <Link to="/" className="nav-brand">
-          SAQL<span className="nav-brand-dot">YN</span>
+          <img src="/images/saqlyn-logo.png" alt="SAQLYN" className="nav-logo" />
         </Link>
       </nav>
 
