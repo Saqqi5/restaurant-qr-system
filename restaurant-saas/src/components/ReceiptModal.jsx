@@ -161,7 +161,14 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
               <div key={i} style={{ marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
                   <span>{item.quantity} × {item.name}</span>
-                  {!isKot && <span>{formatPrice(item.price * item.quantity, currency)}</span>}
+                  {!isKot && (
+                    <span>
+                      {item.original_price > item.price ? (
+                        <><s style={{ color: "#999", marginRight: 5 }}>{formatPrice(item.original_price * item.quantity, currency)}</s></>
+                      ) : null}
+                      {formatPrice(item.price * item.quantity, currency)}
+                    </span>
+                  )}
                 </div>
                 {item.notes && <div style={{ fontSize: 12, color: "#666", paddingLeft: 8 }}>📝 {item.notes}</div>}
               </div>

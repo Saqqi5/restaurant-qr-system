@@ -9,7 +9,7 @@ import {
   verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
-import { cleanupExpiredDemoItems, isExpiredDemoItem, getOrderPayable } from "../config/db";
+import { cleanupExpiredDemoItems, isExpiredDemoItem, getOrderPayable, isItemPromoActive, getItemPrice } from "../config/db";
 import { hideDemoDish, unhideDemoDish, getDemoHiddenDishes } from "../utils/session";
 import { formatExpiryDate, getPlanLabel, getMenuItemLimit, getBackupDays, getExpiryInfo, isOrderWithinRetention } from "../config/plans";
 import { downscaleImage } from "../utils/image";
@@ -414,7 +414,15 @@ export default function GeneralAdminDashboard() {
                       <span className="item-name">{item.name}</span>
                       <span className="item-desc">{item.description}</span>
                       <div className="item-meta">
-                        <span className="item-price">{formatPrice(item.price, currency)}</span>
+                        {isItemPromoActive(item) ? (
+                          <span className="item-price">
+                            <s className="price-was">{formatPrice(item.price, currency)}</s>{" "}
+                            <span className="price-promo">{formatPrice(getItemPrice(item), currency)}</span>
+                            <span className="promo-badge">🎉 Promo</span>
+                          </span>
+                        ) : (
+                          <span className="item-price">{formatPrice(item.price, currency)}</span>
+                        )}
                         <span className="item-prep">⏱ {item.prep_time_minutes} min</span>
                         <span className={`item-status ${item.available ? "available" : "sold-out"}`}>
                           {item.available ? "Available" : "Sold Out"}
@@ -444,7 +452,15 @@ export default function GeneralAdminDashboard() {
                       <span className="item-name">{item.name}</span>
                       <span className="item-desc">{item.description}</span>
                       <div className="item-meta">
-                        <span className="item-price">{formatPrice(item.price, currency)}</span>
+                        {isItemPromoActive(item) ? (
+                          <span className="item-price">
+                            <s className="price-was">{formatPrice(item.price, currency)}</s>{" "}
+                            <span className="price-promo">{formatPrice(getItemPrice(item), currency)}</span>
+                            <span className="promo-badge">🎉 Promo</span>
+                          </span>
+                        ) : (
+                          <span className="item-price">{formatPrice(item.price, currency)}</span>
+                        )}
                         <span className="item-prep">⏱ {item.prep_time_minutes} min</span>
                         <span className="item-status sold-out">Hidden</span>
                       </div>

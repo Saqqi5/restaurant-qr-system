@@ -46,7 +46,12 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
                       <span>{item.quantity}</span>
                       <button onClick={() => onAdd(item)}>+</button>
                     </div>
-                    <span className="unit-price">{formatPrice(item.price, currency)} each</span>
+                    <span className="unit-price">
+                      {item.original_price > item.price ? (
+                        <><s className="price-was">{formatPrice(item.original_price, currency)}</s>{" "}</>
+                      ) : null}
+                      {formatPrice(item.price, currency)} each
+                    </span>
                   </div>
                   <input
                     className="item-notes-input"

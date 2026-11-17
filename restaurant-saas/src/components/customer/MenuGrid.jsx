@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { formatPrice } from "../../utils/currency";
+import { getItemPrice, isItemPromoActive } from "../../config/db";
 
 const CATEGORY_EMOJIS = {
   pizza: "🍕", pasta: "🍝", salad: "🥗", soup: "🍲",
@@ -39,7 +40,15 @@ function MenuCard({ item, cart, onAdd, onRemove, currency }) {
           <h3 className="menu-item-name">{item.name}</h3>
           {item.description && <p className="menu-item-desc">{item.description}</p>}
           <div className="menu-item-meta">
-            <span className="menu-item-price">{formatPrice(item.price, currency)}</span>
+            {isItemPromoActive(item) ? (
+              <span className="menu-item-price">
+                <s className="price-was">{formatPrice(item.price, currency)}</s>{" "}
+                <span className="price-promo">{formatPrice(getItemPrice(item), currency)}</span>
+                <span className="promo-badge">🎉 Promo</span>
+              </span>
+            ) : (
+              <span className="menu-item-price">{formatPrice(item.price, currency)}</span>
+            )}
             <span className="menu-item-prep">⏱ {item.prep_time_minutes} min</span>
           </div>
         </div>

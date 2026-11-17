@@ -12,6 +12,9 @@ export default function MenuItemModal({ item, categories, onClose, onSave }) {
     available: item?.available !== false,
     image_url: item?.image_url || "",
     sort_order: item?.sort_order || 999,
+    promo_price: item?.promo_price || "",
+    promo_start: item?.promo_start || "",
+    promo_end: item?.promo_end || "",
   });
   const [customCategory, setCustomCategory] = useState("");
   const [imageFile, setImageFile] = useState(null);
@@ -91,6 +94,43 @@ export default function MenuItemModal({ item, categories, onClose, onSave }) {
                     onChange={(e) => setForm({ ...form, prep_time_minutes: parseInt(e.target.value) })}
                   />
                 </div>
+              </div>
+
+              {/* Promotional offer — admin / super admin only (this form
+                  lives on the admin dashboard; menu writes are rules-locked
+                  to the restaurant admin and the super admin). */}
+              <div className="form-group promo-group">
+                <label>🎉 Promotional Offer <span style={{ fontWeight: 400, color: "var(--color-muted)" }}>(optional)</span></label>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Promo Price</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.promo_price}
+                      onChange={(e) => setForm({ ...form, promo_price: e.target.value })}
+                      placeholder="e.g. 1.99"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Starts On</label>
+                    <input
+                      type="date"
+                      value={form.promo_start}
+                      onChange={(e) => setForm({ ...form, promo_start: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Ends On</label>
+                    <input
+                      type="date"
+                      value={form.promo_end}
+                      onChange={(e) => setForm({ ...form, promo_end: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <p className="form-hint">Customers see the original price struck through with the promo price — and the order is charged at the promo price. Leave the promo price empty for no offer; leave the dates empty for no time limit.</p>
               </div>
 
               <div className="form-group">

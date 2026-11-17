@@ -275,6 +275,9 @@ export async function createMenuItem(restaurantId, data) {
     deleted: false,
     prep_time_minutes: parseInt(data.prep_time_minutes) || 15,
     sort_order: data.sort_order || 999,
+    promo_price: parseFloat(data.promo_price) || 0,
+    promo_start: data.promo_start || "",
+    promo_end: data.promo_end || "",
     created_at: serverTimestamp(),
   };
   await setDoc(ref, item);
@@ -863,6 +866,10 @@ function sanitizeOrderItems(items = []) {
       item_id: item.item_id || item.id || null,
       name: (item.name || "").trim(),
       price: Number(item.price || 0),
+      // The struck-through original price when the dish was on a promo
+      // offer — 0 when there was none. The receipt shows it next to the
+      // charged (promo) price so the customer sees what they saved.
+      original_price: Number(item.original_price || 0),
       quantity: Math.max(1, parseInt(item.quantity || 1, 10)),
       notes: (item.notes || "").trim(),
       prep_time_minutes: Math.max(1, parseInt(item.prep_time_minutes || 15, 10)),
@@ -905,6 +912,35 @@ export function getEffectiveDiscount(restaurant) {
       : { rate: value, amount: 0, active: true, label: "Promo" };
   }
   return { rate: Number(r.discount_rate) || 0, amount: 0, active: false, label: null };
+}
+
+// ── Per-dish promo pricing ──────────────────────────────────────────────
+// One dish on a promotional offer for a limited time: the menu shows the
+// original price struck through next to the promo price, and the order
+// is charged at the promo price. Dates are plain YYYY-MM-DD strings
+// compared against the browser's local date, same as the bill promo.
+// The dish's `price` field always keeps the ORIGINAL price — the promo
+// lives in promo_price/promo_start/promo_end, so ending the offer is
+// just clearing the promo price.
+export function isItemPromoActive(item) {
+  const price = Number(item?.promo_price) || 0;
+  if (!(price > 0)) return false;
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  if (item.promo_start && today < item.promo_start) return false;
+  if (item.promo_end && today > item.promo_end) return false;
+  return true;
+}
+
+// What one unit of this dish costs right now: the promo price while the
+// offer runs, otherwise the regular price.
+export function getItemPrice(item) {
+  return isItemPromoActive(item) ? Number(item.promo_price) : Number(item?.price) || 0;
+}
+
+// The struck-through original price, or null when no promo is running.
+export function getItemOriginalPrice(item) {
+  return isItemPromoActive(item) ? Number(item?.price) || 0 : null;
 }
 
 // What the customer actually pays for one order: the stored total minus

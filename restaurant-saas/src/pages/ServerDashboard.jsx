@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders, createOrder, cancelOrder,
   subscribeToRestaurantPayments
-, getRestaurant, getOrderPayable } from "../config/db";
+, getRestaurant, getOrderPayable, getItemPrice, getItemOriginalPrice } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { sortByBookedAt } from "../utils/orderSort";
 import { isExpiredDemoItem } from "../config/db";
@@ -76,7 +76,8 @@ export default function ServerDashboard() {
     setCart((prev) => {
       const ex = prev.find((c) => c.id === item.id);
       if (ex) return prev.map((c) => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
-      return [...prev, { ...item, quantity: 1, notes: "" }];
+      // Charged at the promo price while the offer runs (see CustomerMenu).
+      return [...prev, { ...item, quantity: 1, notes: "", price: getItemPrice(item), original_price: getItemOriginalPrice(item) || 0 }];
     });
   }
 

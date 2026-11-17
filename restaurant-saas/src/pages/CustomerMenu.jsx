@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, createOrder, subscribeToTableOrders, subscribeToSessionOrders,
   createPayment, subscribeToPayment, calculateBill, isExpiredDemoItem, sortCategories,
-  getOrderPayable, getEffectiveDiscount
+  getOrderPayable, getEffectiveDiscount, getItemPrice, getItemOriginalPrice
 } from "../config/db";
 import { canUseDelivery } from "../config/plans";
 import { formatPrice } from "../utils/currency";
@@ -172,7 +172,10 @@ export default function CustomerMenu() {
       if (existing) {
         return prev.map((c) => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
       }
-      return [...prev, { ...item, quantity: 1, notes: "" }];
+      // The dish is charged at its promo price while the offer runs —
+      // the original price rides along so the bill and slip can show it
+      // struck through. The price is locked at add time.
+      return [...prev, { ...item, quantity: 1, notes: "", price: getItemPrice(item), original_price: getItemOriginalPrice(item) || 0 }];
     });
   }
 
@@ -679,6 +682,9 @@ export default function CustomerMenu() {
                     <div key={i} className="bill-item">
                       <span className="bill-item-name">{item.name} ×{item.quantity}</span>
                       <span className="bill-item-price">
+                        {item.original_price > item.price ? (
+                          <><s className="price-was">{formatPrice(item.original_price * item.quantity, currency)}</s>{" "}</>
+                        ) : null}
                         {formatPrice(item.price * item.quantity, currency)}
                       </span>
                     </div>

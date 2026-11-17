@@ -7,6 +7,7 @@ import ReceiptModal from "../components/ReceiptModal";
 import {
   subscribeToRestaurant, subscribeToMenu, subscribeToOrders,
   createOrder, calculateBill, CATEGORY_ORDER, getEffectiveDiscount,
+  getItemPrice, getItemOriginalPrice, isItemPromoActive,
 } from "../config/db";
 import { normalizePlan } from "../config/plans";
 import { formatPrice } from "../utils/currency";
@@ -98,7 +99,8 @@ export default function OrderTakerPage() {
     () =>
       menuItems
         .filter((i) => (cart[i.id] || 0) > 0)
-        .map((i) => ({ ...i, qty: cart[i.id] })),
+        // Charged at the promo price while the offer runs (see CustomerMenu).
+        .map((i) => ({ ...i, qty: cart[i.id], price: getItemPrice(i), original_price: getItemOriginalPrice(i) || 0 })),
     [menuItems, cart]
   );
   const bill = useMemo(
@@ -274,7 +276,15 @@ export default function OrderTakerPage() {
                         <span className="item-desc">{item.description}</span>
                       )}
                       <div className="item-meta">
-                        <span className="item-price">{formatPrice(item.price, currency)}</span>
+                        {isItemPromoActive(item) ? (
+                          <span className="item-price">
+                            <s className="price-was">{formatPrice(item.price, currency)}</s>{" "}
+                            <span className="price-promo">{formatPrice(getItemPrice(item), currency)}</span>
+                            <span className="promo-badge">🎉 Promo</span>
+                          </span>
+                        ) : (
+                          <span className="item-price">{formatPrice(item.price, currency)}</span>
+                        )}
                         <span className="item-prep">⏱ {item.prep_time_minutes} min</span>
                       </div>
                     </div>
