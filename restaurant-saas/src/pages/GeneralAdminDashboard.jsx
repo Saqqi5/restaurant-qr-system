@@ -280,6 +280,21 @@ export default function GeneralAdminDashboard() {
           return acc;
         }, {})
     : {};
+  // Retention window (his 2026-11-16 order): the admin sees only orders
+  // newer than their plan's backup window. Nothing is deleted — the
+  // super admin still sees everything. todayOrders/todayRevenue are
+  // today-only so they are unaffected; the receipt lookup for a
+  // just-verified payment keeps the full list so its slip always opens.
+  // In the combined view each branch keeps its OWN plan's window.
+  // (Declared BEFORE ordersForTable: it reads visibleOrders, and a const
+  // used before its declaration throws and blanks the whole dashboard.)
+  const retentionDays = getBackupDays(trialInfo?.plan || "basic", platformLimits);
+  const planForOrder = (o) => branchFor(o).plan || trialInfo?.plan || "basic";
+  const visibleOrders = orders.filter((o) => isOrderWithinRetention(o, planForOrder(o), platformLimits));
+  const retentionNote = isAllBranches
+    ? "Each branch keeps its own plan's history (Basic 30 days, Standard 90 days, Premium 1 year). Older orders are kept by the administrator."
+    : `Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`;
+
   // Orders table rows carry their branch (name + currency) in the
   // combined view, so the table can show them per row.
   const ordersForTable = visibleOrders.map((o) => ({
@@ -287,19 +302,6 @@ export default function GeneralAdminDashboard() {
     _branchName: branchFor(o).name,
     _currency: branchFor(o).currency || currency,
   }));
-
-  // Retention window (his 2026-11-16 order): the admin sees only orders
-  // newer than their plan's backup window. Nothing is deleted — the
-  // super admin still sees everything. todayOrders/todayRevenue are
-  // today-only so they are unaffected; the receipt lookup for a
-  // just-verified payment keeps the full list so its slip always opens.
-  // In the combined view each branch keeps its OWN plan's window.
-  const retentionDays = getBackupDays(trialInfo?.plan || "basic", platformLimits);
-  const planForOrder = (o) => branchFor(o).plan || trialInfo?.plan || "basic";
-  const visibleOrders = orders.filter((o) => isOrderWithinRetention(o, planForOrder(o), platformLimits));
-  const retentionNote = isAllBranches
-    ? "Each branch keeps its own plan's history (Basic 30 days, Standard 90 days, Premium 1 year). Older orders are kept by the administrator."
-    : `Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`;
 
   const pendingOrders = visibleOrders.filter((o) =>
     ["pending", "confirmed", "preparing"].includes(o.status)

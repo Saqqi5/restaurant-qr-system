@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTenant } from "../contexts/TenantContext";
-import { updateRestaurant, getRestaurant, subscribeToPlatformSettings, createPlanPayment, subscribeToRestaurantPlanPayments } from "../config/db";
+import { updateRestaurant, getRestaurant, subscribeToMenu, sortCategories, subscribeToPlatformSettings, createPlanPayment, subscribeToRestaurantPlanPayments } from "../config/db";
 import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, getBackupLabel, PLANS, DOMAIN_CHARGE_PKR_PER_YEAR, canUseDelivery } from "../config/plans";
 import { buildDeliveryUrl } from "../config/tenantResolver";
 import { downscaleImage } from "../utils/image";
@@ -37,6 +37,11 @@ export default function RestaurantSettingsPage() {
   const deliveryLink = buildDeliveryUrl(restaurantId, "saas", domainInfo.custom_domain);
   const [loaded, setLoaded] = useState(false);
   const [domainInfo, setDomainInfo] = useState({ custom_domain: null, domain_request: null });
+  // Menu category order (customer menu): the restaurant's saved order, or
+  // the standard Starters-first order until the admin reorders it below.
+  // null = not loaded yet; saved with the form in handleSave.
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuOrder, setMenuOrder] = useState(null);
   const planLimit = getPlanLimit(plan, platformLimits);
   // Owners may lower the count anytime; the cap is the plan limit, or the
   // current count when already above it (grandfathered — cannot grow further).
@@ -46,6 +51,31 @@ export default function RestaurantSettingsPage() {
     const unsub = subscribeToPlatformSettings(setPlatformLimits);
     return unsub;
   }, []);
+
+  useEffect(() => {
+    if (!restaurantId || restaurantId === "all") return;
+    const unsub = subscribeToMenu(restaurantId, setMenuItems);
+    return unsub;
+  }, [restaurantId]);
+
+  // No saved order yet: default to the standard Starters-first order once
+  // the menu loads.
+  useEffect(() => {
+    if (menuOrder === null && menuItems.length > 0) {
+      setMenuOrder(sortCategories([...new Set(menuItems.map((i) => i.category))], null));
+    }
+  }, [menuItems, menuOrder]);
+
+  function moveCategory(index, dir) {
+    setMenuOrder((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      const j = index + dir;
+      if (j < 0 || j >= next.length) return prev;
+      [next[index], next[j]] = [next[j], next[index]];
+      return next;
+    });
+  }
 
   // TenantContext is empty on /admin/* routes, so load the restaurant doc
   // directly — without this the form opens blank and saving wipes the name.
@@ -57,6 +87,7 @@ export default function RestaurantSettingsPage() {
         setDomainInfo({ custom_domain: r.custom_domain || null, domain_request: r.domain_request || null });
         setDeliveryOverride(r.delivery_override === true);
         setDeliveryCurrency(r.currency || "Rs.");
+        setMenuOrder(Array.isArray(r.menu_category_order) ? [...r.menu_category_order] : null);
         setForm({
           name: r.name || "",
           table_count: r.table_count || 10,
@@ -105,7 +136,11 @@ export default function RestaurantSettingsPage() {
         // Stored as a data URL — no Firebase Storage needed.
         logo_url = await downscaleImage(logoFile, 400, 0.8);
       }
-      await updateRestaurant(restaurantId, { ...form, logo_url });
+      await updateRestaurant(restaurantId, {
+        ...form,
+        logo_url,
+        ...(menuOrder ? { menu_category_order: menuOrder } : {}),
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -299,6 +334,29 @@ export default function RestaurantSettingsPage() {
                 </>
               )}
             </>
+          )}
+        </section>
+
+        {/* ── Menu Categories ─────────────────────────────────────── */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">📋 Menu Categories</h2>
+          <p className="form-hint">The customer menu opens at the top category and scrolls through the rest in this order — the highlighted tab follows the scroll. Use ↑ ↓ to put any category on top.</p>
+          {menuOrder === null ? (
+            <p className="form-hint">Loading categories…</p>
+          ) : menuOrder.length === 0 ? (
+            <p className="form-hint">No menu items yet — add dishes to reorder categories.</p>
+          ) : (
+            <div>
+              {menuOrder.map((cat, i) => (
+                <div key={cat} className="category-order-row">
+                  <span className="category-order-name">{i + 1}. {cat}</span>
+                  <span style={{ display: "flex", gap: 6 }}>
+                    <button type="button" className="btn-secondary btn-sm" disabled={i === 0} onClick={() => moveCategory(i, -1)}>↑</button>
+                    <button type="button" className="btn-secondary btn-sm" disabled={i === menuOrder.length - 1} onClick={() => moveCategory(i, 1)}>↓</button>
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </section>
 

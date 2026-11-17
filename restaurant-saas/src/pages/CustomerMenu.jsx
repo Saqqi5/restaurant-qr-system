@@ -4,7 +4,7 @@ import { useTenant } from "../contexts/TenantContext";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, createOrder, subscribeToTableOrders, subscribeToSessionOrders,
-  createPayment, subscribeToPayment, calculateBill, isExpiredDemoItem
+  createPayment, subscribeToPayment, calculateBill, isExpiredDemoItem, sortCategories
 } from "../config/db";
 import { canUseDelivery } from "../config/plans";
 import { formatPrice } from "../utils/currency";
@@ -309,7 +309,11 @@ export default function CustomerMenu() {
     setSelectedMethod("easypaisa");
   }
 
-  const categories = [...new Set(menuItems.map((i) => i.category))];
+  // Categories in display order: the restaurant's own order from Settings
+  // (menu_category_order) first, then the standard Starters-first order.
+  // The menu opens at the top — the first category — so a customer sees
+  // the whole menu by scrolling, never by tapping every tab.
+  const categories = sortCategories([...new Set(menuItems.map((i) => i.category))], restaurant);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
   const orderTotal = activeOrders.reduce((s, o) => s + (o.total || 0), 0);
   const allOrderItems = activeOrders.flatMap(o => o.items || []);

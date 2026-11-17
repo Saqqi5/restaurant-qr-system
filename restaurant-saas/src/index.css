@@ -1124,6 +1124,21 @@ a { color: var(--color-primary); text-decoration: none; }
   display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
   gap: 12px; padding: 16px; max-width: 700px; margin: 0 auto; width: 100%;
 }
+
+/* ── Scrollable menu: one section per category, chips follow the scroll ── */
+.menu-category-section { scroll-margin-top: 112px; }
+.menu-category-title {
+  max-width: 700px; margin: 0 auto; padding: 20px 16px 0;
+  font-size: 17px; font-weight: 800;
+}
+
+/* ── Settings: menu category order rows ── */
+.category-order-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 2px; border-bottom: 1px solid var(--color-border);
+}
+.category-order-row:last-child { border-bottom: none; }
+.category-order-name { font-size: 14px; font-weight: 600; }
 .menu-card {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: var(--radius); overflow: hidden;

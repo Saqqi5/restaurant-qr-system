@@ -330,6 +330,23 @@ export function sortMenuItems(items) {
   });
 }
 
+// A restaurant may set its own category order in Settings
+// (menu_category_order on the restaurant doc). Listed categories come
+// first in that order; the rest follow CATEGORY_ORDER, then their
+// first-appearance order (Array.sort is stable, so ties keep it).
+export function sortCategories(categories, restaurant) {
+  const custom = Array.isArray(restaurant?.menu_category_order)
+    ? restaurant.menu_category_order
+    : [];
+  const rank = (c) => {
+    const ci = custom.indexOf(c);
+    if (ci !== -1) return ci;
+    const oi = CATEGORY_ORDER.indexOf(c);
+    return oi === -1 ? custom.length + CATEGORY_ORDER.length : custom.length + oi;
+  };
+  return [...categories].sort((a, b) => rank(a) - rank(b));
+}
+
 export function subscribeToMenu(restaurantId, callback) {
   return onSnapshot(menuCol(restaurantId), (snap) => {
     const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
