@@ -1,10 +1,11 @@
 import { formatPrice } from "../../utils/currency";
 import { calculateBill } from "../../config/db";
 
-export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpdateNotes, onPlaceOrder, placing, restaurant }) {
+export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpdateNotes, onPlaceOrder, placing, restaurant, deliveryFee = 0, isDelivery = false }) {
   const currency = restaurant?.currency || "$";
   const bill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0);
   const maxPrepTime = cart.length ? Math.max(...cart.map((i) => i.prep_time_minutes || 15)) : 0;
+  const total = Number((bill.total + (deliveryFee || 0)).toFixed(2));
 
   if (!open) return null;
 
@@ -67,19 +68,25 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
                     <span>{formatPrice(bill.tax, currency)}</span>
                   </div>
                 )}
+                {deliveryFee > 0 && (
+                  <div className="cart-row">
+                    <span>🛵 Delivery fee</span>
+                    <span>{formatPrice(deliveryFee, currency)}</span>
+                  </div>
+                )}
                 <div className="cart-row prep-time">
                   <span>⏱ Est. prep time</span>
                   <span>~{maxPrepTime} min</span>
                 </div>
                 <div className="cart-row cart-total-row">
                   <span>Total</span>
-                  <strong>{formatPrice(bill.total, currency)}</strong>
+                  <strong>{formatPrice(total, currency)}</strong>
                 </div>
               </div>
               <button className="btn-place-order" onClick={onPlaceOrder} disabled={placing}>
-                {placing ? "Placing order…" : `Place Order — ${formatPrice(bill.total, currency)}`}
+                {placing ? "Placing order…" : `Place Order — ${formatPrice(total, currency)}`}
               </button>
-              <p className="cart-disclaimer">Payment at the counter after your meal.</p>
+              <p className="cart-disclaimer">{isDelivery ? "Pay online now, or cash when your food arrives." : "Payment at the counter after your meal."}</p>
             </div>
           </>
         )}

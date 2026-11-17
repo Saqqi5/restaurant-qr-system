@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { buildQrUrl } from "../../config/tenantResolver";
+import { buildQrUrl, buildDeliveryUrl } from "../../config/tenantResolver";
 import { getRestaurant } from "../../config/db";
+import { canUseDelivery } from "../../config/plans";
 
 // We use the qrcode library approach but build our own simple SVG QR
 // In production, install: npm install qrcode
@@ -19,6 +20,11 @@ export default function QRModal({ restaurant, onClose }) {
 
   const qrUrl = buildQrUrl(restaurant?.id, selectedTable, "saas", customDomain);
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(qrUrl)}&format=png&qzone=2`;
+  // Home-delivery QR: the menu link without a table — customers land on
+  // the Dine-in / Home Delivery choice screen.
+  const deliveryOffered = canUseDelivery(doc?.plan ?? restaurant?.plan, doc ?? restaurant) && doc?.delivery_enabled === true;
+  const deliveryUrl = buildDeliveryUrl(restaurant?.id, "saas", customDomain);
+  const deliveryQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(deliveryUrl)}&format=png&qzone=2`;
 
   function downloadQR() {
     const link = document.createElement("a");
@@ -125,6 +131,28 @@ export default function QRModal({ restaurant, onClose }) {
           {!customDomain && (
             <div className="domain-info-box warn">
               💡 No custom domain configured. QR uses shared SaaS URL.
+            </div>
+          )}
+
+          {/* Home Delivery QR — one code for the whole restaurant. */}
+          {deliveryOffered && (
+            <div className="qr-preview-section" style={{ marginTop: 20 }}>
+              <h4 style={{ margin: "0 0 10px" }}>🏠 Home Delivery QR</h4>
+              <div className="qr-card">
+                <div className="qr-card-header">
+                  <span className="qr-restaurant-name">{restaurant?.name || "Restaurant"}</span>
+                </div>
+                <img src={deliveryQrImageUrl} alt="Home Delivery QR Code" className="qr-image" />
+                <div className="qr-table-label">🛵 Home Delivery</div>
+                <div className="qr-url">{deliveryUrl}</div>
+              </div>
+              <div className="url-copy" style={{ marginTop: 10 }}>
+                <input readOnly value={deliveryUrl} />
+                <button onClick={() => navigator.clipboard.writeText(deliveryUrl)}>Copy</button>
+              </div>
+              <p className="form-hint" style={{ marginTop: 8 }}>
+                Print this on your menu cards, flyers or delivery boxes — customers scan it, leave their address, and order from home.
+              </p>
             </div>
           )}
         </div>

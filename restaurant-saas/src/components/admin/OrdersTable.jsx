@@ -8,9 +8,10 @@ import ConfirmModal from "./ConfirmModal";
 const STATUS_COLORS = {
   pending: "#ff6b35", confirmed: "#f7931e", preparing: "#4a90d9",
   ready: "#27ae60", served: "#8e8e8e", paid: "#27ae60", cancelled: "#e05252",
+  out_for_delivery: "#4a90d9", delivered: "#27ae60",
 };
 
-export function OrdersTable({ orders, restaurantId, showActions = true, onSelectOrder }) {
+export function OrdersTable({ orders, restaurantId, showActions = true, onSelectOrder, showBranch = false }) {
   const currency = useRestaurantCurrency(restaurantId);
   const { userProfile } = useAuth();
   const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
@@ -29,7 +30,9 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
     if (!order) return;
     setDeleteError("");
     try {
-      await cancelOrder(restaurantId, order.id, { uid: userProfile?.id, name: userProfile?.name });
+      // In the merged All-branches list each order carries its branch;
+      // otherwise the single restaurantId prop is the branch.
+      await cancelOrder(order._restaurantId || restaurantId, order.id, { uid: userProfile?.id, name: userProfile?.name });
     } catch (e) {
       setDeleteError(e.message || "Could not delete this order.");
     }
@@ -50,7 +53,12 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
             onClick={onSelectOrder ? () => onSelectOrder(order) : undefined}
             title={onSelectOrder ? "Click to view slip" : undefined}>
             <div className="order-row-left">
-              <span className="table-badge-sm">T{order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
+              <span className="table-badge-sm">
+                {order.order_type === "delivery" ? "🛵 Delivery" : `T${order.table_number}`} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}
+              </span>
+              {showBranch && order._branchName && (
+                <span className="table-badge-sm" style={{ background: "var(--color-surface2)" }}>{order._branchName}</span>
+              )}
               <div className="order-row-info">
                 <span className="order-row-time">{formatTime(order.created_at)}</span>
                 <span className="order-row-items">
@@ -64,9 +72,9 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
               </div>
             </div>
             <div className="order-row-right">
-              <span className="order-row-total">{formatPrice(order.total, currency)}</span>
-              <span className="status-dot" style={{ background: STATUS_COLORS[order.status] }}>
-                {order.status}
+              <span className="order-row-total">{formatPrice(order.total, order._currency || currency)}</span>
+              <span className="status-dot" style={{ background: STATUS_COLORS[order.status] || "#888" }}>
+                {order.status === "out_for_delivery" ? "out for delivery" : order.status}
               </span>
               <span className={`payment-dot ${order.payment_status}`}>
                 {order.payment_status}
@@ -89,7 +97,7 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
       {pendingDelete && (
         <ConfirmModal
           title="Delete this order?"
-          message={`Delete Order #${pendingDelete.order_number ?? pendingDelete.id?.slice(-6).toUpperCase()} (Table ${pendingDelete.table_number})? It will be saved as Cancelled — it stays in history with who deleted it.`}
+          message={`Delete Order #${pendingDelete.order_number ?? pendingDelete.id?.slice(-6).toUpperCase()} (${pendingDelete.order_type === "delivery" ? "Delivery" : `Table ${pendingDelete.table_number}`})? It will be saved as Cancelled — it stays in history with who deleted it.`}
           confirmLabel="Delete Order"
           danger
           onConfirm={confirmDeleteOrder}

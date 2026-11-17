@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders, subscribeToRestaurant,
   createMenuItem, updateMenuItem, deleteMenuItem, restoreMenuItem, createDemoLead,
   getRestaurantUsers, subscribeToPlatformSettings,
-  subscribeToRestaurantPayments, verifyPayment
+  subscribeToRestaurantPayments, subscribeToMultiOrders, subscribeToMultiPayments,
+  verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { cleanupExpiredDemoItems, isExpiredDemoItem } from "../config/db";
 import { hideDemoDish, unhideDemoDish, getDemoHiddenDishes } from "../utils/session";
-import { formatExpiryDate, getPlanLabel, getMenuItemLimit, getBackupDays, isOrderWithinRetention } from "../config/plans";
+import { formatExpiryDate, getPlanLabel, getMenuItemLimit, getBackupDays, getExpiryInfo, isOrderWithinRetention } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import MenuItemModal from "../components/admin/MenuItemModal";
 import OrdersTable from "../components/admin/OrdersTable";
 import StatsBar from "../components/admin/StatsBar";
@@ -25,8 +27,13 @@ import AnalyticsPanel from "../components/admin/AnalyticsPanel";
 const TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
 
 export default function GeneralAdminDashboard() {
-  const { userProfile, restaurantId, logout, trialInfo } = useAuth();
-  const currency = useRestaurantCurrency(restaurantId);
+  const { userProfile, restaurantId, logout, trialInfo, branches, accessibleRestaurantIds } = useAuth();
+  // "all" = the combined All-branches view (one login, every branch).
+  // Menu, staff and QR are per-branch, so those tabs ask for a branch;
+  // orders, payments and analytics merge across branches.
+  const isAllBranches = restaurantId === "all";
+  const accessibleKey = accessibleRestaurantIds.join(",");
+  const currency = useRestaurantCurrency(isAllBranches ? null : restaurantId);
   const [activeTab, setActiveTab] = useState("menu");
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
@@ -61,6 +68,17 @@ export default function GeneralAdminDashboard() {
 
   useEffect(() => {
     if (!restaurantId) return;
+    if (isAllBranches) {
+      // Combined view: live orders + proofs from every branch, merged.
+      // No single menu / staff / restaurant doc — those tabs ask for a branch.
+      const unsubOrders = subscribeToMultiOrders(accessibleRestaurantIds, setOrders);
+      const unsubPayments = subscribeToMultiPayments(accessibleRestaurantIds, setPayments);
+      setMenuItems([]);
+      setStaff([]);
+      setRestaurant(null);
+      setLoading(false);
+      return () => { unsubOrders(); unsubPayments(); };
+    }
     const unsubMenu = subscribeToMenu(restaurantId, (items) => {
       setMenuItems(items);
       setLoading(false);
@@ -72,7 +90,22 @@ export default function GeneralAdminDashboard() {
     const unsubRestaurant = subscribeToRestaurant(restaurantId, setRestaurant);
     getRestaurantUsers(restaurantId).then(setStaff);
     return () => { unsubMenu(); unsubOrders(); unsubPayments(); unsubRestaurant(); };
-  }, [restaurantId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantId, accessibleKey]);
+
+  // Branch docs by id — so every merged order/payment can find its
+  // branch's name, currency and plan. Single-branch mode: the one doc.
+  const branchMap = useMemo(() => {
+    const map = {};
+    if (isAllBranches) branches.forEach((b) => { map[b.id] = b; });
+    else if (restaurant) map[restaurantId] = restaurant;
+    return map;
+  }, [isAllBranches, branches, restaurant, restaurantId]);
+  const branchFor = (x) => branchMap[x?._restaurantId || x?.restaurantId || restaurantId] || {};
+  // Branches whose plan is about to end (combined view has no single trial).
+  const expiringBranches = isAllBranches
+    ? branches.filter((b) => getExpiryInfo(b)?.expiringSoon)
+    : [];
 
   async function handleVerifyPayment(payment) {
     setVerifyingId(payment.id);
@@ -237,15 +270,36 @@ export default function GeneralAdminDashboard() {
   const todayRevenue = todayOrders
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + (o.total || 0), 0);
+  // Combined view: today's revenue per branch, each in its own currency.
+  const todayRevenueByBranch = isAllBranches
+    ? todayOrders
+        .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
+        .reduce((acc, o) => {
+          const bid = o._restaurantId || restaurantId;
+          acc[bid] = (acc[bid] || 0) + (o.total || 0);
+          return acc;
+        }, {})
+    : {};
+  // Orders table rows carry their branch (name + currency) in the
+  // combined view, so the table can show them per row.
+  const ordersForTable = visibleOrders.map((o) => ({
+    ...o,
+    _branchName: branchFor(o).name,
+    _currency: branchFor(o).currency || currency,
+  }));
 
   // Retention window (his 2026-11-16 order): the admin sees only orders
   // newer than their plan's backup window. Nothing is deleted — the
   // super admin still sees everything. todayOrders/todayRevenue are
   // today-only so they are unaffected; the receipt lookup for a
   // just-verified payment keeps the full list so its slip always opens.
+  // In the combined view each branch keeps its OWN plan's window.
   const retentionDays = getBackupDays(trialInfo?.plan || "basic", platformLimits);
-  const visibleOrders = orders.filter((o) => isOrderWithinRetention(o, trialInfo?.plan || "basic", platformLimits));
-  const retentionNote = `Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`;
+  const planForOrder = (o) => branchFor(o).plan || trialInfo?.plan || "basic";
+  const visibleOrders = orders.filter((o) => isOrderWithinRetention(o, planForOrder(o), platformLimits));
+  const retentionNote = isAllBranches
+    ? "Each branch keeps its own plan's history (Basic 30 days, Standard 90 days, Premium 1 year). Older orders are kept by the administrator."
+    : `Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`;
 
   const pendingOrders = visibleOrders.filter((o) =>
     ["pending", "confirmed", "preparing"].includes(o.status)
@@ -279,7 +333,18 @@ export default function GeneralAdminDashboard() {
           will be blocked after this date.
         </div>
       )}
-      <StatsBar stats={[
+      {isAllBranches && expiringBranches.length > 0 && (
+        <div className="trial-banner">
+          ⚠️ {expiringBranches.map((b) => `${b.name} (${getPlanLabel(b.plan)} ends ${formatExpiryDate(getExpiryInfo(b).expiresAt)})`).join(" • ")}.
+          To continue, please pay the subscription fee — otherwise logins for that branch will be blocked after this date.
+        </div>
+      )}
+      <StatsBar stats={isAllBranches ? [
+        { label: "Branches", value: branches.length, icon: "🏪" },
+        { label: "Today's Orders", value: todayOrders.length, icon: "📋" },
+        ...branches.map((b) => ({ label: `Revenue — ${b.name}`, value: formatPrice(todayRevenueByBranch[b.id] || 0, b.currency || "$"), icon: "💰" })),
+        { label: "Pending Orders", value: pendingOrders, icon: "⏳", alert: pendingOrders > 5 },
+      ] : [
         { label: "Menu Items", value: menuItems.length, icon: "🍽️" },
         { label: "Today's Orders", value: todayOrders.length, icon: "📋" },
         { label: "Today's Revenue", value: formatPrice(todayRevenue, currency), icon: "💰" },
@@ -319,6 +384,10 @@ export default function GeneralAdminDashboard() {
       {/* Menu Tab */}
       {activeTab === "menu" && (
         <div className="tab-content">
+          {isAllBranches ? (
+            <BranchRequired title="Menu is per branch" />
+          ) : (
+          <>
           <div className="content-header">
             <h3>Menu Management</h3>
             <button className="btn-primary" onClick={handleAddItem}>
@@ -398,6 +467,8 @@ export default function GeneralAdminDashboard() {
               </button>
             </div>
           )}
+          </>
+          )}
         </div>
       )}
 
@@ -405,7 +476,7 @@ export default function GeneralAdminDashboard() {
       {activeTab === "orders" && (
         <div className="tab-content">
           <p style={{ fontSize: "13px", color: "var(--color-muted)", margin: "0 0 12px" }}>{retentionNote}</p>
-          <OrdersTable orders={visibleOrders} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} />
+          <OrdersTable orders={ordersForTable} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} showBranch={isAllBranches} />
         </div>
       )}
 
@@ -431,10 +502,10 @@ export default function GeneralAdminDashboard() {
                     <div key={payment.id} className="payment-proof-card">
                       <div className="payment-proof-header">
                         <div>
-                          <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                          <div className="payment-proof-table">{payment.tableNumber === 0 ? "🛵 Delivery" : `Table ${payment.tableNumber}`}</div>
                           <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
                         </div>
-                        <div className="payment-proof-amount">{formatPrice(payment.amount, currency)}</div>
+                        <div className="payment-proof-amount">{formatPrice(payment.amount, branchFor(payment).currency || currency)}</div>
                       </div>
                       <div style={{ marginBottom: 10 }}>
                         {payment.items?.slice(0, 3).map((item, i) => (
@@ -472,10 +543,10 @@ export default function GeneralAdminDashboard() {
                         <div key={payment.id} className="payment-proof-card" style={{ opacity: 0.65 }}>
                           <div className="payment-proof-header">
                             <div>
-                              <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                              <div className="payment-proof-table">{payment.tableNumber === 0 ? "🛵 Delivery" : `Table ${payment.tableNumber}`}</div>
                               <div className="payment-proof-meta">{formatDate(payment.createdAt)}</div>
                             </div>
-                            <div className="payment-proof-amount">{formatPrice(payment.amount, currency)}</div>
+                            <div className="payment-proof-amount">{formatPrice(payment.amount, branchFor(payment).currency || currency)}</div>
                           </div>
                           <div className="verified-label">✅ Verified — {formatDate(payment.verifiedAt)}</div>
                         </div>
@@ -493,13 +564,26 @@ export default function GeneralAdminDashboard() {
       {activeTab === "analytics" && (
         <div className="tab-content">
           <p style={{ fontSize: "13px", color: "var(--color-muted)", margin: "0 0 12px" }}>{retentionNote}</p>
-          <AnalyticsPanel orders={visibleOrders} menuItems={menuItems} currency={currency} />
+          {isAllBranches ? (
+            branches.map((b) => (
+              <div key={b.id} style={{ marginBottom: 28 }}>
+                <h3 style={{ fontFamily: "var(--font)", fontWeight: 700, fontSize: 16, marginBottom: 12 }}>{b.name}</h3>
+                <AnalyticsPanel orders={visibleOrders.filter((o) => (o._restaurantId || restaurantId) === b.id)} menuItems={[]} currency={b.currency || "$"} />
+              </div>
+            ))
+          ) : (
+            <AnalyticsPanel orders={visibleOrders} menuItems={menuItems} currency={currency} />
+          )}
         </div>
       )}
 
       {/* Staff Tab */}
       {activeTab === "staff" && (
         <div className="tab-content">
+          {isAllBranches ? (
+            <BranchRequired title="Staff is per branch" />
+          ) : (
+          <>
           <div className="content-header">
             <h3>Staff Management</h3>
             <button className="btn-primary" onClick={() => setShowStaffModal(true)}>
@@ -520,15 +604,21 @@ export default function GeneralAdminDashboard() {
               </div>
             ))}
           </div>
+          </>
+          )}
         </div>
       )}
 
       {/* QR Tab */}
       {activeTab === "qr" && (
         <div className="tab-content">
+          {isAllBranches ? (
+            <BranchRequired title="QR codes are per branch" />
+          ) : (
           <button className="btn-primary" onClick={() => setShowQrModal(true)}>
             Open QR Generator
           </button>
+          )}
         </div>
       )}
 
@@ -643,11 +733,11 @@ export default function GeneralAdminDashboard() {
       {receiptOrder && (
         <ReceiptModal
           order={receiptOrder}
-          restaurantId={restaurantId}
-          restaurantName={restaurant?.name}
-          restaurantLogo={restaurant?.logo_url}
-          restaurantAddress={restaurant?.address}
-          currency={currency}
+          restaurantId={receiptOrder._restaurantId || restaurantId}
+          restaurantName={branchFor(receiptOrder).name || restaurant?.name}
+          restaurantLogo={branchFor(receiptOrder).logo_url || restaurant?.logo_url}
+          restaurantAddress={branchFor(receiptOrder).address || restaurant?.address}
+          currency={branchFor(receiptOrder).currency || currency}
           mode="receipt"
           onClose={() => setReceiptOrder(null)}
         />

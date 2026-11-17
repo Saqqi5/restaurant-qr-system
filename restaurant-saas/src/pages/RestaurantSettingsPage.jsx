@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTenant } from "../contexts/TenantContext";
 import { updateRestaurant, getRestaurant, subscribeToPlatformSettings, createPlanPayment, subscribeToRestaurantPlanPayments } from "../config/db";
-import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, getBackupLabel, PLANS, DOMAIN_CHARGE_PKR_PER_YEAR } from "../config/plans";
+import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, getBackupLabel, PLANS, DOMAIN_CHARGE_PKR_PER_YEAR, canUseDelivery } from "../config/plans";
+import { buildDeliveryUrl } from "../config/tenantResolver";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import PlanPrice from "../components/PlanPrice";
 
 export default function RestaurantSettingsPage() {
@@ -21,7 +23,18 @@ export default function RestaurantSettingsPage() {
     payment_jazzcash_name: "",
     payment_bank_iban: "",
     payment_bank_name: "",
+    delivery_enabled: false,
+    delivery_fee: 0,
+    free_delivery_above: 0,
+    delivery_areas: "",
   });
+  // Home Delivery is a Premium feature: the plan must allow it (Premium,
+  // or the administrator's override) before the owner can switch it on.
+  // delivery_override is set only by the administrator — never saved here.
+  const [deliveryOverride, setDeliveryOverride] = useState(false);
+  const [deliveryCurrency, setDeliveryCurrency] = useState("Rs.");
+  const deliveryAllowed = canUseDelivery(plan, { delivery_override: deliveryOverride });
+  const deliveryLink = buildDeliveryUrl(restaurantId, "saas", domainInfo.custom_domain);
   const [loaded, setLoaded] = useState(false);
   const [domainInfo, setDomainInfo] = useState({ custom_domain: null, domain_request: null });
   const planLimit = getPlanLimit(plan, platformLimits);
@@ -37,16 +50,22 @@ export default function RestaurantSettingsPage() {
   // TenantContext is empty on /admin/* routes, so load the restaurant doc
   // directly — without this the form opens blank and saving wipes the name.
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     getRestaurant(restaurantId).then((r) => {
       if (r) {
         setPlan(normalizePlan(r.plan));
         setDomainInfo({ custom_domain: r.custom_domain || null, domain_request: r.domain_request || null });
+        setDeliveryOverride(r.delivery_override === true);
+        setDeliveryCurrency(r.currency || "Rs.");
         setForm({
           name: r.name || "",
           table_count: r.table_count || 10,
           tax_rate: Number(r.tax_rate) || 0,
           discount_rate: Number(r.discount_rate) || 0,
+          delivery_enabled: r.delivery_enabled === true,
+          delivery_fee: Number(r.delivery_fee) || 0,
+          free_delivery_above: Number(r.free_delivery_above) || 0,
+          delivery_areas: r.delivery_areas || "",
           // No demo fallbacks: an empty account means "not configured" and
           // the customer sees "pay at the counter". Account names default
           // to the restaurant's own name, never "Saqlyn Payments".
@@ -93,6 +112,20 @@ export default function RestaurantSettingsPage() {
       setError(err.message || "Failed to save settings.");
     }
     setSaving(false);
+  }
+
+  // Settings are one branch at a time — "All branches" picks a branch.
+  if (restaurantId === "all") {
+    return (
+      <AdminLayout
+        title="⚙️ Settings"
+        subtitle="Restaurant Configuration"
+        onLogout={logout}
+        userProfile={userProfile}
+      >
+        <BranchRequired title="Settings are per branch" />
+      </AdminLayout>
+    );
   }
 
   if (!loaded) {
@@ -207,6 +240,66 @@ export default function RestaurantSettingsPage() {
               <p className="form-hint">Default discount applied to every bill.</p>
             </div>
           </div>
+        </section>
+
+        {/* ── Home Delivery ───────────────────────────────────────── */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">🛵 Home Delivery</h2>
+          {!deliveryAllowed ? (
+            <div className="locked-notice">
+              <div className="locked-icon">🔒</div>
+              <div className="locked-title">Home Delivery is a Premium feature</div>
+              <div className="locked-desc">
+                Upgrade to Premium or contact your administrator — Telegram @SAQLYNDIGITAL
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="form-hint">Customers order from home through your menu link (no table needed) — the kitchen sees delivery orders with the customer's name, phone and address, and the rider takes them out.</p>
+              <div className="form-group-inline" style={{ marginBottom: 14 }}>
+                <label>
+                  <input type="checkbox" checked={!!form.delivery_enabled}
+                    onChange={(e) => setForm({ ...form, delivery_enabled: e.target.checked })} />
+                  Enable Home Delivery
+                </label>
+              </div>
+              {form.delivery_enabled && (
+                <>
+                  <div className="settings-grid">
+                    <div className="form-group">
+                      <label>Delivery Fee ({deliveryCurrency})</label>
+                      <input
+                        type="number" min="0" step="1"
+                        value={form.delivery_fee}
+                        onChange={(e) => setForm({ ...form, delivery_fee: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="form-hint">Flat fee per delivery order — added after tax, never taxed.</p>
+                    </div>
+                    <div className="form-group">
+                      <label>Free Delivery Above ({deliveryCurrency})</label>
+                      <input
+                        type="number" min="0" step="1"
+                        value={form.free_delivery_above}
+                        onChange={(e) => setForm({ ...form, free_delivery_above: parseFloat(e.target.value) || 0 })}
+                      />
+                      <p className="form-hint">0 = never free. Orders at or above this total get free delivery.</p>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Delivery Areas</label>
+                    <input
+                      type="text"
+                      value={form.delivery_areas}
+                      onChange={(e) => setForm({ ...form, delivery_areas: e.target.value })}
+                      placeholder="e.g. Model Town, Gulberg, DHA"
+                    />
+                    <p className="form-hint">Shown to customers on the order screen. Leave empty to deliver everywhere.</p>
+                  </div>
+                  <p className="form-hint">Your home-ordering link: <strong>{deliveryLink}</strong> — share it on WhatsApp, Facebook or your delivery QR (QR Generator → Home Delivery QR).</p>
+                </>
+              )}
+            </>
+          )}
         </section>
 
         {/* ── Payment Methods ───────────────────────────────────── */}

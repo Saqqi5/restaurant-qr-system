@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useTenant } from "../contexts/TenantContext";
 import { useAuth } from "../contexts/AuthContext";
 import {
-  subscribeToMenu, createOrder, subscribeToTableOrders,
+  subscribeToMenu, createOrder, subscribeToTableOrders, subscribeToSessionOrders,
   createPayment, subscribeToPayment, calculateBill, isExpiredDemoItem
 } from "../config/db";
+import { canUseDelivery } from "../config/plans";
 import { formatPrice } from "../utils/currency";
 import { downscaleImage } from "../utils/image";
 import { getCustomerSessionId, getDemoHiddenDishes } from "../utils/session";
@@ -16,7 +17,7 @@ import RestaurantHeader from "../components/customer/RestaurantHeader";
 
 export default function CustomerMenu() {
   const { restaurant, tableNumber, restaurantId, loading } = useTenant();
-  const { userProfile, loading: authLoading } = useAuth();
+  const { userProfile, loading: authLoading, canAccessRestaurant } = useAuth();
   const navigate = useNavigate();
   const currency = restaurant?.currency || "$";
   // Payment accounts come from the restaurant's own settings (editable in
@@ -67,8 +68,7 @@ export default function CustomerMenu() {
   // different browser session) reserves this table until that customer
   // pays and the order closes. Staff orders never reserve a table, and
   // the restaurant's own staff are never blocked from their table.
-  const isStaffOfThisRestaurant =
-    userProfile?.restaurant_id === restaurantId || userProfile?.role === "super_admin";
+  const isStaffOfThisRestaurant = canAccessRestaurant(restaurantId);
   const isTableReserved =
     tableOrdersLoaded &&
     !isStaffOfThisRestaurant &&
@@ -85,8 +85,24 @@ export default function CustomerMenu() {
   const [placedOrder, setPlacedOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Home ordering (no table in the link): the customer picks Dine-in
+  // (types their table number) or Home Delivery (name/phone/address).
+  const [orderMode, setOrderMode] = useState(null); // null | "dine_in" | "delivery"
+  const [typedTable, setTypedTable] = useState("");
+  const [tableConfirmed, setTableConfirmed] = useState(false);
+  const [deliveryInfo, setDeliveryInfo] = useState({ name: "", phone: "", address: "" });
+  const [deliveryStarted, setDeliveryStarted] = useState(false);
+  const [deliveryError, setDeliveryError] = useState("");
+  const effectiveTable = tableNumber || (orderMode === "dine_in" && tableConfirmed && typedTable ? parseInt(typedTable, 10) : null);
+  const isDeliveryMode = tableNumber == null && orderMode === "delivery" && deliveryStarted;
+  // Home Delivery is a Premium feature: the plan must allow it AND the
+  // owner must have switched it on in Settings.
+  const deliveryOffered = canUseDelivery(restaurant?.plan, restaurant) && restaurant?.delivery_enabled === true;
+  const deliveryFee = Number(restaurant?.delivery_fee) || 0;
+  const freeDeliveryAbove = Number(restaurant?.free_delivery_above) || 0;
+
   // Payment flow state
-  const [paymentStage, setPaymentStage] = useState(null); // null | "bill" | "pay" | "uploading" | "waiting" | "verified"
+  const [paymentStage, setPaymentStage] = useState(null); // null | "bill" | "pay" | "cod" | "uploading" | "waiting" | "verified"
   const [paymentId, setPaymentId] = useState(null);
   const [proofFile, setProofFile] = useState(null);
   const [proofPreview, setProofPreview] = useState(null);
@@ -113,14 +129,26 @@ export default function CustomerMenu() {
   }, [restaurantId, restaurant?.is_demo]);
 
   useEffect(() => {
-    if (!restaurantId || !tableNumber) return;
+    if (!restaurantId) return;
     setTableOrdersLoaded(false);
-    const unsub = subscribeToTableOrders(restaurantId, tableNumber, (orders) => {
-      setTableOrders(orders);
+    let unsub;
+    if (isDeliveryMode) {
+      // No table: this browser's own delivery orders, by session id.
+      unsub = subscribeToSessionOrders(restaurantId, mySessionId, (orders) => {
+        setTableOrders(orders);
+        setTableOrdersLoaded(true);
+      });
+    } else if (effectiveTable) {
+      unsub = subscribeToTableOrders(restaurantId, effectiveTable, (orders) => {
+        setTableOrders(orders);
+        setTableOrdersLoaded(true);
+      });
+    } else {
+      setTableOrders([]);
       setTableOrdersLoaded(true);
-    });
-    return unsub;
-  }, [restaurantId, tableNumber]);
+    }
+    return () => unsub?.();
+  }, [restaurantId, effectiveTable, isDeliveryMode, mySessionId]);
 
   // Subscribe to payment when waiting for verification
   useEffect(() => {
@@ -158,16 +186,29 @@ export default function CustomerMenu() {
   }
 
   async function placeOrder() {
-    if (!cart.length || !tableNumber) return;
-    // The table may have been reserved by another customer since the page loaded.
-    if (isTableReserved) return;
+    if (!cart.length) return;
     // Double-tap guard: a second tap while the first order is still being
     // sent is ignored, so the order can never be booked twice.
     if (placingOrder) return;
+    // Delivery: name/phone/address are required; the fee is flat (free
+    // above the restaurant's threshold) and added after tax.
+    let deliveryFeeForOrder = 0;
+    if (isDeliveryMode) {
+      if (!deliveryInfo.name.trim() || !deliveryInfo.phone.trim() || !deliveryInfo.address.trim()) {
+        setDeliveryError("Please fill in your name, phone number and delivery address.");
+        return;
+      }
+      const cartBill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0);
+      deliveryFeeForOrder = (freeDeliveryAbove > 0 && cartBill.total >= freeDeliveryAbove) ? 0 : deliveryFee;
+    } else {
+      if (!effectiveTable) return;
+      // The table may have been reserved by another customer since the page loaded.
+      if (isTableReserved) return;
+    }
     setPlacingOrder(true);
     try {
       const created = await createOrder(restaurantId, {
-        table_number: tableNumber,
+        table_number: isDeliveryMode ? 0 : effectiveTable,
         items: cart.map(i => ({
           item_id: i.id,
           name: i.name,
@@ -178,8 +219,15 @@ export default function CustomerMenu() {
         })),
         created_by: mySessionId,
         // Add-on: this table already has an active order, so the kitchen
-        // serves this one on priority.
-        is_addon: activeOrders.length > 0,
+        // serves this one on priority. (Delivery orders are never add-ons.)
+        is_addon: !isDeliveryMode && activeOrders.length > 0,
+        ...(isDeliveryMode ? {
+          order_type: "delivery",
+          customer_name: deliveryInfo.name.trim(),
+          customer_phone: deliveryInfo.phone.trim(),
+          delivery_address: deliveryInfo.address.trim(),
+          delivery_fee: deliveryFeeForOrder,
+        } : {}),
       });
       // The cart clears the moment the order is confirmed — the selected
       // items are gone at once, so there is nothing left to re-place.
@@ -229,10 +277,12 @@ export default function CustomerMenu() {
         return;
       }
 
-      // Create payment record in Firestore
+      // Create payment record in Firestore (delivery payments carry
+      // tableNumber 0 — the cash counter shows them as 🛵 Delivery).
       const payment = await createPayment({
         restaurantId,
-        tableNumber,
+        tableNumber: isDeliveryMode ? 0 : effectiveTable,
+        orderType: isDeliveryMode ? "delivery" : "dine_in",
         orderId: activeOrders[0]?.id || null,
         method: activeMethodKey,
         orderIds: activeOrders.map((o) => o.id),
@@ -268,6 +318,12 @@ export default function CustomerMenu() {
   const billSubtotal = activeOrders.reduce((s, o) => s + (o.subtotal ?? o.total ?? 0), 0);
   const billDiscount = activeOrders.reduce((s, o) => s + (o.discount_amount || 0), 0);
   const billTax = activeOrders.reduce((s, o) => s + (o.tax_amount || 0), 0);
+  const billDeliveryFee = activeOrders.reduce((s, o) => s + (o.delivery_fee || 0), 0);
+  // Fee for the CURRENT cart (delivery only): flat, free above the threshold.
+  const cartBill = calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0);
+  const cartDeliveryFee = isDeliveryMode
+    ? ((freeDeliveryAbove > 0 && cartBill.total >= freeDeliveryAbove) ? 0 : deliveryFee)
+    : 0;
 
   // The restaurant's own brand colours theme the whole customer page:
   // primary colours the header, the brighter accent colours the buttons,
@@ -309,6 +365,7 @@ export default function CustomerMenu() {
   // its table orders. The customer menu is public for real customers
   // (anonymous), but a signed-in staff member belongs to exactly one
   // restaurant — opening any other restaurant's menu is blocked here.
+  // A multi-branch owner (restaurant_ids) may open any of their branches.
   // The super admin (no restaurant of their own) is exempt.
   const STAFF_DASHBOARD = {
     general_admin: "/admin/restaurant",
@@ -320,7 +377,7 @@ export default function CustomerMenu() {
     userProfile &&
     userProfile.role !== "super_admin" &&
     userProfile.restaurant_id &&
-    userProfile.restaurant_id !== restaurantId
+    !canAccessRestaurant(restaurantId)
   ) {
     return (
       <div className="error-state">
@@ -338,13 +395,122 @@ export default function CustomerMenu() {
   }
 
   if (!tableNumber) {
-    return (
-      <div className="error-state">
-        <div className="error-icon">🪑</div>
-        <h2>No table assigned</h2>
-        <p>Please scan the QR code on your table to start ordering.</p>
-      </div>
-    );
+    // No table in the link: home-ordering entry. Dine-in customers type
+    // their table number; delivery customers leave their details first.
+    // Restaurants without Home Delivery keep the old "scan your table"
+    // message exactly as before.
+    if (!deliveryOffered) {
+      return (
+        <div className="error-state">
+          <div className="error-icon">🪑</div>
+          <h2>No table assigned</h2>
+          <p>Please scan the QR code on your table to start ordering.</p>
+        </div>
+      );
+    }
+    if (orderMode === null) {
+      return (
+        <div className="error-state">
+          <div className="error-icon">🍽️</div>
+          <h2>Welcome to {restaurant?.name}</h2>
+          <p>How would you like to order?</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 320, marginTop: 8 }}>
+            <button className="btn-primary" onClick={() => setOrderMode("dine_in")}>
+              🍽️ Dine-in at the restaurant
+            </button>
+            <button className="btn-primary" onClick={() => setOrderMode("delivery")}>
+              🛵 Home Delivery{deliveryFee > 0 ? ` — ${formatPrice(deliveryFee, currency)} fee` : " — Free delivery"}
+            </button>
+          </div>
+          {restaurant?.delivery_areas && (
+            <p style={{ fontSize: 13, color: "var(--color-muted)" }}>Delivers to: {restaurant.delivery_areas}</p>
+          )}
+        </div>
+      );
+    }
+    if (orderMode === "dine_in" && !tableConfirmed) {
+      return (
+        <div className="error-state">
+          <div className="error-icon">🪑</div>
+          <h2>Your table number</h2>
+          <p>Enter the number on your table to start ordering.</p>
+          <div style={{ display: "flex", gap: 8, width: "100%", maxWidth: 340 }}>
+            <input
+              type="number" min="1" max={restaurant?.table_count || 50}
+              value={typedTable}
+              onChange={(e) => setTypedTable(e.target.value)}
+              placeholder="e.g. 5"
+              style={{ flex: 1, padding: "12px 14px", borderRadius: 10, border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "inherit", fontSize: 16, minWidth: 0 }}
+            />
+            <button
+              className="btn-primary"
+              disabled={!typedTable || Number(typedTable) < 1 || Number(typedTable) > (restaurant?.table_count || 50)}
+              onClick={() => setTableConfirmed(true)}
+            >
+              Start ordering →
+            </button>
+          </div>
+          <button className="btn-secondary" style={{ marginTop: 12 }} onClick={() => { setOrderMode(null); setTypedTable(""); }}>
+            ← Back
+          </button>
+        </div>
+      );
+    }
+    if (orderMode === "delivery" && !deliveryStarted) {
+      return (
+        <div className="error-state">
+          <div className="error-icon">🛵</div>
+          <h2>Home Delivery</h2>
+          <p>Your details — the rider needs these to reach you.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 340, textAlign: "left" }}>
+            <input
+              value={deliveryInfo.name}
+              onChange={(e) => setDeliveryInfo({ ...deliveryInfo, name: e.target.value })}
+              placeholder="Your name"
+              style={{ padding: "12px 14px", borderRadius: 10, border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "inherit", fontSize: 15 }}
+            />
+            <input
+              value={deliveryInfo.phone}
+              onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
+              placeholder="Phone number (e.g. 0300-1234567)"
+              inputMode="tel"
+              style={{ padding: "12px 14px", borderRadius: 10, border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "inherit", fontSize: 15 }}
+            />
+            <textarea
+              value={deliveryInfo.address}
+              onChange={(e) => setDeliveryInfo({ ...deliveryInfo, address: e.target.value })}
+              placeholder="Full delivery address"
+              rows={3}
+              style={{ padding: "12px 14px", borderRadius: 10, border: "1px solid var(--color-border)", background: "var(--color-surface)", color: "inherit", fontSize: 15, resize: "vertical" }}
+            />
+            {deliveryError && <div className="error-banner">{deliveryError}</div>}
+            <button
+              className="btn-primary"
+              onClick={() => {
+                if (!deliveryInfo.name.trim() || !deliveryInfo.phone.trim() || !deliveryInfo.address.trim()) {
+                  setDeliveryError("Please fill in your name, phone number and delivery address.");
+                  return;
+                }
+                setDeliveryError("");
+                setDeliveryStarted(true);
+              }}
+            >
+              See menu →
+            </button>
+            <button className="btn-secondary" onClick={() => setOrderMode(null)}>
+              ← Back
+            </button>
+          </div>
+          <p style={{ fontSize: 13, color: "var(--color-muted)" }}>
+            Delivery fee {deliveryFee > 0 ? formatPrice(deliveryFee, currency) : "Free"}
+            {freeDeliveryAbove > 0 ? ` · Free above ${formatPrice(freeDeliveryAbove, currency)}` : ""}
+            {restaurant?.delivery_areas ? ` · Delivers to: ${restaurant.delivery_areas}` : ""}
+          </p>
+        </div>
+      );
+    }
+    // Dine-in with a confirmed table, or delivery with details saved:
+    // fall through to the menu below.
   }
 
   // Another customer has an unpaid order on this table — it stays
@@ -362,7 +528,7 @@ export default function CustomerMenu() {
 
   return (
     <div className="customer-app" style={themeVars}>
-      <RestaurantHeader restaurant={restaurant} tableNumber={tableNumber} />
+      <RestaurantHeader restaurant={restaurant} tableNumber={effectiveTable} modeLabel={isDeliveryMode ? "Home Delivery" : undefined} />
 
       <nav className="customer-nav">
         <button
@@ -384,7 +550,7 @@ export default function CustomerMenu() {
 
       {orderPlaced && (
         <div className="order-success-banner">
-          ✅ Order {placedOrder ? `#${placedOrder.order_number ?? placedOrder.id?.slice(-6).toUpperCase()} ` : ""}placed! Kitchen is preparing your food.
+          ✅ Order {placedOrder ? `#${placedOrder.order_number ?? placedOrder.id?.slice(-6).toUpperCase()} ` : ""}placed! {isDeliveryMode ? "Your food is being prepared — the rider will bring it to your door." : "Kitchen is preparing your food."}
         </div>
       )}
 
@@ -440,7 +606,7 @@ export default function CustomerMenu() {
           <span className="cart-fab-icon">🛒</span>
           <span className="cart-fab-count">{cartCount}</span>
           <span className="cart-fab-total">
-            {formatPrice(calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0).total, currency)}
+            {formatPrice(calculateBill(cart, Number(restaurant?.tax_rate) || 0, Number(restaurant?.discount_rate) || 0).total + cartDeliveryFee, currency)}
           </span>
         </button>
       )}
@@ -455,6 +621,8 @@ export default function CustomerMenu() {
         onPlaceOrder={placeOrder}
         placing={placingOrder}
         restaurant={restaurant}
+        deliveryFee={cartDeliveryFee}
+        isDelivery={isDeliveryMode}
       />
 
       {/* Payment Overlay */}
@@ -468,7 +636,11 @@ export default function CustomerMenu() {
               <>
                 <div className="payment-sheet-title">Your Bill</div>
                 <div className="payment-sheet-subtitle">
-                  <span className="bill-table-badge">Table {tableNumber}</span>
+                  {isDeliveryMode ? (
+                    <span className="bill-table-badge">🛵 Home Delivery — {deliveryInfo.name}</span>
+                  ) : (
+                    <span className="bill-table-badge">Table {effectiveTable}</span>
+                  )}
                 </div>
                 <div className="bill-items">
                   {allOrderItems.map((item, i) => (
@@ -495,6 +667,12 @@ export default function CustomerMenu() {
                     <div className="bill-row">
                       <span>Tax</span>
                       <span>{formatPrice(billTax, currency)}</span>
+                    </div>
+                  )}
+                  {billDeliveryFee > 0 && (
+                    <div className="bill-row">
+                      <span>🛵 Delivery fee</span>
+                      <span>{formatPrice(billDeliveryFee, currency)}</span>
                     </div>
                   )}
                 </div>
@@ -621,6 +799,18 @@ export default function CustomerMenu() {
                     >
                       {uploading ? <span className="spinner-sm" /> : "✓ Confirm Payment"}
                     </button>
+                    {isDeliveryMode && (
+                      <>
+                        <div style={{ textAlign: "center", margin: "4px 0 12px", color: "var(--color-muted)", fontSize: 13 }}>— or —</div>
+                        <button
+                          className="btn-secondary"
+                          style={{ width: "100%", marginBottom: 12 }}
+                          onClick={() => setPaymentStage("cod")}
+                        >
+                          💵 Cash on Delivery
+                        </button>
+                      </>
+                    )}
                     <button
                       className="btn-secondary"
                       style={{ width: "100%" }}
@@ -631,6 +821,24 @@ export default function CustomerMenu() {
                   </>
                 )}
               </>
+            )}
+
+            {/* CASH ON DELIVERY STAGE */}
+            {paymentStage === "cod" && (
+              <div className="payment-status-screen">
+                <span className="payment-status-icon">💵</span>
+                <div className="payment-status-title">Cash on Delivery</div>
+                <div className="payment-status-desc">
+                  Your order is confirmed. Please pay {formatPrice(orderTotal, currency)} in cash when your food arrives.
+                </div>
+                <button
+                  className="btn-pay-now"
+                  onClick={closePayment}
+                  style={{ maxWidth: 280, margin: "0 auto" }}
+                >
+                  Done
+                </button>
+              </div>
             )}
 
             {/* WAITING STAGE */}

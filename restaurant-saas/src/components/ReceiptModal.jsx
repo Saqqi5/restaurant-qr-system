@@ -61,6 +61,9 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
             {isKot && order.is_addon && (
               <div style={{ fontSize: 13, fontWeight: 800, color: "#b45309", marginTop: 6 }}>➕ ADD-ON ORDER — PRIORITY</div>
             )}
+            {isKot && order.order_type === "delivery" && (
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#4a90d9", marginTop: 6 }}>🛵 HOME DELIVERY</div>
+            )}
           </div>
 
           <div style={{ fontSize: 13, lineHeight: 1.7, borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "8px 0" }}>
@@ -70,10 +73,20 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
               </div>
             )}
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Table</span><strong>{order.table_number}</strong>
+              <span>{order.order_type === "delivery" ? "🛵 Delivery" : "Table"}</span><strong>{order.order_type === "delivery" ? "Home Delivery" : order.table_number}</strong>
             </div>
+            {order.order_type === "delivery" && order.customer_name && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Customer</span><span>{order.customer_name}{order.customer_phone ? ` · ${order.customer_phone}` : ""}</span>
+              </div>
+            )}
+            {order.order_type === "delivery" && order.delivery_address && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Address</span><span style={{ textAlign: "right", maxWidth: "70%" }}>{order.delivery_address}</span>
+              </div>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>Status</span><strong style={{ textTransform: "capitalize", color: order.status === "cancelled" ? "#b91c1c" : order.status === "served" ? "#12805c" : undefined }}>{order.status || "—"}</strong>
+              <span>Status</span><strong style={{ textTransform: "capitalize", color: order.status === "cancelled" ? "#b91c1c" : ["served", "delivered"].includes(order.status) ? "#12805c" : undefined }}>{order.status === "out_for_delivery" ? "Out for delivery" : order.status || "—"}</strong>
             </div>
             {order.status === "cancelled" && order.cancelled_by_name && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -109,6 +122,12 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span>Tax{order.tax_rate ? ` (${order.tax_rate}%)` : ""}</span>
                   <span>{formatPrice(tax, currency)}</span>
+                </div>
+              )}
+              {order.delivery_fee > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>🛵 Delivery fee</span>
+                  <span>{formatPrice(order.delivery_fee, currency)}</span>
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 800, color: "#12805c", borderTop: "1px solid #ddd", marginTop: 4, paddingTop: 6 }}>

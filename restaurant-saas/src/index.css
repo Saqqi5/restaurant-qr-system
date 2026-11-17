@@ -1518,6 +1518,27 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 .order-booked { font-size: 12px; color: var(--color-muted); margin: 6px 0 2px; }
 
+/* ── Home delivery: badge + customer details on staff cards ── */
+.delivery-badge {
+  display: inline-block; margin: 4px 0 10px; padding: 4px 10px; border-radius: 999px;
+  background: #4a90d9; color: #fff; font-size: 12px; font-weight: 700;
+}
+.order-delivery-details {
+  font-size: 13px; line-height: 1.6; color: var(--color-text);
+  background: rgba(74, 144, 217, 0.1); border-radius: 8px; padding: 8px 10px; margin: 0 0 10px;
+}
+
+/* ── Branch switcher (owner login, topbar) ── */
+.branch-switcher {
+  max-width: 180px; padding: 7px 10px; border-radius: 8px;
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  color: var(--color-text); font-size: 13px; font-weight: 600; cursor: pointer;
+  text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+}
+@media (max-width: 720px) {
+  .branch-switcher { max-width: 120px; }
+}
+
 /* ── Theme picker (super admin Edit modal) ── */
 .theme-presets { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 .theme-preset-btn {

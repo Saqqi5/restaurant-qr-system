@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
-  subscribeToOrders, updatePaymentStatus, cancelOrder,
+  subscribeToOrders, updateOrderStatus, updatePaymentStatus, cancelOrder,
   subscribeToRestaurantPayments, verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import ReceiptModal from "../components/ReceiptModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
 
@@ -44,7 +45,7 @@ export default function CashCounterDashboard() {
   }
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     const unsubOrders = subscribeToOrders(restaurantId, setOrders);
     const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
     return () => { unsubOrders(); unsubPayments(); };
@@ -59,6 +60,14 @@ export default function CashCounterDashboard() {
     // because the live listener lags a beat behind the write.
     const paidOrder = orders.find((o) => o.id === orderId);
     if (paidOrder) setReceiptOrder({ ...paidOrder, payment_status: "paid", payment_method: paymentMethod });
+    setProcessing(false);
+  }
+
+  // A delivery order that is out with the rider is closed here once the
+  // rider confirms it reached the customer.
+  async function handleMarkDelivered(order) {
+    setProcessing(true);
+    await updateOrderStatus(restaurantId, order.id, "delivered");
     setProcessing(false);
   }
 
@@ -107,6 +116,20 @@ export default function CashCounterDashboard() {
   const unpaidCount = orders.filter((o) => o.payment_status === "unpaid" && o.status !== "pending" && o.status !== "cancelled").length;
   const pendingProofs = payments.filter(p => p.status === "pending");
   const verifiedProofs = payments.filter(p => p.status === "verified");
+
+  // The cash counter is one branch at a time — "All branches" picks a branch.
+  if (restaurantId === "all") {
+    return (
+      <AdminLayout
+        title="Cash Counter"
+        subtitle="Payment Management"
+        onLogout={logout}
+        userProfile={userProfile}
+      >
+        <BranchRequired title="Cash counter is per branch" />
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout
@@ -200,7 +223,7 @@ export default function CashCounterDashboard() {
               >
                 <div className="order-card-header">
                   <div>
-                    <span className="table-label">Table {order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
+                    <span className="table-label">{order.order_type === "delivery" ? "🛵 Delivery" : `Table ${order.table_number}`} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
                     <span className="order-time">{formatTime(order.created_at)}</span>
                   </div>
                   <div className="order-header-right">
@@ -215,6 +238,12 @@ export default function CashCounterDashboard() {
 
                 {selectedOrder?.id === order.id && (
                   <div className="order-detail">
+                    {order.order_type === "delivery" && (order.customer_name || order.delivery_address) && (
+                      <div className="order-delivery-details" style={{ marginBottom: 10 }}>
+                        {order.customer_name && <div>👤 {order.customer_name}{order.customer_phone ? ` · ${order.customer_phone}` : ""}</div>}
+                        {order.delivery_address && <div>📍 {order.delivery_address}</div>}
+                      </div>
+                    )}
                     <div className="order-items-detail">
                       {order.items?.map((item, i) => (
                         <div key={i} className="detail-item">
@@ -240,6 +269,12 @@ export default function CashCounterDashboard() {
                               <span>{formatPrice(order.tax_amount, currency)}</span>
                             </div>
                           )}
+                          {order.delivery_fee > 0 && (
+                            <div className="detail-item">
+                              <span>🛵 Delivery fee</span>
+                              <span>{formatPrice(order.delivery_fee, currency)}</span>
+                            </div>
+                          )}
                         </>
                       )}
                       <div className="detail-total">
@@ -254,6 +289,17 @@ export default function CashCounterDashboard() {
                       >
                         🖨️ Print Bill
                       </button>
+                      {order.order_type === "delivery" && order.status === "out_for_delivery" && (
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          style={{ marginTop: 10, cursor: "pointer" }}
+                          onClick={(e) => { e.stopPropagation(); handleMarkDelivered(order); }}
+                          disabled={processing}
+                        >
+                          ✓ Mark Delivered
+                        </button>
+                      )}
                       {order.status !== "pending" && order.status !== "cancelled" && (
                         <button
                           type="button"
@@ -320,7 +366,7 @@ export default function CashCounterDashboard() {
               <div key={payment.id} className="payment-proof-card">
                 <div className="payment-proof-header">
                   <div>
-                    <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                    <div className="payment-proof-table">{payment.tableNumber === 0 ? "🛵 Delivery" : `Table ${payment.tableNumber}`}</div>
                     {payment.method && (
                       <div className="payment-proof-meta">
                         {payment.method === "bank" ? "🏦 Bank Transfer" : payment.method === "jazzcash" ? "💜 JazzCash" : "📱 EasyPaisa"}
@@ -377,7 +423,7 @@ export default function CashCounterDashboard() {
                   <div key={payment.id} className="payment-proof-card" style={{ opacity: 0.7 }}>
                     <div className="payment-proof-header">
                       <div>
-                        <div className="payment-proof-table">Table {payment.tableNumber}</div>
+                        <div className="payment-proof-table">{payment.tableNumber === 0 ? "🛵 Delivery" : `Table ${payment.tableNumber}`}</div>
                         {payment.method && (
                           <div className="payment-proof-meta">
                             {payment.method === "bank" ? "🏦 Bank Transfer" : payment.method === "jazzcash" ? "💜 JazzCash" : "📱 EasyPaisa"}
@@ -404,7 +450,7 @@ export default function CashCounterDashboard() {
       {pendingDelete && (
         <ConfirmModal
           title="Delete this order?"
-          message={`Delete Order #${pendingDelete.order_number ?? pendingDelete.id?.slice(-6).toUpperCase()} (Table ${pendingDelete.table_number})? It will be saved as Cancelled — it stays in history with who deleted it.`}
+          message={`Delete Order #${pendingDelete.order_number ?? pendingDelete.id?.slice(-6).toUpperCase()} (${pendingDelete.order_type === "delivery" ? "Delivery" : `Table ${pendingDelete.table_number}`})? It will be saved as Cancelled — it stays in history with who deleted it.`}
           confirmLabel="Delete Order"
           danger
           onConfirm={confirmDeleteOrder}

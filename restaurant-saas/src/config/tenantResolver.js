@@ -102,3 +102,13 @@ export function buildQrUrl(restaurantId, tableNumber, tenantMode = "saas", custo
   const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
   return `${baseUrl}/r/${restaurantId}?table=${tableNumber}`;
 }
+
+// Home-delivery (no table) menu link — the QR the owner shares on
+// Facebook/WhatsApp so customers can order from home.
+export function buildDeliveryUrl(restaurantId, tenantMode = "saas", customDomain = null) {
+  if (customDomain) {
+    return `https://${customDomain}`;
+  }
+  const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+  return `${baseUrl}/r/${restaurantId}`;
+}

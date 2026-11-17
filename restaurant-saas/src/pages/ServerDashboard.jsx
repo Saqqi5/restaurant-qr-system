@@ -9,6 +9,7 @@ import { sortByBookedAt } from "../utils/orderSort";
 import { isExpiredDemoItem } from "../config/db";
 import { getDemoHiddenDishes } from "../utils/session";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import ConfirmModal from "../components/admin/ConfirmModal";
 
 export default function ServerDashboard() {
@@ -26,7 +27,7 @@ export default function ServerDashboard() {
   const [placing, setPlacing] = useState(false);
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     getRestaurant(restaurantId).then((r) => {
       if (r?.table_count) setTableCount(r.table_count);
       setIsDemo(r?.is_demo === true);
@@ -55,7 +56,7 @@ export default function ServerDashboard() {
   }
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     const unsubMenu = subscribeToMenu(restaurantId, setMenuItems);
     const unsubOrders = subscribeToOrders(restaurantId, setOrders);
     const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
@@ -113,8 +114,10 @@ export default function ServerDashboard() {
   // Cancelled orders never show in the active list (they live in history).
   // Serving order is strictly FIFO — oldest booked first — so the server
   // works down the list and whoever booked first is served first.
+  // Home-delivery orders are NOT table service — the rider handles them,
+  // so they never appear here.
   const activeOrders = orders
-    .filter((o) => !["served", "paid", "cancelled"].includes(o.status))
+    .filter((o) => o.order_type !== "delivery" && !["served", "paid", "cancelled"].includes(o.status))
     .sort(sortByBookedAt);
   // The oldest READY order is the one to serve next.
   const serveNextId = activeOrders.find((o) => o.status === "ready")?.id;
@@ -140,6 +143,20 @@ export default function ServerDashboard() {
       return <span className="pay-status-pill pay-pending">💳 Pending</span>;
     }
     return null;
+  }
+
+  // The server works one branch at a time — "All branches" picks a branch.
+  if (restaurantId === "all") {
+    return (
+      <AdminLayout
+        title="Server"
+        subtitle={userProfile?.name || "Order Taker"}
+        onLogout={logout}
+        userProfile={userProfile}
+      >
+        <BranchRequired title="Server is per branch" />
+      </AdminLayout>
+    );
   }
 
   return (

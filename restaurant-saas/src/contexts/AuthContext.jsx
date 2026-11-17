@@ -11,7 +11,7 @@ import {
 } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { auth, firebaseConfig } from "../config/firebase";
-import { getUser, createUser, getRestaurant, subscribeToRestaurant, subscribeToUser } from "../config/db";
+import { getUser, createUser, getRestaurant, subscribeToRestaurant, subscribeToUser, getAccessibleRestaurantIds, getRestaurantsByIds } from "../config/db";
 import { getExpiryInfo, formatExpiryDate, getPlanLabel } from "../config/plans";
 
 const AuthContext = createContext(null);
@@ -52,15 +52,61 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  // ── Multi-branch owner state ──────────────────────────────────────────
+  // An owner (general_admin) can run 2+ branches from ONE login: their
+  // users doc keeps restaurant_id (first branch) + restaurant_ids (every
+  // branch). activeRestaurantId is the branch the dashboards show — a
+  // branch id, "all" (combined view), or null (first branch). It persists
+  // per user in localStorage. Single-branch users never see the switcher.
+  const [activeRestaurantId, setActiveRestaurantIdState] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const accessibleRestaurantIds = getAccessibleRestaurantIds(userProfile);
+  const accessibleKey = accessibleRestaurantIds.join(",");
+  const isMultiBranch = accessibleRestaurantIds.length > 1;
+  // The branch every dashboard reads: the active one, or the user's own.
+  // "all" means the combined All-branches view (Admin dashboard + Order
+  // History); single-branch pages show a branch picker for it.
+  const activeId = activeRestaurantId || userProfile?.restaurant_id || null;
+
+  // Load the branch docs (names for the switcher) once the owner is known.
   useEffect(() => {
-    const rid = userProfile?.restaurant_id;
-    if (!rid || userProfile?.role === "super_admin") {
+    if (accessibleRestaurantIds.length <= 1) { setBranches([]); return; }
+    let live = true;
+    getRestaurantsByIds(accessibleRestaurantIds).then((docs) => { if (live) setBranches(docs); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessibleKey]);
+
+  // Restore the saved branch choice on sign-in; fall back to the first
+  // branch when the saved one is no longer accessible (e.g. unlinked).
+  useEffect(() => {
+    if (!userProfile) { setActiveRestaurantIdState(null); return; }
+    let saved = null;
+    try { saved = localStorage.getItem(`saqlyn_active_restaurant_${userProfile.id}`); } catch { /* ignore */ }
+    if (saved === "all" || accessibleRestaurantIds.includes(saved)) setActiveRestaurantIdState(saved);
+    else setActiveRestaurantIdState(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.id, accessibleKey]);
+
+  function setActiveRestaurantId(id) {
+    setActiveRestaurantIdState(id || null);
+    if (userProfile?.id) {
+      try {
+        if (id) localStorage.setItem(`saqlyn_active_restaurant_${userProfile.id}`, id);
+        else localStorage.removeItem(`saqlyn_active_restaurant_${userProfile.id}`);
+      } catch { /* ignore */ }
+    }
+  }
+
+  useEffect(() => {
+    const rid = activeId;
+    if (!rid || rid === "all" || userProfile?.role === "super_admin") {
       setTrialInfo(null);
       return;
     }
     const unsub = subscribeToRestaurant(rid, (doc) => setTrialInfo({ ...getExpiryInfo(doc), plan: doc?.plan, is_frozen: doc?.is_frozen === true }));
     return unsub;
-  }, [userProfile?.restaurant_id, userProfile?.role]);
+  }, [activeId, userProfile?.role]);
 
   // Live-watch the signed-in user's own doc: if the super admin disables
   // this login while the user is signed in, the profile updates here and
@@ -83,7 +129,12 @@ export function AuthProvider({ children }) {
       throw new Error(ACCOUNT_DISABLED_MESSAGE);
     }
     // A restaurant frozen by the super admin may not sign in at all.
-    if (profile?.restaurant_id && profile?.role !== "super_admin") {
+    // Multi-branch owners skip this login-time block: the block applies
+    // per branch instead — when they open a frozen/expired branch, that
+    // branch's screen blocks them (with a switcher to their other
+    // branches), instead of locking them out of every branch at once.
+    const accessible = getAccessibleRestaurantIds(profile);
+    if (profile?.restaurant_id && profile?.role !== "super_admin" && accessible.length <= 1) {
       const restaurant = await getRestaurant(profile.restaurant_id);
       if (restaurant?.is_frozen === true) {
         await signOut(auth);
@@ -104,6 +155,7 @@ export function AuthProvider({ children }) {
   async function logout() {
     await signOut(auth);
     setUserProfile(null);
+    setActiveRestaurantIdState(null);
   }
 
   // Staff registration must NOT sign out the admin creating the account.
@@ -205,7 +257,7 @@ export function AuthProvider({ children }) {
   function canAccessRestaurant(restaurantId) {
     if (!userProfile) return false;
     if (userProfile.role === "super_admin") return true;
-    return userProfile.restaurant_id === restaurantId;
+    return getAccessibleRestaurantIds(userProfile).includes(restaurantId);
   }
 
   const value = {
@@ -223,7 +275,14 @@ export function AuthProvider({ children }) {
     canAccessRestaurant,
     isAuthenticated: !!currentUser,
     role: userProfile?.role,
-    restaurantId: userProfile?.restaurant_id,
+    // The branch the dashboards show: the active branch, "all" for the
+    // combined view, or the user's own restaurant when nothing is picked.
+    restaurantId: activeId,
+    activeRestaurantId,
+    setActiveRestaurantId,
+    accessibleRestaurantIds,
+    branches,
+    isMultiBranch,
     trialInfo,
     trialBlocked,
     accountBlocked,

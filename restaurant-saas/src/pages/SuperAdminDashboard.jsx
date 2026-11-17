@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
   getRestaurantUsers, mapDomain,
+  getAllOwners, linkRestaurantToOwner, unlinkRestaurantFromOwner,
   subscribeToPlanPayments, verifyPlanPayment, rejectPlanPayment,
   subscribeToSignupRequests, updateSignupRequest,
   subscribeToDemoLeads
@@ -37,12 +38,16 @@ export default function SuperAdminDashboard() {
   const [demoLeads, setDemoLeads] = useState([]);
   const [createFromSignup, setCreateFromSignup] = useState(null); // request being turned into a restaurant
   const [staffNotice, setStaffNotice] = useState(null); // { restaurantName, results } after a create
+  // Branch owners (general_admin logins) — the Edit modal links a branch
+  // to one of them so one login opens several branches.
+  const [owners, setOwners] = useState([]);
 
   useEffect(() => {
     getAllRestaurants().then((data) => {
       setRestaurants(data);
       setLoading(false);
     });
+    getAllOwners().then(setOwners).catch(() => {});
   }, []);
 
   useEffect(() => subscribeToPlanPayments(setPlanPayments), []);
@@ -118,8 +123,17 @@ export default function SuperAdminDashboard() {
   }
 
   async function handleUpdateRestaurant(id, data) {
-    await updateRestaurant(id, data);
-    setRestaurants((prev) => prev.map((r) => r.id === id ? { ...r, ...data } : r));
+    // ownerId is NOT a restaurant field — it links/unlinks this branch on
+    // the owner's users doc (restaurant_ids). Everything else saves on the
+    // restaurant doc as before.
+    const { ownerId, prevOwnerId, ...rest } = data;
+    await updateRestaurant(id, rest);
+    if (ownerId !== prevOwnerId) {
+      if (prevOwnerId) await unlinkRestaurantFromOwner(prevOwnerId, id);
+      if (ownerId) await linkRestaurantToOwner(ownerId, id);
+      getAllOwners().then(setOwners).catch(() => {});
+    }
+    setRestaurants((prev) => prev.map((r) => r.id === id ? { ...r, ...rest } : r));
     setModalType(null);
   }
 
@@ -391,6 +405,7 @@ export default function SuperAdminDashboard() {
       {modalType === "edit" && selectedRestaurant && (
         <EditRestaurantModal
           restaurant={selectedRestaurant}
+          owners={owners}
           onClose={() => setModalType(null)}
           onSave={(data) => handleUpdateRestaurant(selectedRestaurant.id, data)}
         />
@@ -448,7 +463,10 @@ export default function SuperAdminDashboard() {
   );
 }
 
-function EditRestaurantModal({ restaurant, onClose, onSave }) {
+function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
+  // The owner this branch is already linked to (their users doc lists
+  // this restaurant in restaurant_ids) — "" when it has its own admin only.
+  const linkedOwnerId = owners.find((o) => (o.restaurant_ids || []).includes(restaurant.id))?.id || "";
   const [form, setForm] = useState({
     name: restaurant.name || "",
     table_count: restaurant.table_count || 10,
@@ -458,6 +476,9 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
     currency: restaurant.currency || "$",
     address: restaurant.address || "",
     order_taker_enabled: restaurant.order_taker_enabled === true,
+    delivery_override: restaurant.delivery_override === true,
+    ownerId: linkedOwnerId,
+    prevOwnerId: linkedOwnerId,
     theme: restaurant.theme || { ...DEFAULT_THEME },
   });
   const editLimit = getPlanLimit(form.plan, null);
@@ -585,6 +606,29 @@ function EditRestaurantModal({ restaurant, onClose, onSave }) {
               Order Taker mode enabled
             </label>
             <p className="form-hint">Standard and Premium plans include Order Taker mode. Tick this to enable it for this restaurant even on the Basic plan.</p>
+          </div>
+          <div className="form-group-inline">
+            <label>
+              <input type="checkbox" checked={!!form.delivery_override}
+                onChange={(e) => setForm({ ...form, delivery_override: e.target.checked })} />
+              Home Delivery enabled
+            </label>
+            <p className="form-hint">Premium plans include Home Delivery. Tick this to enable it for this restaurant even on a lower plan.</p>
+          </div>
+          <div className="form-group">
+            <label>🏪 Branch owner — one login for several branches</label>
+            <select value={form.ownerId}
+              onChange={(e) => setForm({ ...form, ownerId: e.target.value })}>
+              <option value="">No link — this branch keeps its own admin login</option>
+              {owners
+                .filter((o) => o.restaurant_id !== restaurant.id)
+                .map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name || o.email} ({o.email})
+                  </option>
+                ))}
+            </select>
+            <p className="form-hint">Pick the owner of another branch and this branch appears in their switcher — one login opens both, each branch keeps its own plan, menu and staff. Pick "No link" to unlink it again.</p>
           </div>
         </div>
         <div className="modal-footer">

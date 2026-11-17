@@ -11,7 +11,19 @@ const STATUS_STEPS = [
   { key: "served", label: "Served", icon: "🍽️" },
 ];
 
+// Home delivery: same kitchen flow, then the rider takes over —
+// "Out for delivery" replaces "Served" as the final step.
+const DELIVERY_STEPS = [
+  { key: "pending", label: "Order Received", icon: "📋" },
+  { key: "confirmed", label: "Confirmed", icon: "✅" },
+  { key: "preparing", label: "Preparing", icon: "👨‍🍳" },
+  { key: "ready", label: "Ready!", icon: "🎯" },
+  { key: "out_for_delivery", label: "Out for delivery", icon: "🛵" },
+  { key: "delivered", label: "Delivered", icon: "✅" },
+];
+
 const STATUS_INDEX = STATUS_STEPS.reduce((acc, s, i) => ({ ...acc, [s.key]: i }), {});
+const DELIVERY_INDEX = DELIVERY_STEPS.reduce((acc, s, i) => ({ ...acc, [s.key]: i }), {});
 
 export default function OrderTracker({ orders, currency, restaurantId, sessionId }) {
   const [receiptOrder, setReceiptOrder] = useState(null);
@@ -63,7 +75,9 @@ export default function OrderTracker({ orders, currency, restaurantId, sessionId
     <div className="order-tracker">
       {cancelError && <div className="cancel-error">{cancelError}</div>}
       {orders.map((order) => {
-        const stepIndex = STATUS_INDEX[order.status] ?? 0;
+        const isDelivery = order.order_type === "delivery";
+        const steps = isDelivery ? DELIVERY_STEPS : STATUS_STEPS;
+        const stepIndex = (isDelivery ? DELIVERY_INDEX : STATUS_INDEX)[order.status] ?? 0;
         const eta = getEstimatedTime(order);
         const isMine = !!sessionId && order.created_by === sessionId;
         const canCancel = order.status === "pending" && isMine;
@@ -101,11 +115,11 @@ export default function OrderTracker({ orders, currency, restaurantId, sessionId
 
             {/* Progress Steps */}
             <div className="progress-steps">
-              {STATUS_STEPS.slice(0, -1).map((step, i) => (
+              {steps.slice(0, -1).map((step, i) => (
                 <div key={step.key} className={`step ${i <= stepIndex ? "done" : ""} ${i === stepIndex ? "current" : ""}`}>
                   <div className="step-icon">{i <= stepIndex ? step.icon : "○"}</div>
                   <div className="step-label">{step.label}</div>
-                  {i < STATUS_STEPS.length - 2 && <div className={`step-line ${i < stepIndex ? "done" : ""}`} />}
+                  {i < steps.length - 2 && <div className={`step-line ${i < stepIndex ? "done" : ""}`} />}
                 </div>
               ))}
             </div>
@@ -114,12 +128,20 @@ export default function OrderTracker({ orders, currency, restaurantId, sessionId
               <div className="order-paid-badge">✅ Paid — thank you!</div>
             )}
 
-            {eta && order.payment_status !== "paid" && order.status !== "served" && order.status !== "ready" && (
+            {eta && order.payment_status !== "paid" && !["served", "ready", "delivered", "out_for_delivery"].includes(order.status) && (
               <div className="eta-badge">⏱ {eta}</div>
             )}
 
             {order.status === "ready" && (
-              <div className="ready-banner">🎯 Your order is ready! A server will bring it to you.</div>
+              <div className="ready-banner">{isDelivery ? "🎯 Your order is ready! The rider is on the way." : "🎯 Your order is ready! A server will bring it to you."}</div>
+            )}
+
+            {order.status === "out_for_delivery" && (
+              <div className="ready-banner">🛵 Out for delivery — your food is on the way!</div>
+            )}
+
+            {order.status === "delivered" && (
+              <div className="order-paid-badge">✅ Delivered — enjoy your meal!</div>
             )}
 
             <div className="order-items-summary">

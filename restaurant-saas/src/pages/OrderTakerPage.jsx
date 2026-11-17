@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import ReceiptModal from "../components/ReceiptModal";
 import {
   subscribeToRestaurant, subscribeToMenu, subscribeToOrders,
@@ -21,9 +22,8 @@ import { formatPrice } from "../utils/currency";
 // (restaurant.order_taker_enabled). The locked screen offers the Standard
 // upgrade (admin) or "contact your administrator".
 export default function OrderTakerPage() {
-  const { userProfile, logout } = useAuth();
+  const { userProfile, restaurantId, logout } = useAuth();
   const navigate = useNavigate();
-  const restaurantId = userProfile?.restaurant_id;
 
   const [restaurant, setRestaurant] = useState(null);
   const [restaurantLoaded, setRestaurantLoaded] = useState(false);
@@ -39,7 +39,7 @@ export default function OrderTakerPage() {
   const [receiptOrder, setReceiptOrder] = useState(null);
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     const unsubR = subscribeToRestaurant(restaurantId, (data) => {
       setRestaurant(data);
       setRestaurantLoaded(true);
@@ -161,6 +161,15 @@ export default function OrderTakerPage() {
           <h3>Order Taker</h3>
           <p>This page is for restaurant staff accounts.</p>
         </div>
+      </AdminLayout>
+    );
+  }
+
+  // Order taking is one branch at a time — "All branches" picks a branch.
+  if (restaurantId === "all") {
+    return (
+      <AdminLayout {...layoutProps}>
+        <BranchRequired title="Order Taker is per branch" />
       </AdminLayout>
     );
   }

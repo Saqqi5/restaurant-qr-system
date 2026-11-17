@@ -35,7 +35,7 @@ import { DEMO_MENU_SEED } from "./demoMenuSeed";
 import {
   collection, doc, setDoc, updateDoc, deleteDoc,
   getDoc, getDocs, query, where, onSnapshot,
-  serverTimestamp, Timestamp
+  serverTimestamp, Timestamp, arrayUnion, arrayRemove
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -354,6 +354,12 @@ export async function createOrder(restaurantId, data) {
   } catch { /* keep 0 — bill without tax/discount */ }
   const bill = calculateBill(sanitizedItems, taxRate, discountRate);
 
+  // Home delivery: no table (table_number 0), a flat delivery fee added
+  // AFTER tax (fees are not taxed), and the customer's contact + address
+  // on the order so the kitchen and the rider know where it goes.
+  const isDelivery = data.order_type === "delivery";
+  const deliveryFee = isDelivery ? Math.max(0, Number(data.delivery_fee) || 0) : 0;
+
   // Sequential order number for today (KOT / receipt friendly). Falls back
   // to null when the count query can't run (e.g. rules not yet published).
   let orderNumber = null;
@@ -370,7 +376,7 @@ export async function createOrder(restaurantId, data) {
   const ref = doc(ordersCol(restaurantId));
   const order = {
     id: ref.id,
-    table_number: parseInt(data.table_number, 10),
+    table_number: isDelivery ? 0 : parseInt(data.table_number, 10),
     items: sanitizedItems,
     status: "pending",
     subtotal: bill.subtotal,
@@ -378,7 +384,7 @@ export async function createOrder(restaurantId, data) {
     discount_rate: discountRate,
     tax_amount: bill.tax,
     tax_rate: taxRate,
-    total: bill.total,
+    total: Number((bill.total + deliveryFee).toFixed(2)),
     order_number: orderNumber,
     payment_status: "unpaid",
     payment_method: null,
@@ -387,6 +393,13 @@ export async function createOrder(restaurantId, data) {
     estimated_ready: estimatedReady,
     notes: (data.notes || "").trim(),
     created_by: data.created_by || "customer",
+    // Order type: "dine_in" (table) or "delivery" (home). Delivery orders
+    // carry the customer + address; dine-in orders leave them blank.
+    order_type: isDelivery ? "delivery" : "dine_in",
+    customer_name: isDelivery ? String(data.customer_name || "").trim() : "",
+    customer_phone: isDelivery ? String(data.customer_phone || "").trim() : "",
+    delivery_address: isDelivery ? String(data.delivery_address || "").trim() : "",
+    delivery_fee: deliveryFee,
     // Add-on order: the table already had an active (unpaid) order when
     // this one was placed, so the kitchen serves it on priority.
     is_addon: data.is_addon === true,
@@ -466,6 +479,22 @@ export function subscribeToTableOrders(restaurantId, tableNumber, callback) {
   });
 }
 
+// A delivery customer's own orders: there is no table to track, so the
+// session id is the key. Today's orders only (same day window as the
+// table orders, so yesterday's orders never linger in "My Orders").
+export function subscribeToSessionOrders(restaurantId, sessionId, callback) {
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const dayStartSec = Math.floor(dayStart.getTime() / 1000);
+  return onSnapshot(ordersCol(restaurantId), (snap) => {
+    const items = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(o => o.created_by === sessionId && (o.created_at?.seconds ?? dayStartSec) >= dayStartSec)
+      .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
+    callback(items);
+  });
+}
+
 // ── Payment Operations ─────────────────────────────────────────────────────
 
 export async function createPayment(data) {
@@ -474,6 +503,9 @@ export async function createPayment(data) {
     id: ref.id,
     restaurantId: data.restaurantId,
     tableNumber: parseInt(data.tableNumber, 10),
+    // "dine_in" or "delivery" — the cash counter shows 🛵 Delivery for a
+    // delivery payment (tableNumber 0) instead of a table number.
+    orderType: data.orderType || "dine_in",
     orderId: data.orderId || null,
     method: data.method || "easypaisa",
     orderIds: data.orderIds || (data.orderId ? [data.orderId] : []),
@@ -705,6 +737,84 @@ export async function getRestaurantUsers(restaurantId) {
     // toward the plan's staff cap. A restaurant admin sees only their own
     // login and their staff — and can never remove the owner's login.
     .filter(u => u.role !== "super_admin" && !u.is_platform_owner && !u.is_demo_user);
+}
+
+// ── Multi-branch owners ─────────────────────────────────────────────────
+// An owner (general_admin) can run 2+ branches from ONE login. Their users
+// doc keeps restaurant_id (first branch) plus restaurant_ids (every branch
+// they can open). Staff logins stay per-branch — only the owner switches.
+// The branch switcher (AdminLayout) and the "All branches" combined view
+// (Admin dashboard + Order History) read this list.
+export function getAccessibleRestaurantIds(userProfile) {
+  if (!userProfile) return [];
+  const ids = [userProfile.restaurant_id, ...(userProfile.restaurant_ids || [])];
+  return [...new Set(ids.filter(Boolean))];
+}
+
+export async function getRestaurantsByIds(ids) {
+  const docs = await Promise.all((ids || []).map((id) => getRestaurant(id)));
+  return docs.filter(Boolean);
+}
+
+// One live list across branches: each branch's orders, merged newest
+// first, tagged with _restaurantId so actions (cancel, receipt) hit the
+// right branch. Same merge pattern as SuperAdminOrdersPage.
+export function subscribeToMultiOrders(restaurantIds, callback) {
+  const ids = (restaurantIds || []).filter(Boolean);
+  if (ids.length === 0) { callback([]); return () => {}; }
+  const byBranch = new Map(ids.map((id) => [id, []]));
+  const emit = () => {
+    const items = [...byBranch.values()].flat()
+      .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
+    callback(items);
+  };
+  const unsubs = ids.map((rid) =>
+    onSnapshot(ordersCol(rid), (snap) => {
+      byBranch.set(rid, snap.docs.map(d => ({ id: d.id, ...d.data(), _restaurantId: rid })));
+      emit();
+    })
+  );
+  return () => unsubs.forEach((u) => u());
+}
+
+// Same merge for payment proofs (the AdminLayout bell + the dashboard
+// Payments tab in "All branches" mode).
+export function subscribeToMultiPayments(restaurantIds, callback) {
+  const ids = (restaurantIds || []).filter(Boolean);
+  if (ids.length === 0) { callback([]); return () => {}; }
+  const byBranch = new Map(ids.map((id) => [id, []]));
+  const emit = () => {
+    const items = [...byBranch.values()].flat()
+      .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+    callback(items);
+  };
+  const unsubs = ids.map((rid) =>
+    onSnapshot(query(paymentsCol(), where("restaurantId", "==", rid)), (snap) => {
+      byBranch.set(rid, snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      emit();
+    })
+  );
+  return () => unsubs.forEach((u) => u());
+}
+
+// Every general_admin who can own branches (the super admin picks one in
+// the restaurant Edit modal to link a branch to them). Demo logins and the
+// platform owner are not branch owners.
+export async function getAllOwners() {
+  const snap = await getDocs(query(usersCol(), where("role", "==", "general_admin")));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(u => !u.is_demo_user && !u.is_platform_owner);
+}
+
+// Super admin links a branch to an existing owner (their first branch's
+// admin login). The owner then opens this branch from the switcher — the
+// branch keeps its own auto-created staff logins.
+export async function linkRestaurantToOwner(ownerUid, restaurantId) {
+  await updateDoc(userDoc(ownerUid), { restaurant_ids: arrayUnion(restaurantId), updated_at: serverTimestamp() });
+}
+
+export async function unlinkRestaurantFromOwner(ownerUid, restaurantId) {
+  await updateDoc(userDoc(ownerUid), { restaurant_ids: arrayRemove(restaurantId), updated_at: serverTimestamp() });
 }
 
 // ── Domain Mapping ─────────────────────────────────────────────────────────

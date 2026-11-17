@@ -123,6 +123,15 @@ export function getPlanLimitsLine(planKey) {
   return `${tables} tables · ${staff} staff logins · ${menuText}`;
 }
 
+// Home Delivery — a Premium feature (his 2026-11-17 order): Premium plans
+// include it; on any other plan the super admin may enable it for one
+// restaurant (restaurant.delivery_override), the same override pattern as
+// Order Taker mode.
+export function canUseDelivery(plan, restaurant) {
+  const key = plan ? normalizePlan(plan) : "basic";
+  return key === "premium" || restaurant?.delivery_override === true;
+}
+
 // Each plan card shows only the features that DIFFER (LandingPage +
 // GetStarted share this, so the cards can never drift apart). The shared
 // features live in the strip above the cards and the limits in the spec

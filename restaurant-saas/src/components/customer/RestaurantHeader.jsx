@@ -1,4 +1,4 @@
-export default function RestaurantHeader({ restaurant, tableNumber }) {
+export default function RestaurantHeader({ restaurant, tableNumber, modeLabel }) {
   return (
     <header className="restaurant-header">
       <a href="/" className="header-back-btn" aria-label="Back to home">←</a>
@@ -13,8 +13,17 @@ export default function RestaurantHeader({ restaurant, tableNumber }) {
         <div className="restaurant-info">
           <h1 className="restaurant-name">{restaurant.name}</h1>
           <div className="table-indicator">
-            <span className="table-icon">🪑</span>
-            <span>Table {tableNumber}</span>
+            {modeLabel ? (
+              <>
+                <span className="table-icon">🛵</span>
+                <span>{modeLabel}</span>
+              </>
+            ) : (
+              <>
+                <span className="table-icon">🪑</span>
+                <span>Table {tableNumber}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
