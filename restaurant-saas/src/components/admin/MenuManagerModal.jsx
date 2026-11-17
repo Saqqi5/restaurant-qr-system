@@ -60,8 +60,10 @@ export default function MenuManagerModal({ restaurant, onClose }) {
         await updateMenuItem(restaurant.id, editingItem.id, data);
         setMenuItems((prev) => prev.map((i) => (i.id === editingItem.id ? { ...i, ...data } : i)));
       } else {
-        const newItem = await createMenuItem(restaurant.id, data);
-        setMenuItems((prev) => [...prev, newItem]);
+        // No optimistic append: the menu subscription delivers the new
+        // item, and appending here too renders it twice until the next
+        // snapshot replaces the list.
+        await createMenuItem(restaurant.id, data);
       }
       setShowItemModal(false);
       setEditingItem(null);
@@ -106,6 +108,10 @@ export default function MenuManagerModal({ restaurant, onClose }) {
             <button className="modal-close" onClick={onClose}>✕</button>
           </div>
 
+          {/* Scrollable body: without .modal-body the dish list spills past
+              the viewport with no way to reach the lower rows (the modal
+              itself has max-height but no overflow). */}
+          <div className="modal-body">
         <p className="form-hint" style={{ margin: "0 0 12px" }}>
           Add, edit or hide dishes for {restaurant.name}. Hidden dishes stay saved and can be restored below.
         </p>
@@ -189,6 +195,7 @@ export default function MenuManagerModal({ restaurant, onClose }) {
             )}
           </>
         )}
+          </div>
         </div>
       </div>
 
