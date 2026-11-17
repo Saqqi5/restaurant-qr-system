@@ -261,6 +261,9 @@ a { color: var(--color-primary); text-decoration: none; }
 /* Get Started nav: the back link sits on the LEFT (like the login page),
    with the SAQLYN brand next to it — not pushed to the right. */
 .gs-nav { justify-content: flex-start; gap: 28px; }
+/* Keep the logo in the middle column on every page: on mobile the Back
+   link is hidden, so without this the logo falls into column 1 (left). */
+.gs-nav .nav-brand { grid-column: 2; }
 .nav-brand {
   display: flex; align-items: center; gap: 10px;
   font-family: var(--font); font-size: 22px; font-weight: 800;
