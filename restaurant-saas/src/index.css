@@ -1950,11 +1950,6 @@ html.capacitor-app { zoom: 1.12; }
 /* Hero brand: the SAQLYN logo only, tagline under it (no banner card). */
 .hero-brand { grid-column: 1 / -1; text-align: center; }
 .hero-logo { width: min(420px, 82%); height: auto; }
-.hero-tagline {
-  margin-top: 16px; font-size: 14px; font-weight: 600;
-  letter-spacing: 0.42em; text-indent: 0.42em;
-  color: rgba(232, 245, 239, 0.55);
-}
 .login-logo-img { width: 240px; max-width: 85%; height: auto; display: block; margin: 0 auto 4px; }
 
 /* Capacitor app: header frozen BELOW the status bar, on every page.
