@@ -25,6 +25,7 @@ import KitchenDashboard from "./pages/KitchenDashboard";
 import CashCounterDashboard from "./pages/CashCounterDashboard";
 import ServerDashboard from "./pages/ServerDashboard";
 import ProtectedRoute         from "./components/ProtectedRoute";
+import CapacitorNav           from "./components/CapacitorNav";
 import RestaurantSettingsPage from "./pages/RestaurantSettingsPage";
 import TableManagementPage    from "./pages/TableManagementPage";
 import OrderHistoryPage       from "./pages/OrderHistoryPage";
@@ -191,6 +192,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <CapacitorNav />
       </AuthProvider>
     </BrowserRouter>
   );

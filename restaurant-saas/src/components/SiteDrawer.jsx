@@ -5,14 +5,13 @@ import { Browser } from "@capacitor/browser";
 const TELEGRAM = "https://t.me/Saqlyndigital";
 const APP_VERSION = "1.5";
 
+/* Drawer: ONLY the items NOT already in the bottom tab bar.
+   Home / Try Demo / Buy a Plan / Staff Login live in the bottom bar,
+   so they are NOT repeated here. */
 const MENU_ITEMS = [
-  { label: "Home", icon: "🏠", to: "/" },
   { label: "Demo Restaurants", icon: "🍽️", href: "#demos" },
-  { label: "Try Demo", icon: "🍽️", to: "/demo" },
   { label: "Features", icon: "✨", href: "#features" },
   { label: "Pricing", icon: "🏷️", href: "#pricing" },
-  { label: "Buy a Plan", icon: "💰", to: "/get-started" },
-  { label: "Staff Login", icon: "🔑", to: "/login" },
 ];
 
 const BOTTOM_ITEMS = [
