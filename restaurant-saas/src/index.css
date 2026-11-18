@@ -258,12 +258,6 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 .site-menu-btn:hover { background: rgba(32, 201, 151, 0.14); }
 .site-menu-btn:active { background: #20c997; color: #070c0c; transform: scale(0.94); }
-/* Get Started nav: the back link sits on the LEFT (like the login page),
-   with the SAQLYN brand next to it — not pushed to the right. */
-.gs-nav { justify-content: flex-start; gap: 28px; }
-/* Keep the logo in the middle column on every page: on mobile the Back
-   link is hidden, so without this the logo falls into column 1 (left). */
-.gs-nav .nav-brand { grid-column: 2; }
 .nav-brand {
   display: flex; align-items: center; gap: 10px;
   font-family: var(--font); font-size: 22px; font-weight: 800;
@@ -513,13 +507,6 @@ a { color: var(--color-primary); text-decoration: none; }
   .nav-login-full { display: none; }
   .nav-login-short { display: inline; }
   .nav-brand { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-  /* Get Started / Demo nav: the logo must be centred too. The plain
-     absolute rule above does NOT centre it here (the .gs-nav grid +
-     justify-content: flex-start leaves it at the right on mobile —
-     reproduced on the live v2.6 Get Started page). Make the .gs-nav a
-     centred flex row on mobile instead, with the brand back in flow. */
-  .gs-nav { display: flex; justify-content: center; }
-  .gs-nav .nav-brand { position: static; transform: none; }
   .hero { grid-template-columns: 1fr; gap: 48px; padding: 40px 20px; text-align: center; }
   .hero-desc { margin: 0 auto 36px; }
   .hero-ctas { justify-content: center; }
@@ -1719,6 +1706,26 @@ a { color: var(--color-primary); text-decoration: none; }
 .gs-wrap { max-width: 880px; margin: 0 auto; padding: 48px 20px 100px; }
 .gs-wrap .section-title { margin-bottom: 12px; }
 .gs-sub { text-align: center; color: var(--color-muted); font-size: 15px; line-height: 1.6; max-width: 600px; margin: 0 auto 32px; }
+
+/* ═══ CONTACT PAGE ═══════════════════════════════════════════ */
+.contact-list { display: flex; flex-direction: column; gap: 14px; max-width: 600px; margin: 0 auto; }
+.contact-card {
+  display: flex; align-items: flex-start; gap: 14px; width: 100%;
+  text-align: left; cursor: pointer; font-family: var(--font);
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius); padding: 18px 20px; color: var(--color-text);
+  transition: border-color var(--transition), transform var(--transition);
+}
+.contact-card:hover { border-color: rgba(32,201,151,0.5); transform: translateY(-2px); }
+.contact-card.primary { border-color: var(--color-primary); background: rgba(32,201,151,0.06); }
+.contact-icon { font-size: 28px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+.contact-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.contact-title { font-size: 17px; font-weight: 700; }
+.contact-detail { font-size: 15px; font-weight: 600; color: var(--color-primary); }
+.contact-text { font-size: 14px; color: var(--color-muted); line-height: 1.5; }
+.contact-arrow { font-size: 18px; color: var(--color-muted); flex-shrink: 0; margin-top: 2px; }
+.contact-inline-link { color: var(--color-primary); font-weight: 700; text-decoration: none; }
+.contact-inline-link:hover { text-decoration: underline; }
 .gs-steps { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 36px; }
 .gs-step { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-muted); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 999px; padding: 8px 14px; }
 .gs-step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--color-surface2); border: 1px solid var(--color-border); font-size: 12px; }

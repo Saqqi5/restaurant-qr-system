@@ -10,6 +10,7 @@ import {
 import { createSignupRequest } from "../config/db";
 import PlanPrice from "../components/PlanPrice";
 import PlanFeatures, { PlanLimitsLine, SharedFeaturesStrip } from "../components/PlanFeatures";
+import SiteDrawer from "../components/SiteDrawer";
 
 // Sales go through this page now — the hero "Get Started" button lands
 // here instead of bouncing straight to Telegram (t.me often just sits on
@@ -28,6 +29,7 @@ function formatRs(amount) {
 }
 
 export default function GetStarted() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const initialPlan = normalizePlan(searchParams.get("plan") || "standard");
   const [step, setStep] = useState("plan"); // plan | details | review | done
@@ -105,14 +107,19 @@ export default function GetStarted() {
 
   return (
     <div className="landing">
-      <nav className="landing-nav gs-nav">
-        <div className="nav-links">
-          <Link to="/" className="nav-link">← Back to homepage</Link>
-        </div>
+      {/* Nav — same header as the homepage: ☰ menu (left), SAQLYN logo
+          centered, Staff Login (right). The menu + login must never
+          disappear on any page. */}
+      <nav className="landing-nav">
+        <button className="site-menu-btn" onClick={() => setMenuOpen((o) => !o)} aria-label={menuOpen ? "Close menu" : "Menu"}>
+          {menuOpen ? "✕" : "☰"}
+        </button>
         <Link to="/" className="nav-brand">
           <img src="/images/saqlyn-logo-tagline.png" alt="SAQLYN — Scan, Order, Pay" className="nav-logo" />
         </Link>
+        <Link to="/login" className="nav-login"><span className="nav-login-full">Staff Login</span><span className="nav-login-short">Login</span></Link>
       </nav>
+      <SiteDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="gs-wrap">
         {step !== "done" && (

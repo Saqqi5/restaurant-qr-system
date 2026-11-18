@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import SiteDrawer from "../components/SiteDrawer";
 
 // Public live demo — REAL restaurants running on SAQLYN, not a video.
 // Visitors scan a demo QR, place an order, then log in
@@ -40,6 +41,7 @@ const BELLA_DEMO_LOGINS = [
 ];
 
 export default function DemoPage() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState("");
   const [shownPass, setShownPass] = useState("");
 
@@ -55,14 +57,19 @@ export default function DemoPage() {
 
   return (
     <div className="landing">
-      <nav className="landing-nav gs-nav">
-        <div className="nav-links">
-          <Link to="/" className="nav-link">← Back to homepage</Link>
-        </div>
+      {/* Nav — same header as the homepage: ☰ menu (left), SAQLYN logo
+          centered, Staff Login (right). The menu + login must never
+          disappear on any page. */}
+      <nav className="landing-nav">
+        <button className="site-menu-btn" onClick={() => setMenuOpen((o) => !o)} aria-label={menuOpen ? "Close menu" : "Menu"}>
+          {menuOpen ? "✕" : "☰"}
+        </button>
         <Link to="/" className="nav-brand">
           <img src="/images/saqlyn-logo-tagline.png" alt="SAQLYN — Scan, Order, Pay" className="nav-logo" />
         </Link>
+        <Link to="/login" className="nav-login"><span className="nav-login-full">Staff Login</span><span className="nav-login-short">Login</span></Link>
       </nav>
+      <SiteDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="gs-wrap">
         <p className="section-label">Live Demo</p>

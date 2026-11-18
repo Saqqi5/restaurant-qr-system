@@ -15,6 +15,7 @@ import { resolveTenant, getCustomDomainRestaurantId } from "./config/tenantResol
 import LandingPage from "./pages/LandingPage";
 import GetStarted from "./pages/GetStarted";
 import DemoPage from "./pages/DemoPage";
+import ContactPage from "./pages/ContactPage";
 import CustomerMenu from "./pages/CustomerMenu";
 import LoginPage from "./pages/LoginPage";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
@@ -97,6 +98,7 @@ export default function App() {
           <Route path="/" element={<HomeRoute />} />
           <Route path="/get-started" element={<GetStarted />} />
           <Route path="/demo" element={<DemoPage />} />
+          <Route path="/contact" element={<ContactPage />} />
 
           {/* ── Customer Menu (SaaS path) ──────────────────── */}
           <Route path="/r/:restaurantId" element={
