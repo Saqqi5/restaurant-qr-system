@@ -326,6 +326,46 @@ const FEATURES = [
     title: "Data Kept Safe",
     desc: "Your orders and menu history stay available — never deleted, ready whenever you need them.",
   },
+  {
+    icon: "🛵",
+    title: "Home Delivery",
+    desc: "Customers order from home too — cash on delivery, a delivery fee, and live status from the kitchen to the doorstep.",
+  },
+  {
+    icon: "🏪",
+    title: "Multi-Branch",
+    desc: "Run every branch from one login — switch branches instantly and see combined revenue across all of them.",
+  },
+  {
+    icon: "🎉",
+    title: "Promos & Discounts",
+    desc: "Run percentage or flat promos, put any dish on a promotional price, and give per-order discounts — all on the bill automatically.",
+  },
+  {
+    icon: "🪑",
+    title: "Table Reservation",
+    desc: "A table with an unpaid order stays reserved — no double seating, no confusion at the door.",
+  },
+  {
+    icon: "🧾",
+    title: "Receipts & KOT Printing",
+    desc: "Print clean receipts for customers and kitchen order tickets for the kitchen, right from the dashboard.",
+  },
+  {
+    icon: "📸",
+    title: "Photo Menus",
+    desc: "Every dish with its own photo, organised in categories your customers can browse in seconds.",
+  },
+  {
+    icon: "📥",
+    title: "Excel-Ready Reports",
+    desc: "Download your full order history as an Excel-ready spreadsheet — ready to share or file.",
+  },
+  {
+    icon: "💱",
+    title: "Your Own Currency",
+    desc: "Bills, menus and revenue in your restaurant's own currency — Rs., $, € and more.",
+  },
 ];
 
 const PLANS = [

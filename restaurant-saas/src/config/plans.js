@@ -140,8 +140,8 @@ export function canUseDelivery(plan, restaurant) {
 // check. On top, Basic and Standard each show one or two headline Premium
 // features struck-through, so a buyer sees what the next plan unlocks
 // (his 2026-11-16 order — the full list on every card is gone).
-// Basic teasers: Order Taker mode + Custom domain. Standard teaser:
-// Custom domain. Order = card order.
+// Basic teasers: Order Taker mode + Custom domain + Home delivery.
+// Standard teasers: Custom domain + Home delivery. Order = card order.
 export function getPlanFeatures(planKey) {
   const key = normalizePlan(planKey);
   const std = key !== "basic"; // Standard + Premium
@@ -154,7 +154,10 @@ export function getPlanFeatures(planKey) {
       { text: "Order Taker mode", included: true },
     );
   }
-  if (prem) own.push({ text: `Custom domain — PKR ${DOMAIN_CHARGE_PKR_PER_YEAR.toLocaleString("en-US")}/year`, included: true });
+  if (prem) own.push(
+    { text: `Custom domain — PKR ${DOMAIN_CHARGE_PKR_PER_YEAR.toLocaleString("en-US")}/year`, included: true },
+    { text: "Home delivery", included: true },
+  );
   // Custom logo: free on Premium; on Basic and Standard the customer can
   // buy it from us for the one-time fee (his 2026-11-16 order — the line
   // shows on every plan, so a Basic customer can ask for it too).
@@ -172,9 +175,13 @@ export function getPlanFeatures(planKey) {
     own.push(
       { text: "Order Taker mode", included: false },
       { text: "Custom domain", included: false },
+      { text: "Home delivery", included: false },
     );
   }
-  if (key === "standard") own.push({ text: "Custom domain", included: false });
+  if (key === "standard") own.push(
+    { text: "Custom domain", included: false },
+    { text: "Home delivery", included: false },
+  );
   return own;
 }
 

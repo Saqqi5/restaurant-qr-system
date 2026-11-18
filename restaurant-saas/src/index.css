@@ -287,7 +287,7 @@ a { color: var(--color-primary); text-decoration: none; }
 /* Hero */
 .hero {
   display: grid; grid-template-columns: 1fr 1fr; gap: 80px;
-  align-items: center; padding: 100px 48px 80px; max-width: 1200px; margin: 0 auto;
+  align-items: center; padding: 48px 48px 80px; max-width: 1200px; margin: 0 auto;
 }
 .hero-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
@@ -513,7 +513,7 @@ a { color: var(--color-primary); text-decoration: none; }
   .nav-login-full { display: none; }
   .nav-login-short { display: inline; }
   .nav-brand { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-  .hero { grid-template-columns: 1fr; gap: 48px; padding: 60px 20px; text-align: center; }
+  .hero { grid-template-columns: 1fr; gap: 48px; padding: 40px 20px; text-align: center; }
   .hero-desc { margin: 0 auto 36px; }
   .hero-ctas { justify-content: center; }
   .hero-trust { justify-content: center; }
