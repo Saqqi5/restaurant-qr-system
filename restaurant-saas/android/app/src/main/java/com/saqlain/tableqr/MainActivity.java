@@ -9,6 +9,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Local plugin: ask Android to offer saving the login credentials
+        // (see AutofillPlugin — called from the login page after sign-in).
+        registerPlugin(AutofillPlugin.class);
         allowScreenshots();
         enableAutofill();
     }

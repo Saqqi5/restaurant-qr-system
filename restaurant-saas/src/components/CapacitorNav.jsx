@@ -45,6 +45,16 @@ const ROLE_TABS = {
   ],
 };
 
+// The main dashboard each role lands on after login — the ONLY admin page
+// where Back asks "Log out?". From any deeper admin page, Back goes here.
+const ROLE_HOME = {
+  super_admin: "/admin/super",
+  general_admin: "/admin/restaurant",
+  kitchen: "/admin/kitchen",
+  cash_counter: "/admin/cash",
+  server: "/admin/server",
+};
+
 /**
  * CapacitorNav — native-app only (renders nothing on the website).
  * The menu, drawer and About now live in the website itself (SiteDrawer),
@@ -55,9 +65,9 @@ const ROLE_TABS = {
  *    env(safe-area-inset-top) is the bar height when the WebView overlays
  *    it, and 0 when it is already inset, so it never double-offsets.
  * 2. Hardware back button: close About, then close the drawer, then — if
- *    the user is signed in on a dashboard — ask "Log out?" instead of
- *    dropping them out of their account, then go back in history, or exit
- *    the app from Home.
+ *    the user is signed in — go back to their main dashboard from any
+ *    deeper admin page, and only ON that main dashboard ask "Log out?".
+ *    Then go back in history, or exit the app from Home.
  * 3. `capacitor-app` class on <html>: app-only zoom (web unaffected).
  */
 export default function CapacitorNav() {
@@ -70,8 +80,10 @@ export default function CapacitorNav() {
   // from the first render (logged out, dialog closed) forever.
   const currentUserRef = useRef(currentUser);
   const logoutOpenRef = useRef(logoutOpen);
+  const roleRef = useRef(role);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   useEffect(() => { logoutOpenRef.current = logoutOpen; }, [logoutOpen]);
+  useEffect(() => { roleRef.current = role; }, [role]);
 
   async function handleConfirmLogout() {
     setLogoutOpen(false);
@@ -110,11 +122,17 @@ export default function CapacitorNav() {
             window.dispatchEvent(new CustomEvent("saqlyn:close-menu"));
             return;
           }
-          // Signed in on a dashboard? Ask before leaving — never drop the
-          // user out of their account by accident.
+          // Signed in? Back is two steps: from a deeper admin page go to
+          // the main dashboard first — the "Log out?" dialog appears ONLY
+          // on that main dashboard, never straight from a sub-page.
           const path = window.location.pathname;
           if (currentUserRef.current && path.startsWith("/admin")) {
-            setLogoutOpen(true);
+            const home = ROLE_HOME[roleRef.current] || "/admin/restaurant";
+            if (path === home) {
+              setLogoutOpen(true);
+            } else {
+              navigate(home);
+            }
             return;
           }
           if (path !== "/") {

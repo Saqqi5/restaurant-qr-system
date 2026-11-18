@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { useAuth } from "../contexts/AuthContext";
+
+// Native Autofill plugin (registered in MainActivity): commit() asks
+// Android to show the Google "Save password?" prompt after a successful
+// sign-in. On the website (or if the plugin is missing) this is a no-op.
+const Autofill = Capacitor.isNativePlatform() ? registerPlugin("Autofill") : null;
 
 const ROLE_REDIRECTS = {
   super_admin: "/admin/super",
@@ -25,6 +31,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { profile } = await login(email, password);
+      // Tell Android the credentials are good — show the Google
+      // "Save password?" prompt. Never blocks the login itself.
+      try { await Autofill?.commit(); } catch (e) { /* autofill unavailable */ }
       const redirect = location.state?.from?.pathname || ROLE_REDIRECTS[profile?.role] || "/";
       navigate(redirect, { replace: true });
     } catch (err) {
@@ -55,6 +64,7 @@ export default function LoginPage() {
             <label htmlFor="email">Email</label>
             <input
               id="email"
+              name="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -68,6 +78,7 @@ export default function LoginPage() {
             <label htmlFor="password">Password</label>
             <input
               id="password"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
