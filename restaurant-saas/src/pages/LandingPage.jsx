@@ -57,8 +57,8 @@ export default function LandingPage() {
     <div className="landing">
       {/* Nav — one ☰ menu button (left), SAQLYN logo centered, Staff Login (right) */}
       <nav className="landing-nav">
-        <button className="site-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Menu">
-          ☰
+        <button className="site-menu-btn" onClick={() => setMenuOpen((o) => !o)} aria-label={menuOpen ? "Close menu" : "Menu"}>
+          {menuOpen ? "✕" : "☰"}
         </button>
         <Link to="/" className="nav-brand">
           <img src="/images/saqlyn-logo-tagline.png" alt="SAQLYN — Scan, Order, Pay" className="nav-logo" />
