@@ -6,7 +6,7 @@
  * useParams() works correctly inside TenantContext when reading :restaurantId.
  * BrowserRouter → AuthProvider → Routes → TenantProvider (per route) → Page
  */
-import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
@@ -43,6 +43,16 @@ function useDomainRestaurantId(needsLookup) {
     return () => { alive = false; };
   }, [needsLookup]);
   return id;
+}
+
+// Scroll to the top on every route change — without this, opening
+// /contact (or /demo, /get-started) from a scrolled-down page keeps the
+// old scroll position and the new page's heading hides under the sticky
+// header.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
 }
 
 function LoadingSplash() {
@@ -92,6 +102,7 @@ function WithAdminTenant({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <Routes>
           {/* ── Public ─────────────────────────────────────── */}
