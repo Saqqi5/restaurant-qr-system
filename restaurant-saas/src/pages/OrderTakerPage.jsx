@@ -13,7 +13,9 @@ import { normalizePlan } from "../config/plans";
 import { formatPrice } from "../utils/currency";
 
 // Order Taker mode — staff take orders on behalf of customers (walk-ins,
-// phone orders, counter orders). Admin + cashier only; no extra login.
+// phone orders, counter orders). Admin, cashier AND server — no extra
+// login. The server uses it when a customer cannot scan the QR, or the
+// waiter books the order themselves (table select → menu → place).
 // The order is created as a STAFF order (created_by = staff uid), so it
 // never reserves the table for customers — and the customer at that table
 // still sees it in their bill and can pay from their phone or at the counter.

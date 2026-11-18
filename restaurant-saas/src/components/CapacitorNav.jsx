@@ -37,6 +37,8 @@ const ROLE_TABS = {
   ],
   server: [
     { label: "Orders", icon: "🛎️", to: "/admin/server" },
+    { label: "Menu", icon: "🍽️", to: "/admin/menu" },
+    { label: "Take Order", icon: "📝", to: "/admin/order-taker" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
 };

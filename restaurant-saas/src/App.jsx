@@ -32,6 +32,7 @@ import RestaurantSettingsPage from "./pages/RestaurantSettingsPage";
 import TableManagementPage    from "./pages/TableManagementPage";
 import OrderHistoryPage       from "./pages/OrderHistoryPage";
 import OrderTakerPage         from "./pages/OrderTakerPage";
+import StaffMenuPage          from "./pages/StaffMenuPage";
 
 // Resolves a custom-domain tenant (Firestore lookup, cached). undefined =
 // still resolving, null = no mapping for this hostname.
@@ -202,8 +203,18 @@ export default function App() {
           } />
           <Route path="/admin/order-taker" element={
             <WithAdminTenant>
-              <ProtectedRoute role={["general_admin", "cash_counter"]}>
+              <ProtectedRoute role={["general_admin", "cash_counter", "server"]}>
                 <OrderTakerPage />
+              </ProtectedRoute>
+            </WithAdminTenant>
+          } />
+          {/* Staff Menu — read-only menu for the waiter/server (and the
+              other order-taking roles), so they can show a customer the
+              dishes or check a price without placing an order. */}
+          <Route path="/admin/menu" element={
+            <WithAdminTenant>
+              <ProtectedRoute role={["server", "general_admin", "cash_counter"]}>
+                <StaffMenuPage />
               </ProtectedRoute>
             </WithAdminTenant>
           } />

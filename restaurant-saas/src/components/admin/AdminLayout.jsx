@@ -219,6 +219,8 @@ function getSidebarLinks(role, pendingCount = 0) {
   if (role === "server") {
     return [
       { path: "/admin/server", icon: "🛎️", label: "Orders", badge: 0 },
+      { path: "/admin/menu", icon: "🍽️", label: "Menu", badge: 0 },
+      { path: "/admin/order-taker", icon: "📝", label: "Take Order", badge: 0 },
       logout,
     ];
   }
