@@ -513,6 +513,13 @@ a { color: var(--color-primary); text-decoration: none; }
   .nav-login-full { display: none; }
   .nav-login-short { display: inline; }
   .nav-brand { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  /* Get Started / Demo nav: the logo must be centred too. The plain
+     absolute rule above does NOT centre it here (the .gs-nav grid +
+     justify-content: flex-start leaves it at the right on mobile —
+     reproduced on the live v2.6 Get Started page). Make the .gs-nav a
+     centred flex row on mobile instead, with the brand back in flow. */
+  .gs-nav { display: flex; justify-content: center; }
+  .gs-nav .nav-brand { position: static; transform: none; }
   .hero { grid-template-columns: 1fr; gap: 48px; padding: 40px 20px; text-align: center; }
   .hero-desc { margin: 0 auto 36px; }
   .hero-ctas { justify-content: center; }
