@@ -303,9 +303,24 @@ export function AuthProvider({ children }) {
     accountDisabled,
   };
 
+  // While Firebase Auth is still resolving, show a real loading screen
+  // (SAQLYN logo + spinner) — NEVER a blank/black screen. A blank screen
+  // looks like a dead app. The 5s fallback below caps this wait.
+  if (loading) {
+    return (
+      <AuthContext.Provider value={value}>
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "#070C0C" }}>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: 2, color: "#E2F0F0" }}>SAQLYN</div>
+          <div className="spinner" />
+          <div style={{ fontSize: 14, color: "#8AA8A6" }}>Loading...</div>
+        </div>
+      </AuthContext.Provider>
+    );
+  }
+
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

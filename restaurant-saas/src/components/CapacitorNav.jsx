@@ -8,18 +8,21 @@ import { useAuth } from "../contexts/AuthContext";
 // Bottom tab bar (app only, signed-in users only).
 // After login each user sees ONLY their own role's options — no public
 // website option (Home, Try Demo, Buy a Plan) ever appears here. The
-// ☰ side menu keeps the full navigation; this bar is the role's
-// shortcuts. Logged-out users get NO bottom bar in the app (the app
-// opens on the login page, which has its own ☰ menu).
+// ☰ side menu keeps the full navigation; this bar is the role's QUICK
+// options — the most-used ones, at least 4 where the role has that many
+// pages. (Kitchen and server have only ONE page each, so their bar is
+// that page + Logout.)
 const ROLE_TABS = {
   super_admin: [
     { label: "Dashboard", icon: "👑", to: "/admin/super" },
+    { label: "Orders", icon: "📋", to: "/admin/super/orders" },
     { label: "New", icon: "➕", action: "newRestaurant" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   general_admin: [
     { label: "Dashboard", icon: "🏪", to: "/admin/restaurant" },
     { label: "Order Taker", icon: "🛎️", to: "/admin/order-taker" },
+    { label: "History", icon: "📋", to: "/admin/history" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   kitchen: [
@@ -29,6 +32,7 @@ const ROLE_TABS = {
   cash_counter: [
     { label: "Cash", icon: "💳", to: "/admin/cash" },
     { label: "Order Taker", icon: "🛎️", to: "/admin/order-taker" },
+    { label: "History", icon: "📋", to: "/admin/history" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   server: [
