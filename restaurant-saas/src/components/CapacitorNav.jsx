@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { App as CapApp } from "@capacitor/app";
+import { useAuth } from "../contexts/AuthContext";
 
 // Bottom tab bar (app only): the four main destinations, one tap away.
 const BOTTOM_TABS = [
@@ -21,13 +22,33 @@ const BOTTOM_TABS = [
  *    light icons). The CSS safe-area rules in index.css are the fallback —
  *    env(safe-area-inset-top) is the bar height when the WebView overlays
  *    it, and 0 when it is already inset, so it never double-offsets.
- * 2. Hardware back button: close About, then close the drawer, then go
- *    back in history, or exit the app from Home.
+ * 2. Hardware back button: close About, then close the drawer, then — if
+ *    the user is signed in on a dashboard — ask "Log out?" instead of
+ *    dropping them out of their account, then go back in history, or exit
+ *    the app from Home.
  * 3. `capacitor-app` class on <html>: app-only zoom (web unaffected).
  */
 export default function CapacitorNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser, logout } = useAuth();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  // The back-button listener is registered once, so it must read auth /
+  // dialog state through refs — a plain closure would keep the values
+  // from the first render (logged out, dialog closed) forever.
+  const currentUserRef = useRef(currentUser);
+  const logoutOpenRef = useRef(logoutOpen);
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+  useEffect(() => { logoutOpenRef.current = logoutOpen; }, [logoutOpen]);
+
+  async function handleConfirmLogout() {
+    setLogoutOpen(false);
+    try { await logout(); } catch (e) { /* still go to the login page */ }
+    // replace: the dashboard leaves the back stack, so Back from the
+    // login page goes to the previous public page (home, …), never back
+    // into a signed-in dashboard.
+    navigate("/login", { replace: true });
+  }
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return undefined;
@@ -43,6 +64,11 @@ export default function CapacitorNav() {
       }
       try {
         backListener = await CapApp.addListener("backButton", () => {
+          // Logout confirm open? Close it first (stay logged in).
+          if (logoutOpenRef.current) {
+            setLogoutOpen(false);
+            return;
+          }
           // The drawer / About live in the website (SiteDrawer) — close them first.
           if (document.querySelector(".cap-about")) {
             window.dispatchEvent(new CustomEvent("saqlyn:close-about"));
@@ -52,7 +78,14 @@ export default function CapacitorNav() {
             window.dispatchEvent(new CustomEvent("saqlyn:close-menu"));
             return;
           }
-          if (window.location.pathname !== "/") {
+          // Signed in on a dashboard? Ask before leaving — never drop the
+          // user out of their account by accident.
+          const path = window.location.pathname;
+          if (currentUserRef.current && path.startsWith("/admin")) {
+            setLogoutOpen(true);
+            return;
+          }
+          if (path !== "/") {
             if (window.history.length > 1) navigate(-1);
             else navigate("/");
           } else {
@@ -73,18 +106,37 @@ export default function CapacitorNav() {
   if (!Capacitor.isNativePlatform()) return null;
 
   return (
-    <nav className="cap-bottombar" data-testid="capacitor-bottombar">
-      {BOTTOM_TABS.map((tab) => (
-        <button
-          key={tab.label}
-          className={`cap-bottombar-tab${location.pathname === tab.to ? " active" : ""}`}
-          onClick={() => navigate(tab.to)}
-          aria-label={tab.label}
-        >
-          <span className="cap-bottombar-icon">{tab.icon}</span>
-          <span className="cap-bottombar-label">{tab.label}</span>
-        </button>
-      ))}
-    </nav>
+    <>
+      <nav className="cap-bottombar" data-testid="capacitor-bottombar">
+        {BOTTOM_TABS.map((tab) => (
+          <button
+            key={tab.label}
+            className={`cap-bottombar-tab${location.pathname === tab.to ? " active" : ""}`}
+            onClick={() => navigate(tab.to)}
+            aria-label={tab.label}
+          >
+            <span className="cap-bottombar-icon">{tab.icon}</span>
+            <span className="cap-bottombar-label">{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {logoutOpen && (
+        <div className="cap-about-backdrop" onClick={() => setLogoutOpen(false)}>
+          <div className="cap-about cap-logout" data-testid="logout-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="cap-about-title">Log out?</div>
+            <p className="cap-about-text">
+              You are signed in. Do you want to log out of your account?
+            </p>
+            <button className="cap-about-telegram" onClick={handleConfirmLogout}>
+              Confirm logout
+            </button>
+            <button className="cap-about-close" onClick={() => setLogoutOpen(false)}>
+              Stay logged in
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

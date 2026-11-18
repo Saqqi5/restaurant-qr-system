@@ -42,7 +42,7 @@ export default function LoginPage() {
       <a href="/" className="login-back-link">← Back to home</a>
       <div className="login-card">
         <div className="login-logo">
-          <img src="/images/saqlyn-logo.png" alt="SAQLYN" className="login-logo-img" />
+          <img src="/images/saqlyn-logo-tagline.png" alt="SAQLYN — Scan, Order, Pay" className="login-logo-img" />
           <p>Restaurant Management System</p>
         </div>
 
