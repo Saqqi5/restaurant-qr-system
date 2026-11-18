@@ -349,13 +349,14 @@ a { color: var(--color-primary); text-decoration: none; }
 .mock-table { background: rgba(7,12,12,0.2); color: #070C0C; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
 .mock-menu { padding: 12px; }
 .mock-item {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; margin-bottom: 8px; background: var(--color-surface2);
   border-radius: 8px; border: 1px solid var(--color-border);
 }
-.mock-item-info { display: flex; flex-direction: column; }
-.mock-item-name { font-size: 12px; font-weight: 600; color: var(--color-text); }
-.mock-item-price { font-size: 11px; color: var(--color-primary); margin-top: 2px; font-weight: 700; }
+/* Name takes the free space; every price sits in one neat right-hand
+   column (same x for every dish), just left of the + button. */
+.mock-item-name { flex: 1; font-size: 12px; font-weight: 600; color: var(--color-text); }
+.mock-item-price { font-size: 11px; color: var(--color-primary); font-weight: 700; white-space: nowrap; }
 .mock-add {
   background: var(--color-primary); color: #070C0C; width: 26px; height: 26px;
   border-radius: 6px; font-size: 16px; font-weight: 700; flex-shrink: 0;

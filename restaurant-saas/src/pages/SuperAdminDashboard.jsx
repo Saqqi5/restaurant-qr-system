@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
@@ -25,9 +26,20 @@ import StatsBar from "../components/admin/StatsBar";
 
 export default function SuperAdminDashboard() {
   const { userProfile, logout, createDefaultStaff } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  // Bottom-bar "➕ New" shortcut lands here with { openCreate: true } —
+  // open the create form at once, then clear the flag so it does not
+  // reopen on the next visit.
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setShowCreate(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [modalType, setModalType] = useState(null); // "staff" | "qr" | "edit" | "domain" | "menu"
   const [searchTerm, setSearchTerm] = useState("");

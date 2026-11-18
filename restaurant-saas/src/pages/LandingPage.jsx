@@ -111,10 +111,8 @@ export default function LandingPage() {
                   ["🥖", "Bruschetta al Pomodoro", "$7.50"],
                 ].map(([emoji, name, price], i) => (
                   <div key={i} className="mock-item">
-                    <div className="mock-item-info">
-                      <span className="mock-item-name">{emoji} {name}</span>
-                      <span className="mock-item-price">{price}</span>
-                    </div>
+                    <span className="mock-item-name">{emoji} {name}</span>
+                    <span className="mock-item-price">{price}</span>
                     <button className="mock-add">+</button>
                   </div>
                 ))}

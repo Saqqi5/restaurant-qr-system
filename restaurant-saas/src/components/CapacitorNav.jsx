@@ -10,6 +10,10 @@ import { useAuth } from "../contexts/AuthContext";
 // Logged IN: the user's own panel, by role — the public tabs (Home, Try
 // Demo, Buy a Plan, Login) must NOT show once signed in. The Logout tab
 // opens the same "Log out?" confirm as the hardware back button.
+// NOTE: the bottom bar is SHORTCUTS, not a copy of the side menu (☰) —
+// it keeps the main page + Logout and fills the rest with quick actions
+// the side menu does not have (New Restaurant, Try Demo), so the two
+// never show the same list twice.
 const PUBLIC_TABS = [
   { label: "Home", icon: "🏠", to: "/" },
   { label: "Try Demo", icon: "🍽️", to: "/demo" },
@@ -20,27 +24,30 @@ const PUBLIC_TABS = [
 const ROLE_TABS = {
   super_admin: [
     { label: "Dashboard", icon: "👑", to: "/admin/super" },
-    { label: "Orders", icon: "📋", to: "/admin/super/orders" },
-    { label: "Settings", icon: "⚙️", to: "/admin/super/settings" },
+    { label: "New", icon: "➕", action: "newRestaurant" },
+    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   general_admin: [
     { label: "Dashboard", icon: "🏪", to: "/admin/restaurant" },
     { label: "Order Taker", icon: "🛎️", to: "/admin/order-taker" },
-    { label: "History", icon: "📋", to: "/admin/history" },
+    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   kitchen: [
     { label: "Kitchen", icon: "👨‍🍳", to: "/admin/kitchen" },
+    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   cash_counter: [
     { label: "Cash", icon: "💳", to: "/admin/cash" },
     { label: "Order Taker", icon: "🛎️", to: "/admin/order-taker" },
+    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   server: [
     { label: "Orders", icon: "🛎️", to: "/admin/server" },
+    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
 };
@@ -167,6 +174,7 @@ export default function CapacitorNav() {
             className={`cap-bottombar-tab${tab.to && location.pathname === tab.to ? " active" : ""}`}
             onClick={() => {
               if (tab.action === "logout") setLogoutOpen(true);
+              else if (tab.action === "newRestaurant") navigate("/admin/super", { state: { openCreate: true } });
               else if (tab.to) navigate(tab.to);
             }}
             aria-label={tab.label}
