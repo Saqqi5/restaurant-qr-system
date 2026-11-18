@@ -69,9 +69,6 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="hero">
-        <div className="hero-brand">
-          <img src="/images/saqlyn-logo-tagline.png" alt="Saqlyn — Scan, Order, Pay" className="hero-logo" />
-        </div>
         <div className="hero-content">
           <div className="hero-eyebrow">
             <span className="hero-eyebrow-dot" />

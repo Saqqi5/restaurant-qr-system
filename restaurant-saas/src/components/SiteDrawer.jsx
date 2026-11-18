@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Browser } from "@capacitor/browser";
 
 const TELEGRAM = "https://t.me/Saqlyndigital";
-const APP_VERSION = "1.5";
+const APP_VERSION = "2.2";
 
 /* Drawer: ONLY the items NOT already in the bottom tab bar.
    Home / Try Demo / Buy a Plan / Staff Login live in the bottom bar,
@@ -110,9 +110,10 @@ export default function SiteDrawer({ open, onClose }) {
             <div className="cap-about-title">Table QR</div>
             <div className="cap-about-version">Version {APP_VERSION}</div>
             <p className="cap-about-text">
-              Scan. Order. Pay. — restaurants ke liye QR code ordering system.
-              Customer table se QR scan kar ke order kare, kitchen aur cash
-              counter par live dekhein, aur payment proof ke saath bill clear karein.
+              Scan. Order. Pay. — a QR code ordering system for restaurants.
+              Customers scan the QR code at their table to order, the kitchen
+              and cash counter see it live, and the bill is cleared with
+              payment proof.
             </p>
             <p className="cap-about-text">Made by Saqlyn Digital Services.</p>
             <button className="cap-about-telegram" onClick={openTelegram}>
