@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Browser } from "@capacitor/browser";
 
 const TELEGRAM = "https://t.me/Saqlyndigital";
-const APP_VERSION = "2.5";
+const APP_VERSION = "2.6";
 
 /* Drawer: ONLY the items NOT already in the bottom tab bar.
    Home / Try Demo / Buy a Plan / Staff Login live in the bottom bar,
