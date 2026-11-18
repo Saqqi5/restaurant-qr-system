@@ -1895,12 +1895,17 @@ body {
   margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
+/* App version in the drawer footer — APP ONLY. The drawer is shared by
+   the website and the app, so the footer is hidden on the website and
+   shown only when the native app adds the `capacitor-app` class. */
 .cap-drawer-foot {
+  display: none;
   padding: 14px 20px;
   font-size: 12px;
   color: rgba(232, 245, 239, 0.5);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
+html.capacitor-app .cap-drawer-foot { display: block; }
 
 /* ── Capacitor native app: About dialog ─────────────────────────────── */
 .cap-about-backdrop {
