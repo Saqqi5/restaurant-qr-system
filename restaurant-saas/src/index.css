@@ -281,6 +281,8 @@ a { color: var(--color-primary); text-decoration: none; }
   transition: background var(--transition), box-shadow var(--transition);
 }
 .nav-login:hover { background: var(--color-primary-dark); box-shadow: 0 4px 16px rgba(32,201,151,0.3); }
+/* Short "Login" label is mobile-only (desktop shows "Staff Login"). */
+.nav-login-short { display: none; }
 
 /* Hero */
 .hero {
@@ -498,9 +500,19 @@ a { color: var(--color-primary); text-decoration: none; }
 
 /* Responsive landing */
 @media (max-width: 900px) {
-  .landing-nav { padding: 14px 20px; }
+  .landing-nav { padding: 14px 20px; min-height: 70px; }
   .nav-links { display: none; }
-  .nav-login { display: none; }
+  /* Login button visible on mobile too (compact "Login" label), logo kept
+     exactly centered via absolute positioning (the button is narrower
+     than the logo, so a grid would push the logo off-centre). The brand
+     is absolute (out of flow), so the button must be pinned to column 3
+     explicitly — otherwise auto-placement drops it into the vacated
+     middle column, overlapping the logo. */
+  .site-menu-btn { grid-column: 1; }
+  .nav-login { grid-column: 3; display: inline-block; padding: 8px 14px; font-size: 13px; }
+  .nav-login-full { display: none; }
+  .nav-login-short { display: inline; }
+  .nav-brand { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
   .hero { grid-template-columns: 1fr; gap: 48px; padding: 60px 20px; text-align: center; }
   .hero-desc { margin: 0 auto 36px; }
   .hero-ctas { justify-content: center; }

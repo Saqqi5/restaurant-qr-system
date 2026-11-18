@@ -63,7 +63,7 @@ export default function LandingPage() {
         <Link to="/" className="nav-brand">
           <img src="/images/saqlyn-logo-tagline.png" alt="SAQLYN — Scan, Order, Pay" className="nav-logo" />
         </Link>
-        <Link to="/login" className="nav-login">Staff Login</Link>
+        <Link to="/login" className="nav-login"><span className="nav-login-full">Staff Login</span><span className="nav-login-short">Login</span></Link>
       </nav>
       <SiteDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
 
