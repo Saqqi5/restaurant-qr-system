@@ -39,6 +39,13 @@ export function AuthProvider({ children }) {
   const accountBlocked = frozenBlocked || accountDisabled;
 
   useEffect(() => {
+    // Never hang the whole site on Firebase: if the auth state has not
+    // arrived within 5s (slow/blocked network to Firebase), render anyway.
+    // The listener stays subscribed, so the user/profile still land when
+    // Firebase answers — the landing page just does not wait for it.
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; setLoading(false); } };
+    const timer = setTimeout(finish, 5000);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
@@ -47,9 +54,9 @@ export function AuthProvider({ children }) {
       } else {
         setUserProfile(null);
       }
-      setLoading(false);
+      finish();
     });
-    return unsubscribe;
+    return () => { clearTimeout(timer); unsubscribe(); };
   }, []);
 
   // ── Multi-branch owner state ──────────────────────────────────────────
