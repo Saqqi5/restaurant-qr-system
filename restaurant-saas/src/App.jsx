@@ -48,10 +48,17 @@ function useDomainRestaurantId(needsLookup) {
 // Scroll to the top on every route change — without this, opening
 // /contact (or /demo, /get-started) from a scrolled-down page keeps the
 // old scroll position and the new page's heading hides under the sticky
-// header.
+// header. When the URL carries a hash (/#demos from the drawer), scroll
+// to that section instead of the top.
 function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    if (hash) {
+      const el = document.getElementById(hash.slice(1));
+      if (el) { el.scrollIntoView(); return; }
+    }
+    window.scrollTo(0, 0);
+  }, [pathname, hash]);
   return null;
 }
 

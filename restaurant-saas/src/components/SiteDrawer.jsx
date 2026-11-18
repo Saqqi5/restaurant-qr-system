@@ -3,15 +3,19 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Browser } from "@capacitor/browser";
 
 const TELEGRAM = "https://t.me/Saqlyndigital";
-const APP_VERSION = "3.2";
+const APP_VERSION = "3.3";
 
 /* Drawer: ONLY the items NOT already in the bottom tab bar.
    Home / Try Demo / Buy a Plan / Staff Login live in the bottom bar,
    so they are NOT repeated here. */
 const MENU_ITEMS = [
-  { label: "Demo Restaurants", icon: "🍽️", href: "#demos" },
-  { label: "Features", icon: "✨", href: "#features" },
-  { label: "Pricing", icon: "🏷️", href: "#pricing" },
+  // Homepage sections — absolute paths ("/#demos"), NOT bare "#demos":
+  // a bare hash keeps the CURRENT page (/get-started#demos) where no such
+  // section exists, so the click did nothing. "/#demos" goes home and
+  // ScrollToTop (App.jsx) scrolls to the section.
+  { label: "Demo Restaurants", icon: "🍽️", href: "/#demos" },
+  { label: "Features", icon: "✨", href: "/#features" },
+  { label: "Pricing", icon: "🏷️", href: "/#pricing" },
 ];
 
 const BOTTOM_ITEMS = [
@@ -71,15 +75,15 @@ export default function SiteDrawer({ open, onClose }) {
         </div>
         {MENU_ITEMS.map((item) => (
           item.href && item.href !== TELEGRAM ? (
-            <a
+            <Link
               key={item.label}
               className="cap-drawer-item"
-              href={item.href}
+              to={item.href}
               onClick={onClose}
             >
               <span className="cap-drawer-icon">{item.icon}</span>
               {item.label}
-            </a>
+            </Link>
           ) : (
             <button
               key={item.label}
