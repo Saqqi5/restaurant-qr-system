@@ -61,7 +61,7 @@ export default function LandingPage() {
           ☰
         </button>
         <Link to="/" className="nav-brand">
-          <img src="/images/saqlyn-logo.png" alt="SAQLYN" className="nav-logo" />
+          <img src="/images/saqlyn-logo-tagline.png" alt="SAQLYN — Scan, Order, Pay" className="nav-logo" />
         </Link>
         <Link to="/login" className="nav-login">Staff Login</Link>
       </nav>
