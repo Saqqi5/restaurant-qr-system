@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PLANS, getPlanLimit, normalizePlan } from "../../config/plans";
 import CurrencySelect from "./CurrencySelect";
 import { downscaleImage } from "../../utils/image";
+import { extractLogoColors } from "../../utils/logoColors";
 
 export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
   const [form, setForm] = useState({
@@ -21,7 +22,14 @@ export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
     const file = e.target.files[0];
     if (!file) return;
     setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file));
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreview(previewUrl);
+    // Auto-pick the theme colours from the logo — the admin can still
+    // change them below. Only for file uploads (a pasted URL is
+    // cross-origin and the canvas cannot read it).
+    extractLogoColors(previewUrl).then((colors) => {
+      if (colors) setForm((f) => ({ ...f, theme: colors }));
+    });
   }
 
   async function handleSubmit(e) {
@@ -65,6 +73,7 @@ export default function CreateRestaurantModal({ onClose, onCreate, initial }) {
                 <img src={logoPreview} alt="Logo preview" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", display: "block", marginBottom: 8 }} />
               )}
               <input type="file" accept="image/*" onChange={handleLogoChange} />
+              <p className="form-hint">Theme colours are picked automatically from your logo — change them below if you like.</p>
               <input type="url" value={form.logo_url} style={{ marginTop: 8 }}
                 onChange={(e) => { setForm({ ...form, logo_url: e.target.value }); setLogoPreview(e.target.value); }}
                 placeholder="…or paste a logo URL https://..." />

@@ -315,11 +315,12 @@ export default function RestaurantSettingsPage() {
                     <option value="flat">Flat amount ({deliveryCurrency})</option>
                   </select>
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
                   <label>{form.promo_type === "flat" ? `Discount Amount (${deliveryCurrency})` : "Discount (%)"}</label>
                   <input
                     type="number" min="0" max={form.promo_type === "flat" ? undefined : 100} step="any"
                     value={form.promo_value}
+                    className="promo-value-input"
                     onChange={(e) => setForm({ ...form, promo_value: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
@@ -416,20 +417,24 @@ export default function RestaurantSettingsPage() {
               <input
                 type="text"
                 value={form.delivery_phone}
-                onChange={(e) => setForm({ ...form, delivery_phone: e.target.value })}
+                inputMode="tel"
+                maxLength={11}
+                onChange={(e) => setForm({ ...form, delivery_phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
                 placeholder="e.g. 0300-1234567"
               />
-              <p className="form-hint">Shown under “For Home Delivery, call us on:”.</p>
+              <p className="form-hint">Pakistan mobile — 11 digits (03XX-XXXXXXX). Extra digits are not accepted. Shown under “For Home Delivery, call us on:”.</p>
             </div>
             <div className="form-group">
               <label>Complaints &amp; Inquiries Number</label>
               <input
                 type="text"
                 value={form.complaints_phone}
-                onChange={(e) => setForm({ ...form, complaints_phone: e.target.value })}
+                inputMode="tel"
+                maxLength={11}
+                onChange={(e) => setForm({ ...form, complaints_phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
                 placeholder="e.g. 0300-7654321"
               />
-              <p className="form-hint">Shown under “For Complaints &amp; Inquiries, call us on:”.</p>
+              <p className="form-hint">Pakistan mobile — 11 digits (03XX-XXXXXXX). Extra digits are not accepted. Shown under “For Complaints &amp; Inquiries, call us on:”.</p>
             </div>
           </div>
         </section>

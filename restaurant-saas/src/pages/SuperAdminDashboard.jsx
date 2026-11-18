@@ -16,6 +16,7 @@ import CreateRestaurantModal from "../components/admin/CreateRestaurantModal";
 import CurrencySelect from "../components/admin/CurrencySelect";
 import { THEME_PRESETS, DEFAULT_THEME } from "../config/themes";
 import { downscaleImage } from "../utils/image";
+import { extractLogoColors } from "../utils/logoColors";
 import StaffModal from "../components/admin/StaffModal";
 import MenuManagerModal from "../components/admin/MenuManagerModal";
 import QRModal from "../components/admin/QRModal";
@@ -508,7 +509,14 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
     const file = e.target.files[0];
     if (!file) return;
     setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file));
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreview(previewUrl);
+    // Auto-pick the theme colours from the new logo — the admin can still
+    // change them below. Only for file uploads (a pasted URL is
+    // cross-origin and the canvas cannot read it).
+    extractLogoColors(previewUrl).then((colors) => {
+      if (colors) setForm((f) => ({ ...f, theme: colors }));
+    });
   }
 
   async function handleSave() {
@@ -561,6 +569,7 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
               <img src={logoPreview} alt="Logo preview" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", display: "block", marginBottom: 8 }} />
             )}
             <input type="file" accept="image/*" onChange={handleLogoChange} />
+            <p className="form-hint">Theme colours are picked automatically from your logo — change them below if you like.</p>
             <input value={form.logo_url} style={{ marginTop: 8 }}
               onChange={(e) => { setForm({ ...form, logo_url: e.target.value }); setLogoPreview(e.target.value); }}
               placeholder="…or paste a logo URL https://..." />
@@ -578,15 +587,17 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
           </div>
           <div className="form-group">
             <label>📞 Orders / Home Delivery Number (shows big on the receipt)</label>
-            <input value={form.delivery_phone}
-              onChange={(e) => setForm({ ...form, delivery_phone: e.target.value })}
+            <input value={form.delivery_phone} inputMode="tel" maxLength={11}
+              onChange={(e) => setForm({ ...form, delivery_phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
               placeholder="e.g. 0300-1234567" />
+            <p className="form-hint">Pakistan mobile — 11 digits (03XX-XXXXXXX). Extra digits are not accepted.</p>
           </div>
           <div className="form-group">
             <label>📞 Complaints &amp; Inquiries Number (shows big on the receipt)</label>
-            <input value={form.complaints_phone}
-              onChange={(e) => setForm({ ...form, complaints_phone: e.target.value })}
+            <input value={form.complaints_phone} inputMode="tel" maxLength={11}
+              onChange={(e) => setForm({ ...form, complaints_phone: e.target.value.replace(/\D/g, "").slice(0, 11) })}
               placeholder="e.g. 0300-7654321" />
+            <p className="form-hint">Pakistan mobile — 11 digits (03XX-XXXXXXX). Extra digits are not accepted.</p>
           </div>
           <div className="form-group">
             <label>🎉 Discount Promo</label>
@@ -606,9 +617,10 @@ function EditRestaurantModal({ restaurant, owners = [], onClose, onSave }) {
                     <option value="flat">Flat amount</option>
                   </select>
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
                   <label>{form.promo_type === "flat" ? "Amount" : "Percent"}</label>
                   <input type="number" min="0" step="any" value={form.promo_value}
+                    className="promo-value-input"
                     onChange={(e) => setForm({ ...form, promo_value: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div className="form-group">

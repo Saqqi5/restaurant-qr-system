@@ -1977,6 +1977,10 @@ html.capacitor-app .cap-drawer-foot { display: block; }
   font-family: var(--font);
 }
 
+/* Discount promo value: a big, easy-to-read digits box (was a cramped
+   half-width cell in the 2-column promo grid). */
+.promo-value-input { font-size: 18px; padding: 12px 14px; min-height: 48px; }
+
 /* ── Capacitor native app: slightly larger UI ─────────────────────────
    User feedback: everything looks a bit small in the app. A small root
    zoom scales text + layout together (web unaffected). */

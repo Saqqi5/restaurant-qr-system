@@ -457,6 +457,14 @@ export async function cancelOrder(restaurantId, orderId, by) {
   });
 }
 
+// Hard-delete an order (super admin only — firestore.rules allow delete on
+// orders only for isSuperAdmin). Unlike cancel, this removes the order
+// document entirely; use it only for test / wrong orders. Cancelled orders
+// stay saved by design, so any order can still be found later.
+export async function deleteOrder(restaurantId, orderId) {
+  await deleteDoc(orderDoc(restaurantId, orderId));
+}
+
 export async function updatePaymentStatus(restaurantId, orderId, paymentMethod) {
   // Payment state and kitchen stage are separate: only the payment fields
   // change here. Setting status: "paid" used to drop the order out of the

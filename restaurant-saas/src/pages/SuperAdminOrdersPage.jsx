@@ -1,7 +1,9 @@
 // SuperAdminOrdersPage.jsx — All Orders across every restaurant, for the
-// super admin (SAQLYN). Nothing is ever hard-deleted: cancelled orders stay
-// saved with status "cancelled" + who cancelled them, so any order can be
-// found later by its order number or by date and handed to the restaurant.
+// super admin (SAQLYN). Cancelled orders stay saved with status "cancelled"
+// + who cancelled them, so any order can be found later by its order number
+// or by date and handed to the restaurant. The super admin can also
+// HARD-DELETE an order (🗑️ per row, with a confirm) — for test / wrong
+// orders only; a deleted order is gone for good.
 //
 // NOTE (verified live 2026-11-16): a collectionGroup query on "orders"
 // returns 403 under the published rules, even though a plain list on one
@@ -10,11 +12,12 @@
 // results client-side. Same filters, no rules change needed.
 import { useState, useEffect } from "react";
 import { getDocs, query, where, orderBy, Timestamp } from "firebase/firestore";
-import { getAllRestaurants, ordersCol, getOrderPayable } from "../config/db";
+import { getAllRestaurants, ordersCol, getOrderPayable, deleteOrder } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import AdminLayout from "../components/admin/AdminLayout";
 import ReceiptModal from "../components/ReceiptModal";
+import ConfirmModal from "../components/admin/ConfirmModal";
 
 function startOfDay(date) {
   const d = new Date(date);
@@ -42,6 +45,8 @@ export default function SuperAdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [slipOrder, setSlipOrder] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     getAllRestaurants().then((list) => {
@@ -94,6 +99,22 @@ export default function SuperAdminOrdersPage() {
       setOrders([]);
     }
     setLoading(false);
+  }
+
+  // Hard-delete (super admin only — the rules allow order deletes only for
+  // isSuperAdmin). Removes the order document entirely; the row drops out
+  // of the list at once. Confirm first — this cannot be undone.
+  async function handleDeleteOrder() {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteOrder(deleteTarget.restaurant_id, deleteTarget.id);
+      setOrders((prev) => prev.filter((o) => !(o.id === deleteTarget.id && o.restaurant_id === deleteTarget.restaurant_id)));
+      setDeleteTarget(null);
+    } catch (e) {
+      alert("Could not delete this order. Please try again.");
+    }
+    setDeleting(false);
   }
 
   const filtered = orders.filter((o) =>
@@ -298,6 +319,7 @@ export default function SuperAdminOrdersPage() {
                 <th>Total</th>
                 <th>Status</th>
                 <th>Payment</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -331,11 +353,32 @@ export default function SuperAdminOrdersPage() {
                       {order.payment_status}
                     </span>
                   </td>
+                  <td>
+                    <button
+                      className="btn-icon-danger"
+                      title="Delete this order permanently"
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(order); }}
+                    >
+                      🗑️
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete order?"
+          message={`Order #${deleteTarget.order_number ?? deleteTarget.id?.slice(-6).toUpperCase()} at ${restMap[deleteTarget.restaurant_id]?.name || "this restaurant"} will be permanently deleted. This cannot be undone — use Cancel instead if the order just needs to be voided.`}
+          confirmLabel={deleting ? "Deleting…" : "Delete"}
+          cancelLabel="Keep it"
+          danger
+          onConfirm={handleDeleteOrder}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
 
       {slipOrder && (
@@ -393,6 +436,11 @@ export default function SuperAdminOrdersPage() {
         .ht-mono { font-family: monospace; font-size: 12px; white-space: nowrap; }
         .ht-items { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-muted); }
         .ht-price { font-weight: 700; color: var(--color-primary); white-space: nowrap; }
+        .btn-icon-danger {
+          background: none; border: 1px solid rgba(224, 82, 82, 0.4);
+          border-radius: 8px; padding: 6px 10px; font-size: 15px; cursor: pointer;
+        }
+        .btn-icon-danger:hover { background: rgba(224, 82, 82, 0.15); }
       `}</style>
     </AdminLayout>
   );
