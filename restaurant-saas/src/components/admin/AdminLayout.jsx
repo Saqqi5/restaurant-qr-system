@@ -134,7 +134,7 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}>
           <aside className="admin-sidebar" onClick={(e) => e.stopPropagation()}>
             <div className="sidebar-header">
-              <div className="sidebar-brand">SAQL<span>YN</span></div>
+              <img src="/images/saqlyn-logo-tagline.png" alt="SAQLYN — Scan, Order, Pay" className="sidebar-brand-img" />
               <button onClick={() => setSidebarOpen(false)}>✕</button>
             </div>
             <nav className="sidebar-nav">
