@@ -5,49 +5,34 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import { App as CapApp } from "@capacitor/app";
 import { useAuth } from "../contexts/AuthContext";
 
-// Bottom tab bar (app only).
-// Logged OUT: the four public destinations.
-// Logged IN: the user's own panel, by role — the public tabs (Home, Try
-// Demo, Buy a Plan, Login) must NOT show once signed in. The Logout tab
-// opens the same "Log out?" confirm as the hardware back button.
-// NOTE: the bottom bar is SHORTCUTS, not a copy of the side menu (☰) —
-// it keeps the main page + Logout and fills the rest with quick actions
-// the side menu does not have (New Restaurant, Try Demo), so the two
-// never show the same list twice.
-const PUBLIC_TABS = [
-  { label: "Home", icon: "🏠", to: "/" },
-  { label: "Try Demo", icon: "🍽️", to: "/demo" },
-  { label: "Buy a Plan", icon: "💰", to: "/get-started" },
-  { label: "Login", icon: "🔑", to: "/login" },
-];
-
+// Bottom tab bar (app only, signed-in users only).
+// After login each user sees ONLY their own role's options — no public
+// website option (Home, Try Demo, Buy a Plan) ever appears here. The
+// ☰ side menu keeps the full navigation; this bar is the role's
+// shortcuts. Logged-out users get NO bottom bar in the app (the app
+// opens on the login page, which has its own ☰ menu).
 const ROLE_TABS = {
   super_admin: [
     { label: "Dashboard", icon: "👑", to: "/admin/super" },
     { label: "New", icon: "➕", action: "newRestaurant" },
-    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   general_admin: [
     { label: "Dashboard", icon: "🏪", to: "/admin/restaurant" },
     { label: "Order Taker", icon: "🛎️", to: "/admin/order-taker" },
-    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   kitchen: [
     { label: "Kitchen", icon: "👨‍🍳", to: "/admin/kitchen" },
-    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   cash_counter: [
     { label: "Cash", icon: "💳", to: "/admin/cash" },
     { label: "Order Taker", icon: "🛎️", to: "/admin/order-taker" },
-    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   server: [
     { label: "Orders", icon: "🛎️", to: "/admin/server" },
-    { label: "Demo", icon: "🍽️", to: "/demo" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
 };
@@ -142,6 +127,13 @@ export default function CapacitorNav() {
             }
             return;
           }
+          // Logged out on the login page (the app's front door) with
+          // nowhere to go back to? Exit the app — "/" would only redirect
+          // straight back to login.
+          if (!currentUserRef.current && path === "/login" && window.history.length <= 1) {
+            CapApp.exitApp();
+            return;
+          }
           if (path !== "/") {
             if (window.history.length > 1) navigate(-1);
             else navigate("/");
@@ -162,8 +154,13 @@ export default function CapacitorNav() {
 
   if (!Capacitor.isNativePlatform()) return null;
 
-  // Signed in → the role's panel tabs. Signed out → the public tabs.
-  const tabs = currentUser ? (ROLE_TABS[role] || ROLE_TABS.general_admin) : PUBLIC_TABS;
+  // Logged out → NO bottom bar in the app. The app opens on the login
+  // page, which has its own ☰ menu; no public tab (Home / Try Demo /
+  // Buy a Plan / Login) is ever shown in the app.
+  if (!currentUser) return null;
+
+  // Signed in → the role's panel tabs.
+  const tabs = ROLE_TABS[role] || ROLE_TABS.general_admin;
 
   return (
     <>

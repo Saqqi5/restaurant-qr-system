@@ -532,6 +532,12 @@ a { color: var(--color-primary); text-decoration: none; }
     radial-gradient(ellipse 62% 52% at 50% 42%, rgba(32,201,151,0.17) 0%, rgba(32,201,151,0.05) 48%, transparent 72%),
     radial-gradient(ellipse at 60% 40%, rgba(15,61,62,0.4) 0%, transparent 70%);
 }
+/* Login page top bar: the ☰ menu button lives here and ONLY here
+   (Buy a Plan / Contact / About). On the website the "Back to home"
+   link sits beside it; in the app it is hidden ("/" goes back to login). */
+.login-topbar { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px; display: flex; align-items: center; gap: 12px; z-index: 3; }
+.login-menu-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--color-border); background: rgba(7, 12, 12, 0.7); color: var(--color-text); font-size: 20px; cursor: pointer; flex-shrink: 0; }
+.login-topbar .login-back-link { position: static; }
 .login-card {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: 20px; padding: 36px 32px; width: 100%; max-width: 360px;
@@ -1898,6 +1904,21 @@ body {
 .cap-drawer-item.active { color: #20c997; background: rgba(32, 201, 151, 0.08); }
 .cap-drawer-icon { font-size: 20px; }
 .cap-drawer-ext { margin-left: auto; font-size: 14px; opacity: 0.6; }
+
+/* Login drawer detail panels (Buy a Plan / Contact / About) — the
+   details open inside the drawer, never as a separate page. */
+.login-drawer-panel { padding: 6px 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.login-drawer-title { font-size: 17px; font-weight: 800; color: var(--color-text); margin: 6px 0 2px; }
+.login-drawer-sub { font-size: 13px; color: var(--color-muted); margin: 0 0 4px; }
+.login-drawer-plan { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; width: 100%; padding: 12px 14px; background: var(--color-surface2); border: 1px solid var(--color-border); border-radius: 10px; color: var(--color-text); cursor: pointer; }
+.login-drawer-plan-name { font-size: 15px; font-weight: 800; }
+.login-drawer-plan-price { font-size: 14px; font-weight: 700; color: var(--color-primary); }
+.login-drawer-plan-spec { font-size: 12px; color: var(--color-muted); }
+.login-drawer-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: var(--color-surface2); border: 1px solid var(--color-border); border-radius: 10px; color: var(--color-text); cursor: pointer; text-align: left; }
+.login-drawer-row-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.login-drawer-row-label { font-size: 14px; font-weight: 700; }
+.login-drawer-row-detail { font-size: 12px; color: var(--color-muted); }
+.login-drawer-text { font-size: 14px; line-height: 1.6; color: var(--color-text); margin: 0; }
 .cap-drawer-bottom {
   margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.08);

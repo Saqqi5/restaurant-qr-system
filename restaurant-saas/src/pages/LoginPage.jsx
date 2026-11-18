@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { useAuth } from "../contexts/AuthContext";
+import LoginDrawer from "../components/LoginDrawer";
 
 // Native Autofill plugin (registered in MainActivity): commit() asks
 // Android to show the Google "Save password?" prompt after a successful
@@ -21,9 +22,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isNative = Capacitor.isNativePlatform();
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -57,7 +60,17 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      <a href="/" className="login-back-link">← Back to home</a>
+      {/* The login page is the app's front door: a ☰ menu (Buy a Plan,
+          Contact, About) lives here and ONLY here. "Back to home" is a
+          website link — in the app "/" redirects straight back to login,
+          so it is hidden there. */}
+      <div className="login-topbar">
+        <button className="login-menu-btn" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
+          ☰
+        </button>
+        {!isNative && <a href="/" className="login-back-link">← Back to home</a>}
+      </div>
+      <LoginDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <div className="login-card">
         <div className="login-logo">
           <img src="/images/saqlyn-logo-tagline.png" alt="SAQLYN — Scan, Order, Pay" className="login-logo-img" />

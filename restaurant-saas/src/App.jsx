@@ -8,7 +8,8 @@
  */
 import { BrowserRouter, Routes, Route, Navigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { AuthProvider } from "./contexts/AuthContext";
+import { Capacitor } from "@capacitor/core";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
 import { resolveTenant, getCustomDomainRestaurantId } from "./config/tenantResolver";
 
@@ -100,6 +101,24 @@ function HomeRoute() {
   return <LandingPage />;
 }
 
+// Native app only: the app opens straight on the login page — the public
+// landing page is never shown in the app. Signed-in users go to their own
+// dashboard instead. (The website keeps the landing page on "/".)
+const ROLE_REDIRECTS = {
+  super_admin: "/admin/super",
+  general_admin: "/admin/restaurant",
+  kitchen: "/admin/kitchen",
+  cash_counter: "/admin/cash",
+  server: "/admin/server",
+};
+
+function NativeRoot() {
+  const { currentUser, role, loading } = useAuth();
+  if (loading) return <LoadingSplash />;
+  if (currentUser) return <Navigate to={ROLE_REDIRECTS[role] || "/login"} replace />;
+  return <Navigate to="/login" replace />;
+}
+
 // Admin pages don't need restaurant from URL — they get it from user profile
 function WithAdminTenant({ children }) {
   const baseConfig = resolveTenant();
@@ -113,7 +132,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           {/* ── Public ─────────────────────────────────────── */}
-          <Route path="/" element={<HomeRoute />} />
+          <Route path="/" element={Capacitor.isNativePlatform() ? <NativeRoot /> : <HomeRoute />} />
           <Route path="/get-started" element={<GetStarted />} />
           <Route path="/demo" element={<DemoPage />} />
           <Route path="/contact" element={<ContactPage />} />
