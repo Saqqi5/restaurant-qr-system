@@ -46,6 +46,15 @@ export default function LoginPage() {
     setLoading(false);
   }
 
+  // When the keyboard opens, bring the tapped field up above it: scroll
+  // it into the middle of the visible area once the keyboard has settled.
+  function scrollFieldIntoView(e) {
+    const el = e.target;
+    setTimeout(() => {
+      try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (err) { /* ignore */ }
+    }, 350);
+  }
+
   return (
     <div className="login-page">
       <a href="/" className="login-back-link">← Back to home</a>
@@ -68,6 +77,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onFocus={scrollFieldIntoView}
               placeholder="your@email.com"
               required
               autoComplete="email"
@@ -82,6 +92,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onFocus={scrollFieldIntoView}
               placeholder="••••••••"
               required
               autoComplete="current-password"
