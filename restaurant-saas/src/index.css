@@ -525,8 +525,15 @@ a { color: var(--color-primary); text-decoration: none; }
 
 /* ═══ LOGIN PAGE ════════════════════════════════════════════════ */
 .login-page {
-  min-height: 100vh; display: flex; flex-direction: column;
-  position: relative; overflow-y: auto; padding: 20px;
+  /* Fixed to the VISIBLE viewport (his 2026-11-19 order — the box sat
+     low on his phone): 100vh in the app counts the area behind the
+     system bars, so a min-height page centres the card below the real
+     screen centre. position: fixed + inset: 0 makes the page exactly
+     the screen the user sees, so margin: auto on the card centres it
+     there. overflow-y stays so the keyboard case still scrolls. */
+  position: fixed; inset: 0;
+  min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+  overflow-y: auto; padding: 20px;
   /* Soft SAQLYN-green wash behind the card, over the deep teal glow. */
   background:
     radial-gradient(ellipse 62% 52% at 50% 42%, rgba(32,201,151,0.17) 0%, rgba(32,201,151,0.05) 48%, transparent 72%),
@@ -534,8 +541,10 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 /* Login page top bar: the ☰ menu button lives here and ONLY here
    (Buy a Plan / Contact / About). On the website the "Back to home"
-   link sits beside it; in the app it is hidden ("/" goes back to login). */
-.login-topbar { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px; display: flex; align-items: center; gap: 12px; z-index: 3; }
+   link sits beside it; in the app it is hidden ("/" goes back to login).
+   FIXED (his 2026-11-19 order) — it stays in one place at the top-left
+   and never moves when the login box or the page scrolls. */
+.login-topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 16px; right: 16px; display: flex; align-items: center; gap: 12px; z-index: 3; }
 .login-menu-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--color-border); background: rgba(7, 12, 12, 0.7); color: var(--color-text); font-size: 20px; cursor: pointer; flex-shrink: 0; }
 .login-topbar .login-back-link { position: static; }
 .login-card {
