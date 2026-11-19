@@ -536,13 +536,18 @@ export default function RestaurantSettingsPage() {
         onRequested={(domain) => setDomainInfo((prev) => ({ ...prev, domain_request: domain }))}
       />
 
-      {/* ── Upgrade Plan (buy a plan, pay SAQLYN, administrator verifies) ── */}
-      <PlanUpgradeSection
-        restaurantId={restaurantId}
-        restaurantName={form.name || "My Restaurant"}
-        currentPlan={plan}
-        platformSettings={platformLimits}
-      />
+      {/* ── Upgrade Plan (buy a plan, pay SAQLYN, administrator verifies) ──
+          Only the restaurant admin buys a plan — the branch manager cannot
+          (plan_payments create needs general_admin), so the section is
+          hidden for them instead of showing a button that fails. */}
+      {userProfile?.role !== "branch_manager" && (
+        <PlanUpgradeSection
+          restaurantId={restaurantId}
+          restaurantName={form.name || "My Restaurant"}
+          currentPlan={plan}
+          platformSettings={platformLimits}
+        />
+      )}
 
       <style>{`
         .settings-page { max-width: 680px; }

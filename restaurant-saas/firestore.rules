@@ -51,12 +51,6 @@ service cloud.firestore {
         isOwnRestaurant(restaurantId);
     }
 
-    function isStaff(restaurantId) {
-      return isAuthenticated() &&
-        isOwnRestaurant(restaurantId) &&
-        getUserData().role in ['general_admin', 'kitchen', 'cash_counter', 'server'];
-    }
-
     function isKitchen(restaurantId) {
       return isAuthenticated() &&
         getUserData().role == 'kitchen' &&
@@ -146,14 +140,22 @@ service cloud.firestore {
         : 20;
     }
     // A restaurant's general admin may create staff accounts for their OWN
-    // restaurant (kitchen / cash / server / admin) — never a super admin.
+    // restaurant (kitchen / cash / server / admin) — never a super admin,
+    // never a branch manager, and never with extra privileges. The new
+    // login gets exactly one restaurant (restaurant_id) — it may NOT
+    // carry restaurant_ids (multi-branch access), is_platform_owner
+    // (undeletable + hidden) or is_demo_user. Only the super admin sets
+    // those (branch managers are created by the super admin).
     // (The staff-login cap itself is enforced in the app; rules cannot count
     // documents in a collection.)
     function isStaffCreateAllowed() {
       return isAuthenticated()
         && getUserData().role == 'general_admin'
         && isOwnRestaurant(request.resource.data.restaurant_id)
-        && request.resource.data.role in ['general_admin', 'kitchen', 'cash_counter', 'server'];
+        && request.resource.data.role in ['general_admin', 'kitchen', 'cash_counter', 'server']
+        && !('restaurant_ids' in request.resource.data)
+        && request.resource.data.get('is_platform_owner', false) == false
+        && request.resource.data.get('is_demo_user', false) == false;
     }
     // Same, for removing a staff member: the EXISTING record must belong to
     // the caller's own restaurant and be a staff role (never super admin).
@@ -178,11 +180,6 @@ service cloud.firestore {
     // intended flow in Settings and it passes the update rule below.
     function customDomainUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['custom_domain']);
-    }
-    // A user may never disable or enable their own login — only the super
-    // admin touches is_disabled.
-    function disabledUnchanged() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['is_disabled']);
     }
     function tableCountWithinLimit() {
       let oldCount = resource.data.get('table_count', 0);
@@ -209,9 +206,14 @@ service cloud.firestore {
             && isOwnRestaurant(resource.data.restaurant_id))
       );
       allow create: if isSuperAdmin() || isStaffCreateAllowed();
-      // Super admin can change anything (incl. disabling a login). A user
-      // may update their own record but never their own disabled flag.
-      allow update: if isSuperAdmin() || (request.auth.uid == userId && disabledUnchanged());
+      // Only the super admin may change a users record. A user used to be
+      // able to update their OWN record (only is_disabled was blocked) —
+      // that let any staff login promote themself by writing role =
+      // 'super_admin' (or restaurant_ids for another restaurant) onto
+      // their own doc. The app never updates a user's own doc from the
+      // client (disable / link / unlink are all super-admin flows), so
+      // super-admin-only is safe and closes the escalation.
+      allow update: if isSuperAdmin();
       allow delete: if isSuperAdmin() || isStaffDeleteAllowed();
     }
 
@@ -254,16 +256,20 @@ service cloud.firestore {
 
         // Staff status/payment updates with constrained values.
         // The kitchen may move an order along (confirm → serve) but may
-        // NEVER cancel/delete one: a wrong confirmed order is deleted by
-        // the cashier or the admin only (his 2026-11-16 decision).
-        // A per-order manual discount (manual_discount_* fields) may be
-        // set or removed ONLY by the restaurant admin or the super admin
-        // (his 2026-11-17 decision) — the cashier and the kitchen can
-        // still move statuses, they just cannot touch the discount.
+        // NEVER cancel/delete one, and may NEVER touch the payment state
+        // (only the admin and the cashier mark an order paid — a kitchen
+        // login marking orders paid would inflate revenue): the kitchen
+        // must leave payment_status exactly as it was. A wrong confirmed
+        // order is deleted by the cashier or the admin only (his 2026-11-16
+        // decision). A per-order manual discount (manual_discount_* fields)
+        // may be set or removed ONLY by the restaurant admin or the super
+        // admin (his 2026-11-17 decision) — the cashier and the kitchen
+        // can still move statuses, they just cannot touch the discount.
         allow update: if isOrderUpdateAllowed(restaurantId)
           && isOrderStatusValid(request.resource.data.status)
           && isPaymentStatusValid(request.resource.data.payment_status)
           && (request.resource.data.status != 'cancelled' || !isKitchen(restaurantId))
+          && (request.resource.data.payment_status == resource.data.payment_status || !isKitchen(restaurantId))
           && request.resource.data.total == resource.data.total
           && request.resource.data.items == resource.data.items
           && request.resource.data.table_number == resource.data.table_number
@@ -271,14 +277,16 @@ service cloud.firestore {
 
         // A server may cancel (soft-delete) an order, but ONLY while it is
         // still pending — before the kitchen confirms it. Nothing else may
-        // change: same payment state, same bill, same items, same table.
+        // change: same payment state, same bill, same items, same table,
+        // and no discount (discounts are admin / super-admin only).
         allow update: if isServer(restaurantId)
           && resource.data.status == 'pending'
           && request.resource.data.status == 'cancelled'
           && request.resource.data.payment_status == resource.data.payment_status
           && request.resource.data.total == resource.data.total
           && request.resource.data.items == resource.data.items
-          && request.resource.data.table_number == resource.data.table_number;
+          && request.resource.data.table_number == resource.data.table_number
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['manual_discount_type', 'manual_discount_value', 'manual_discount_amount', 'manual_discount_by', 'manual_discount_by_name', 'manual_discount_at']);
 
         // A branch manager may cancel an order (any status except already
         // cancelled) but may NEVER delete one, change the bill, the
@@ -297,7 +305,8 @@ service cloud.firestore {
         // pending — before the kitchen confirms it. The canceller must prove
         // they placed it: cancelled_by must equal the session id that
         // created the order (created_by, a "cust_…" id). Nothing else may
-        // change: same payment state, same bill, same items, same table.
+        // change: same payment state, same bill, same items, same table,
+        // and no discount.
         // Honest limit: order docs are readable by design (table tracking),
         // so anyone who reads an order can also see its created_by — this
         // is the same public-read trade-off the site already accepts, not a
@@ -310,7 +319,8 @@ service cloud.firestore {
           && request.resource.data.payment_status == resource.data.payment_status
           && request.resource.data.total == resource.data.total
           && request.resource.data.items == resource.data.items
-          && request.resource.data.table_number == resource.data.table_number;
+          && request.resource.data.table_number == resource.data.table_number
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['manual_discount_type', 'manual_discount_value', 'manual_discount_amount', 'manual_discount_by', 'manual_discount_by_name', 'manual_discount_at']);
 
         // Delete: the super admin, or the restaurant's own general admin
         // (his 2026-11-19 decision — so a restaurant admin can remove a
@@ -343,14 +353,20 @@ service cloud.firestore {
         (isPaymentStaff() && isOwnRestaurant(resource.data.restaurantId))
       );
 
-      // Cash counter and admin can verify (update) payments
+      // Cash counter and admin can verify (update) payments — pending to
+      // verified only, for their own restaurant (isOwnRestaurant covers a
+      // multi-branch owner's branches, not just the first one). Verifying
+      // changes ONLY the status (+ verifiedAt): the amount and table
+      // number are fixed at creation and may never be rewritten here.
       allow update: if isAuthenticated() && (
         isSuperAdmin() ||
         (
           getUserData().role in ['general_admin', 'cash_counter'] &&
-          getUserData().restaurant_id == resource.data.restaurantId &&
+          isOwnRestaurant(resource.data.restaurantId) &&
           request.resource.data.status == 'verified' &&
-          resource.data.status == 'pending'
+          resource.data.status == 'pending' &&
+          request.resource.data.amount == resource.data.amount &&
+          request.resource.data.tableNumber == resource.data.tableNumber
         )
       );
 
