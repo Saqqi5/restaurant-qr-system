@@ -5,8 +5,8 @@ import {
   subscribeToMenu, subscribeToOrders, subscribeToRestaurant,
   createMenuItem, updateMenuItem, deleteMenuItem, restoreMenuItem, createDemoLead,
   getRestaurantUsers, subscribeToPlatformSettings,
-  subscribeToRestaurantPayments,
-  subscribeToReviews,
+  subscribeToRestaurantPayments, subscribeToMultiOrders, subscribeToMultiPayments,
+  subscribeToReviews, subscribeToMultiReviews,
   verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
@@ -15,6 +15,7 @@ import { hideDemoDish, unhideDemoDish, getDemoHiddenDishes } from "../utils/sess
 import { formatExpiryDate, getPlanLabel, getMenuItemLimit, getBackupDays, getExpiryInfo, isOrderWithinRetention } from "../config/plans";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import MenuItemModal from "../components/admin/MenuItemModal";
 import OrdersTable from "../components/admin/OrdersTable";
 import StatsBar from "../components/admin/StatsBar";
@@ -30,23 +31,35 @@ import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 const ALL_TABS = ["menu", "orders", "payments", "analytics", "reviews", "staff", "qr"];
 // The branch manager sits ABOVE the restaurant admin (his 2026-11-19
 // decision) — they get every tab the admin has (menu, orders, payments,
-// analytics, staff, QR) plus the branch switcher, one branch at a time.
+// analytics, staff, QR) plus the branch switcher and All branches.
 
 export default function GeneralAdminDashboard() {
-  const { userProfile, restaurantId, logout, trialInfo, accessibleRestaurantIds } = useAuth();
+  const { userProfile, restaurantId, logout, trialInfo, branches, accessibleRestaurantIds } = useAuth();
   const TABS = ALL_TABS;
-  // One branch at a time — there is no combined "all branches" view
-  // (removed his 2026-11-19 order). A multi-branch manager switches
-  // branches from the top bar; every tab here shows the active branch.
+  // "all" = the combined All-branches view (one login, every branch).
+  // Menu, staff and QR are per-branch, so those tabs ask for a branch;
+  // orders, payments and analytics merge across branches.
+  const isAllBranches = restaurantId === "all";
   const accessibleKey = accessibleRestaurantIds.join(",");
-  const currency = useRestaurantCurrency(restaurantId);
+  const currency = useRestaurantCurrency(isAllBranches ? null : restaurantId);
   const [activeTab, setActiveTab] = useState("menu");
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
   // Admin alert: EVERY new order — QR customer, staff Order Taker or
-  // delivery — pings + toasts here too (his 2026-11-19 order).
-  const { toasts, dismiss } = useNotifications(restaurantId, true, { onServed: true });
+  // delivery — pings + toasts here too (his 2026-11-19 order). In the
+  // all-branches view it listens to every branch, with the branch name
+  // in the toast.
+  const branchNames = useMemo(() => {
+    const map = {};
+    branches.forEach((b) => { map[b.id] = b.name; });
+    return map;
+  }, [branches]);
+  const { toasts, dismiss } = useNotifications(
+    isAllBranches ? accessibleRestaurantIds : restaurantId,
+    true,
+    { restaurantNames: branchNames, onServed: true }
+  );
   // Orders summary filter (his 2026-11-19 order): tap a stage box above
   // the orders list to show only that stage; null = all orders. (The
   // counts live below, next to visibleOrders — they read it, so they must
@@ -83,6 +96,18 @@ export default function GeneralAdminDashboard() {
 
   useEffect(() => {
     if (!restaurantId) return;
+    if (isAllBranches) {
+      // Combined view: live orders + proofs from every branch, merged.
+      // No single menu / staff / restaurant doc — those tabs ask for a branch.
+      const unsubOrders = subscribeToMultiOrders(accessibleRestaurantIds, setOrders);
+      const unsubPayments = subscribeToMultiPayments(accessibleRestaurantIds, setPayments);
+      const unsubReviews = subscribeToMultiReviews(accessibleRestaurantIds, setReviews);
+      setMenuItems([]);
+      setStaff([]);
+      setRestaurant(null);
+      setLoading(false);
+      return () => { unsubOrders(); unsubPayments(); unsubReviews(); };
+    }
     const unsubMenu = subscribeToMenu(restaurantId, (items) => {
       setMenuItems(items);
       setLoading(false);
@@ -98,14 +123,19 @@ export default function GeneralAdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId, accessibleKey]);
 
-  // Branch doc by id — so an order can find its branch's name, currency
-  // and plan. One branch at a time: the active branch's doc.
+  // Branch docs by id — so every merged order/payment can find its
+  // branch's name, currency and plan. Single-branch mode: the one doc.
   const branchMap = useMemo(() => {
     const map = {};
-    if (restaurant) map[restaurantId] = restaurant;
+    if (isAllBranches) branches.forEach((b) => { map[b.id] = b; });
+    else if (restaurant) map[restaurantId] = restaurant;
     return map;
-  }, [restaurant, restaurantId]);
+  }, [isAllBranches, branches, restaurant, restaurantId]);
   const branchFor = (x) => branchMap[x?._restaurantId || x?.restaurantId || restaurantId] || {};
+  // Branches whose plan is about to end (combined view has no single trial).
+  const expiringBranches = isAllBranches
+    ? branches.filter((b) => getExpiryInfo(b)?.expiringSoon)
+    : [];
 
   async function handleVerifyPayment(payment) {
     setVerifyingId(payment.id);
@@ -279,17 +309,30 @@ export default function GeneralAdminDashboard() {
   const todayRevenue = todayOrders
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + getOrderPayable(o).payable, 0);
+  // Combined view: today's revenue per branch, each in its own currency.
+  const todayRevenueByBranch = isAllBranches
+    ? todayOrders
+        .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
+        .reduce((acc, o) => {
+          const bid = o._restaurantId || restaurantId;
+          acc[bid] = (acc[bid] || 0) + getOrderPayable(o).payable;
+          return acc;
+        }, {})
+    : {};
   // Retention window (his 2026-11-16 order): the admin sees only orders
   // newer than their plan's backup window. Nothing is deleted — the
   // super admin still sees everything. todayOrders/todayRevenue are
   // today-only so they are unaffected; the receipt lookup for a
   // just-verified payment keeps the full list so its slip always opens.
+  // In the combined view each branch keeps its OWN plan's window.
   // (Declared BEFORE ordersForTable: it reads visibleOrders, and a const
   // used before its declaration throws and blanks the whole dashboard.)
   const retentionDays = getBackupDays(trialInfo?.plan || "basic", platformLimits);
   const planForOrder = (o) => branchFor(o).plan || trialInfo?.plan || "basic";
   const visibleOrders = orders.filter((o) => isOrderWithinRetention(o, planForOrder(o), platformLimits));
-  const retentionNote = `Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`;
+  const retentionNote = isAllBranches
+    ? "Each branch keeps its own plan's history (Basic 30 days, Standard 90 days, Premium 1 year). Older orders are kept by the administrator."
+    : `Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`;
 
   // Orders table rows carry their branch (name + currency) in the
   // combined view, so the table can show them per row.
@@ -338,7 +381,19 @@ export default function GeneralAdminDashboard() {
           will be blocked after this date.
         </div>
       )}
-      <StatsBar stats={[
+      {isAllBranches && expiringBranches.length > 0 && (
+        <div className="trial-banner">
+          ⚠️ {expiringBranches.map((b) => `${b.name} (${getPlanLabel(b.plan)} ends ${formatExpiryDate(getExpiryInfo(b).expiresAt)})`).join(" • ")}.
+          To continue, please pay the subscription fee — otherwise logins for that branch will be blocked after this date.
+        </div>
+      )}
+      <StatsBar stats={isAllBranches ? [
+        { label: "Branches", value: branches.length, icon: "🏪" },
+        { label: "Tables Active", value: `${activeTables} / ${branches.reduce((s, b) => s + (b.table_count || 0), 0)}`, icon: "🪑" },
+        { label: "Today's Orders", value: todayOrders.length, icon: "📋" },
+        ...branches.map((b) => ({ label: `Revenue — ${b.name}`, value: formatPrice(todayRevenueByBranch[b.id] || 0, b.currency || "$"), icon: "💰" })),
+        { label: "Pending Orders", value: pendingOrders, icon: "⏳", alert: pendingOrders > 5 },
+      ] : [
         { label: "Menu Items", value: menuItems.length, icon: "🍽️" },
         { label: "Tables Active", value: tableCount > 0 ? `${activeTables} / ${tableCount}` : activeTables, icon: "🪑" },
         { label: "Today's Orders", value: todayOrders.length, icon: "📋" },
@@ -379,6 +434,10 @@ export default function GeneralAdminDashboard() {
       {/* Menu Tab */}
       {activeTab === "menu" && (
         <div className="tab-content">
+          {isAllBranches ? (
+            <BranchRequired title="Menu is per branch" />
+          ) : (
+          <>
           <div className="content-header">
             <h3>Menu Management</h3>
             <button className="btn-primary" onClick={handleAddItem}>
@@ -474,6 +533,8 @@ export default function GeneralAdminDashboard() {
               </button>
             </div>
           )}
+          </>
+          )}
         </div>
       )}
 
@@ -484,7 +545,7 @@ export default function GeneralAdminDashboard() {
           {/* Stage summary (his 2026-11-19 order): one box per stage with
               its count — tap a box to show only that stage's orders. */}
           <OrderStatusSummary orders={visibleOrders} selected={stageFilter} onSelect={setStageFilter} />
-          <OrdersTable orders={ordersShown} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} />
+          <OrdersTable orders={ordersShown} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} showBranch={isAllBranches} />
         </div>
       )}
 
@@ -572,7 +633,16 @@ export default function GeneralAdminDashboard() {
       {activeTab === "analytics" && (
         <div className="tab-content">
           <p style={{ fontSize: "13px", color: "var(--color-muted)", margin: "0 0 12px" }}>{retentionNote}</p>
-          <AnalyticsPanel orders={visibleOrders} menuItems={menuItems} currency={currency} />
+          {isAllBranches ? (
+            branches.map((b) => (
+              <div key={b.id} style={{ marginBottom: 28 }}>
+                <h3 style={{ fontFamily: "var(--font)", fontWeight: 700, fontSize: 16, marginBottom: 12 }}>{b.name}</h3>
+                <AnalyticsPanel orders={visibleOrders.filter((o) => (o._restaurantId || restaurantId) === b.id)} menuItems={[]} currency={b.currency || "$"} />
+              </div>
+            ))
+          ) : (
+            <AnalyticsPanel orders={visibleOrders} menuItems={menuItems} currency={currency} />
+          )}
         </div>
       )}
 
@@ -607,6 +677,7 @@ export default function GeneralAdminDashboard() {
                       <span style={{ fontSize: 12, color: "var(--color-muted)" }}>
                         {r.created_at?.toDate ? r.created_at.toDate().toLocaleString() : ""}
                         {r.table_number ? ` · Table ${r.table_number}` : ""}
+                        {isAllBranches && r._restaurantId ? ` · ${branchMap[r._restaurantId]?.name || ""}` : ""}
                       </span>
                     </div>
                     {r.comment && <div style={{ fontSize: 14, marginTop: 6 }}>{r.comment}</div>}
@@ -621,6 +692,10 @@ export default function GeneralAdminDashboard() {
       {/* Staff Tab */}
       {activeTab === "staff" && (
         <div className="tab-content">
+          {isAllBranches ? (
+            <BranchRequired title="Staff is per branch" />
+          ) : (
+          <>
           <div className="content-header">
             <h3>Staff Management</h3>
             <button className="btn-primary" onClick={() => setShowStaffModal(true)}>
@@ -641,15 +716,21 @@ export default function GeneralAdminDashboard() {
               </div>
             ))}
           </div>
+          </>
+          )}
         </div>
       )}
 
       {/* QR Tab */}
       {activeTab === "qr" && (
         <div className="tab-content">
+          {isAllBranches ? (
+            <BranchRequired title="QR codes are per branch" />
+          ) : (
           <button className="btn-primary" onClick={() => setShowQrModal(true)}>
             Open QR Generator
           </button>
+          )}
         </div>
       )}
 

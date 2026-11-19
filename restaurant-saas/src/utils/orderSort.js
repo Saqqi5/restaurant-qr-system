@@ -13,6 +13,39 @@ export function orderBookedMs(order) {
   return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
 }
 
+// Payment-overdue timing (his 2026-11-19 order): an order that was
+// served but still unpaid turns YELLOW at once, and RED once 20 minutes
+// have passed since it was served without payment. served_at is stamped
+// when the kitchen marks the order served; orders served before that
+// field existed fall back to updated_at (last status change); with
+// neither, the order stays yellow — the overdue state must be proven,
+// never guessed.
+export const PAYMENT_OVERDUE_MS = 20 * 60 * 1000;
+
+function timestampMs(v) {
+  if (!v) return null;
+  if (typeof v.toDate === "function") return v.toDate().getTime();
+  if (typeof v === "number") return v;
+  if (v.seconds) return v.seconds * 1000;
+  return null;
+}
+
+export function servedAtMs(order) {
+  return timestampMs(order?.served_at) ?? timestampMs(order?.updated_at);
+}
+
+// "pending" (yellow) | "overdue" (red) | null (not a payment-pending order).
+// Ready + unpaid is pending (yellow) — the 20-minute clock starts only
+// once the order is SERVED. Paid or cancelled orders are never pending.
+export function paymentState(order, nowMs = Date.now()) {
+  if (!order || order.status === "cancelled" || order.payment_status === "paid") return null;
+  if (!["ready", "served"].includes(order.status)) return null;
+  if (order.status === "ready") return "pending";
+  const served = servedAtMs(order);
+  if (served === null) return "pending";
+  return nowMs - served > PAYMENT_OVERDUE_MS ? "overdue" : "pending";
+}
+
 // Oldest booked first — the serving order for ready orders.
 export function sortByBookedAt(a, b) {
   return orderBookedMs(a) - orderBookedMs(b);

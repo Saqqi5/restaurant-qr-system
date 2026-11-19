@@ -250,7 +250,7 @@ export default function SuperAdminDashboard() {
           <button className="btn-primary" onClick={() => setShowManagerModal(true)}>+ New Branch Manager</button>
         </div>
         <p className="form-hint" style={{ marginTop: 8 }}>
-          A manager login you create and assign to specific branches. They sit above the restaurant admin — they get every option the admin has (Menu, Orders, Payments, Revenue, Staff, QR, Settings, Order Taker, Tables) plus branch switching, so they can manage all their branches one at a time. The single-restaurant admin never sees branch switching.
+          A manager login you create and assign to specific branches. They sit above the restaurant admin — they get every option the admin has (Menu, Orders, Payments, Revenue, Staff, QR, Settings, Order Taker, Tables) plus branch switching and “All branches”, so they can manage all their branches. The single-restaurant admin never sees branch switching.
         </p>
         {managers.length === 0 ? (
           <p className="form-hint">No branch managers yet.</p>

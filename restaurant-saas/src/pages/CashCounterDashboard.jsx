@@ -7,10 +7,12 @@ import {
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import ReceiptModal from "../components/ReceiptModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
 import OrderStatusSummary, { matchesStage } from "../components/admin/OrderStatusSummary";
-import { sortOrdersForDisplay } from "../utils/orderSort";
+import { sortOrdersForDisplay, paymentState } from "../utils/orderSort";
+import { useNow } from "../hooks/useNow";
 import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
 export default function CashCounterDashboard() {
@@ -33,6 +35,9 @@ export default function CashCounterDashboard() {
   // order): tap e.g. Payment pending to show only those orders. Null =
   // all orders (the payment tabs below still filter by payment state).
   const [stageFilter, setStageFilter] = useState(null);
+  // Live clock (30s): a served order flips yellow → red on its own 20
+  // minutes after serving, with no refresh.
+  const now = useNow();
   // New customer order? Ping + toast at once, so the cashier can confirm
   // the payment the moment it lands (his 2026-11-19 order). onServed:
   // the moment an order is served and still unpaid, the counter hears
@@ -56,7 +61,7 @@ export default function CashCounterDashboard() {
   }
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     const unsubOrders = subscribeToOrders(restaurantId, setOrders);
     const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
     return () => { unsubOrders(); unsubPayments(); };
@@ -133,6 +138,20 @@ export default function CashCounterDashboard() {
   const unpaidCount = orders.filter((o) => o.payment_status === "unpaid" && o.status !== "pending" && o.status !== "cancelled").length;
   const pendingProofs = payments.filter(p => p.status === "pending");
   const verifiedProofs = payments.filter(p => p.status === "verified");
+
+  // The cash counter is one branch at a time — "All branches" picks a branch.
+  if (restaurantId === "all") {
+    return (
+      <AdminLayout
+        title="Cash Counter"
+        subtitle="Payment Management"
+        onLogout={logout}
+        userProfile={userProfile}
+      >
+        <BranchRequired title="Cash counter is per branch" />
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout
@@ -221,10 +240,15 @@ export default function CashCounterDashboard() {
                 <p>No {filter} orders</p>
               </div>
             )}
-            {filteredOrders.map((order) => (
+            {filteredOrders.map((order) => {
+              // Served (or ready) but still unpaid: YELLOW at once, RED
+              // once 20 minutes have passed since serving without payment
+              // (his 2026-11-19 order).
+              const payState = paymentState(order, now);
+              return (
               <div
                 key={order.id}
-                className={`order-card ${selectedOrder?.id === order.id ? "selected" : ""} ${["ready", "served"].includes(order.status) && order.payment_status !== "paid" ? "payment-pending" : ""}`}
+                className={`order-card ${selectedOrder?.id === order.id ? "selected" : ""} ${payState === "pending" ? "payment-pending" : payState === "overdue" ? "payment-overdue" : ""}`}
                 onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
               >
                 <div className="order-card-header">
@@ -357,7 +381,8 @@ export default function CashCounterDashboard() {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

@@ -63,17 +63,22 @@ export function AuthProvider({ children }) {
   // An owner (general_admin) can run 2+ branches from ONE login: their
   // users doc keeps restaurant_id (first branch) + restaurant_ids (every
   // branch). activeRestaurantId is the branch the dashboards show — a
-  // branch id, or null (first branch). It persists per user in
-  // localStorage. Single-branch users never see the switcher. There is
-  // NO combined "all branches" view (removed his 2026-11-19 order) — a
-  // multi-branch owner works one branch at a time, switching from the
-  // top bar.
+  // branch id, "all" (combined view), or null (first branch). It persists
+  // per user in localStorage. Single-branch users never see the switcher.
+  // "all" is for the BRANCH MANAGER only (his 2026-11-19 order): the
+  // manager the super admin creates sees the branch switcher + the
+  // combined All-branches view; the restaurant admin never does — an
+  // admin always works one branch (their own), with no switcher and no
+  // combined view.
   const [activeRestaurantId, setActiveRestaurantIdState] = useState(null);
   const [branches, setBranches] = useState([]);
   const accessibleRestaurantIds = getAccessibleRestaurantIds(userProfile);
   const accessibleKey = accessibleRestaurantIds.join(",");
   const isMultiBranch = accessibleRestaurantIds.length > 1;
   // The branch every dashboard reads: the active one, or the user's own.
+  // "all" means the combined All-branches view (Admin dashboard + Order
+  // History) — branch manager only; single-branch pages show a branch
+  // picker for it.
   const activeId = activeRestaurantId || userProfile?.restaurant_id || null;
 
   // Load the branch docs (names for the switcher) once the owner is known.
@@ -87,21 +92,21 @@ export function AuthProvider({ children }) {
 
   // Restore the saved branch choice on sign-in; fall back to the first
   // branch when the saved one is no longer accessible (e.g. unlinked).
-  // A saved "all" (from before the combined view was removed) is ignored
-  // the same way — the first branch opens instead.
+  // A saved "all" restores ONLY for the branch manager — for anyone
+  // else it is ignored and the first branch opens instead.
   useEffect(() => {
     if (!userProfile) { setActiveRestaurantIdState(null); return; }
     let saved = null;
     try { saved = localStorage.getItem(`saqlyn_active_restaurant_${userProfile.id}`); } catch { /* ignore */ }
-    if (accessibleRestaurantIds.includes(saved)) setActiveRestaurantIdState(saved);
+    if ((saved === "all" && userProfile?.role === "branch_manager") || accessibleRestaurantIds.includes(saved)) setActiveRestaurantIdState(saved);
     else setActiveRestaurantIdState(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.id, accessibleKey]);
 
   function setActiveRestaurantId(id) {
-    // "all" no longer exists (combined view removed his 2026-11-19
-    // order) — a stale "all" just opens the first branch.
-    if (id === "all") id = null;
+    // "all" is branch-manager only (his 2026-11-19 order) — a stale or
+    // admin "all" just opens the first branch.
+    if (id === "all" && userProfile?.role !== "branch_manager") id = null;
     setActiveRestaurantIdState(id || null);
     if (userProfile?.id) {
       try {
@@ -113,7 +118,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const rid = activeId;
-    if (!rid || userProfile?.role === "super_admin") {
+    if (!rid || rid === "all" || userProfile?.role === "super_admin") {
       setTrialInfo(null);
       return;
     }
@@ -318,8 +323,9 @@ export function AuthProvider({ children }) {
     canAccessRestaurant,
     isAuthenticated: !!currentUser,
     role: userProfile?.role,
-    // The branch the dashboards show: the active branch, or the user's
-    // own restaurant when nothing is picked. (No combined view.)
+    // The branch the dashboards show: the active branch, "all" for the
+    // combined view (branch manager only), or the user's own restaurant
+    // when nothing is picked.
     restaurantId: activeId,
     activeRestaurantId,
     setActiveRestaurantId,

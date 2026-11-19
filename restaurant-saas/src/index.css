@@ -1521,24 +1521,23 @@ a { color: var(--color-primary); text-decoration: none; }
 .stage-count { font-size: 20px; font-weight: 800; line-height: 1.1; }
 .stage-label { font-size: 11px; color: var(--color-muted); text-align: center; }
 
-/* ── Payment-pending banner + red rows (his 2026-11-19 order) ────────
-   A served (or ready) order that is still unpaid turns RED everywhere it
-   is listed, and a red banner above the list counts how many tables owe
-   money. Tapping the banner shows only those orders. */
-.payment-pending-banner {
-  display: flex; justify-content: space-between; align-items: center; gap: 8px;
-  width: 100%; text-align: left; cursor: pointer;
-  background: rgba(224, 82, 82, 0.12); border: 1px solid #e05252;
-  color: #e05252; border-radius: var(--radius-sm);
-  padding: 10px 14px; margin-bottom: 12px;
-  font-size: 14px; font-weight: 700;
-}
-.payment-pending-banner:hover { background: rgba(224, 82, 82, 0.2); }
+/* ── Payment-pending rows (his 2026-11-19 order) ──────────────────────
+   A served (or ready) order that is still unpaid turns YELLOW at once,
+   and RED once 20 minutes have passed since serving without payment.
+   The red row is the overdue one — the cashier's cue to chase the table. */
 .order-card.payment-pending {
-  border-left: 4px solid #e05252;
-  background: rgba(224, 82, 82, 0.06);
+  border-left: 4px solid #f5a623;
+  background: rgba(245, 166, 35, 0.07);
 }
 .order-row-admin.payment-pending {
+  border-left: 4px solid #f5a623;
+  background: rgba(245, 166, 35, 0.06);
+}
+.order-card.payment-overdue {
+  border-left: 4px solid #e05252;
+  background: rgba(224, 82, 82, 0.08);
+}
+.order-row-admin.payment-overdue {
   border-left: 4px solid #e05252;
   background: rgba(224, 82, 82, 0.06);
 }

@@ -14,7 +14,7 @@ const ROLE_REDIRECTS = {
 // Multi-branch owner, blocked on ONE branch (frozen or plan ended): offer
 // their other branches instead of stranding them on a dead screen.
 function BranchSwitchButtons() {
-  const { branches, setActiveRestaurantId, isMultiBranch } = useAuth();
+  const { userProfile, branches, setActiveRestaurantId, isMultiBranch } = useAuth();
   if (!isMultiBranch) return null;
   return (
     <div style={{ marginTop: 16 }}>
@@ -25,6 +25,13 @@ function BranchSwitchButtons() {
             {b.name}
           </button>
         ))}
+        {/* "All branches" is branch-manager only (his 2026-11-19 order) —
+            the restaurant admin never sees the combined view. */}
+        {userProfile?.role === "branch_manager" && (
+          <button className="btn-secondary" onClick={() => setActiveRestaurantId("all")}>
+            All branches
+          </button>
+        )}
       </div>
     </div>
   );

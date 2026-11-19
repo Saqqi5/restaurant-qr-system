@@ -10,6 +10,7 @@ import { isExpiredDemoItem } from "../config/db";
 import { getDemoHiddenDishes } from "../utils/session";
 import { getItemSizes } from "../config/db";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import ConfirmModal from "../components/admin/ConfirmModal";
 import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
@@ -32,7 +33,7 @@ export default function ServerDashboard() {
   const { toasts, dismiss } = useNotifications(restaurantId, true, { onReady: true });
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     getRestaurant(restaurantId).then((r) => {
       if (r?.table_count) setTableCount(r.table_count);
       setIsDemo(r?.is_demo === true);
@@ -63,7 +64,7 @@ export default function ServerDashboard() {
   }
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     const unsubMenu = subscribeToMenu(restaurantId, setMenuItems);
     const unsubOrders = subscribeToOrders(restaurantId, setOrders);
     const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
@@ -167,6 +168,20 @@ export default function ServerDashboard() {
       return <span className="pay-status-pill pay-pending">💳 Pending</span>;
     }
     return null;
+  }
+
+  // The server works one branch at a time — "All branches" picks a branch.
+  if (restaurantId === "all") {
+    return (
+      <AdminLayout
+        title="Server"
+        subtitle={userProfile?.name || "Order Taker"}
+        onLogout={logout}
+        userProfile={userProfile}
+      >
+        <BranchRequired title="Server is per branch" />
+      </AdminLayout>
+    );
   }
 
   return (

@@ -6,6 +6,7 @@ import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit,
 import { buildDeliveryUrl } from "../config/tenantResolver";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
+import BranchRequired from "../components/admin/BranchRequired";
 import PlanPrice from "../components/PlanPrice";
 
 // Human-readable labels for the settings log (super admin only).
@@ -114,7 +115,7 @@ export default function RestaurantSettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     const unsub = subscribeToMenu(restaurantId, setMenuItems);
     return unsub;
   }, [restaurantId]);
@@ -141,7 +142,7 @@ export default function RestaurantSettingsPage() {
   // TenantContext is empty on /admin/* routes, so load the restaurant doc
   // directly — without this the form opens blank and saving wipes the name.
   useEffect(() => {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId === "all") return;
     getRestaurant(restaurantId).then((r) => {
       if (r) {
         setPlan(normalizePlan(r.plan));
@@ -264,6 +265,20 @@ export default function RestaurantSettingsPage() {
       setError(err.message || "Failed to save settings.");
     }
     setSaving(false);
+  }
+
+  // Settings are one branch at a time — "All branches" picks a branch.
+  if (restaurantId === "all") {
+    return (
+      <AdminLayout
+        title="⚙️ Settings"
+        subtitle="Restaurant Configuration"
+        onLogout={logout}
+        userProfile={userProfile}
+      >
+        <BranchRequired title="Settings are per branch" />
+      </AdminLayout>
+    );
   }
 
   if (!loaded) {

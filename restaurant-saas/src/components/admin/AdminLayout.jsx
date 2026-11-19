@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { subscribeToRestaurantPayments, getRestaurant } from "../../config/db";
+import { subscribeToRestaurantPayments, subscribeToMultiPayments, getRestaurant } from "../../config/db";
 import { useAuth } from "../../contexts/AuthContext";
 import ChangePasswordModal from "./ChangePasswordModal";
 
@@ -16,12 +16,30 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
 
   // The ACTIVE branch (branch switcher), not the user's first branch:
   // every dashboard in this layout follows the switcher. "all" is the
-  // combined All-branches view.
+  // combined All-branches view (branch manager only).
   const { restaurantId, branches, activeRestaurantId, setActiveRestaurantId, isMultiBranch } = useAuth();
   const isSuperAdmin = userProfile?.role === "super_admin";
 
   useEffect(() => {
     if (!restaurantId || isSuperAdmin) return;
+    if (restaurantId === "all") {
+      // Combined view: SAQLYN green, no single branch name or theme; the
+      // bell counts pending proofs across all branches.
+      setRestaurantName("All branches");
+      setRestaurantTheme(null);
+      const unsub = subscribeToMultiPayments(branches.map((b) => b.id), (payments) => {
+        const pending = payments.filter(p => p.status === "pending");
+        setPendingPayments(pending);
+        setPrevPendingCount(prev => {
+          if (prev !== null && pending.length > prev) {
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 5000);
+          }
+          return pending.length;
+        });
+      });
+      return unsub;
+    }
     // The restaurant's own brand colours theme the whole staff panel —
     // same mapping as the customer menu (primary colours the header, the
     // brighter accent colours buttons and active states). Super admin
@@ -42,7 +60,7 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
       });
     });
     return unsub;
-  }, [restaurantId, isSuperAdmin]);
+  }, [restaurantId, isSuperAdmin, branches]);
 
   const pendingCount = pendingPayments.length;
 
@@ -70,9 +88,9 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
         <div className="topbar-right">
           {/* Branch switching is ONLY for the Branch Manager (his
               2026-11-19 correction): the single-restaurant admin never
-              sees it. The manager works one branch at a time from the
-              switcher — there is no combined "all branches" view (removed
-              his 2026-11-19 order). */}
+              sees it. "All branches" is the combined view (revenue +
+              orders together) — the manager manages one branch at a time
+              from the switcher, or all of them together from "All branches". */}
           {isMultiBranch && userProfile?.role === "branch_manager" && (
             <select
               className="branch-switcher"
@@ -81,6 +99,7 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
               title="Switch branch"
               aria-label="Switch branch"
             >
+              <option value="all">All branches</option>
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
@@ -190,7 +209,7 @@ function getSidebarLinks(role, pendingCount = 0) {
   // Multi-branch manager (his 2026-11-19 decision, corrected): the manager
   // sits ABOVE the restaurant admin, so they get every option the admin
   // has — Dashboard, Order Taker, Tables, Order History, Settings — plus
-  // the branch switcher (rendered by AdminLayout), one branch at a time.
+  // the branch switcher and All branches (rendered by AdminLayout).
   if (role === "branch_manager") {
     return [
       { path: "/admin/restaurant", icon: "🏪", label: "Dashboard", badge: pendingCount },

@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { cancelOrder, getOrderPayable } from "../../config/db";
 import { formatPrice, useRestaurantCurrency } from "../../utils/currency";
+import { paymentState } from "../../utils/orderSort";
+import { useNow } from "../../hooks/useNow";
 import ConfirmModal from "./ConfirmModal";
 
 const STATUS_COLORS = {
@@ -16,6 +18,9 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
   const { userProfile } = useAuth();
   const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
   const [deleteError, setDeleteError] = useState("");
+  // Live clock (30s): a served order flips yellow → red on its own 20
+  // minutes after serving, with no refresh.
+  const now = useNow();
   function formatTime(ts) {
     if (!ts?.toDate) return "—";
     return ts.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -49,12 +54,12 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
       <div className="orders-list-admin">
         {orders.map((order) => {
           // Served (or ready) but still unpaid = payment pending — the
-          // whole row turns RED so the admin sees at a glance which
-          // tables owe money (his 2026-11-19 order). Paid served orders
-          // stay their normal colour.
-          const paymentPending = ["ready", "served"].includes(order.status) && order.payment_status !== "paid";
+          // whole row turns YELLOW at once, and RED once 20 minutes have
+          // passed since serving without payment (his 2026-11-19 order).
+          // Paid served orders stay their normal colour.
+          const payState = paymentState(order, now);
           return (
-          <div key={order.id} className={`order-row-admin${paymentPending ? " payment-pending" : ""}`}
+          <div key={order.id} className={`order-row-admin${payState === "pending" ? " payment-pending" : payState === "overdue" ? " payment-overdue" : ""}`}
             style={{ ...(order.status === "cancelled" ? { opacity: 0.65 } : {}), ...(onSelectOrder ? { cursor: "pointer" } : {}) }}
             onClick={onSelectOrder ? () => onSelectOrder(order) : undefined}
             title={onSelectOrder ? "Click to view slip" : undefined}>
@@ -79,8 +84,8 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
             </div>
             <div className="order-row-right">
               <span className="order-row-total">{formatPrice(getOrderPayable(order).payable, order._currency || currency)}</span>
-              <span className="status-dot" style={{ background: paymentPending ? "#e05252" : STATUS_COLORS[order.status] || "#888" }}>
-                {order.status === "out_for_delivery" ? "out for delivery" : paymentPending ? "🔴 payment pending" : order.status}
+              <span className="status-dot" style={{ background: payState === "overdue" ? "#e05252" : payState === "pending" ? "#f5a623" : STATUS_COLORS[order.status] || "#888" }}>
+                {order.status === "out_for_delivery" ? "out for delivery" : payState === "overdue" ? "🔴 payment overdue" : payState === "pending" ? "🟡 payment pending" : order.status}
               </span>
               <span className={`payment-dot ${order.payment_status}`}>
                 {order.payment_status === "paid"

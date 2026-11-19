@@ -56,8 +56,8 @@ export default function OrderStatusSummary({ orders, selected, onSelect }) {
   return (
     <div className="order-status-summary" role="group" aria-label="Orders by stage">
       {STAGES.map((s) => {
-        // A stage with no orders has nothing to show — only "All" stays.
-        if (s.key !== "all" && counts[s.key] === 0) return null;
+        // Every stage shows, even with 0 orders — his 2026-11-19 order:
+        // a stage with no orders still gets its box, with 0 in it.
         const isActive = active === s.key;
         return (
           <button

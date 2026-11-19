@@ -190,6 +190,28 @@ export function subscribeToReviews(restaurantId, callback) {
   );
 }
 
+// Same merge for reviews (the dashboard Reviews tab, All-branches view).
+export function subscribeToMultiReviews(restaurantIds, callback) {
+  const ids = (restaurantIds || []).filter(Boolean);
+  if (ids.length === 0) { callback([]); return () => {}; }
+  const byBranch = new Map(ids.map((id) => [id, []]));
+  const emit = () => {
+    const items = [...byBranch.values()].flat()
+      .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
+    callback(items);
+  };
+  const unsubs = ids.map((rid) =>
+    onSnapshot(
+      query(reviewsCol(rid), orderBy("created_at", "desc"), limit(100)),
+      (snap) => {
+        byBranch.set(rid, snap.docs.map(d => ({ id: d.id, ...d.data(), _restaurantId: rid })));
+        emit();
+      }
+    )
+  );
+  return () => unsubs.forEach((u) => u());
+}
+
 // Freeze / unfreeze a whole restaurant (super admin only — the rules block
 // a general admin from changing is_frozen). Frozen: every staff login of
 // that restaurant is blocked and the public menu hides. Unfreezing restores
@@ -548,10 +570,12 @@ export async function createOrder(restaurantId, data) {
 }
 
 export async function updateOrderStatus(restaurantId, orderId, status) {
-  await updateDoc(orderDoc(restaurantId, orderId), {
-    status,
-    updated_at: serverTimestamp(),
-  });
+  // served_at stamps the moment the order is served — the cashier's
+  // payment clock starts here: yellow while payment is pending, red
+  // once 20 minutes pass without payment (his 2026-11-19 order).
+  const patch = { status, updated_at: serverTimestamp() };
+  if (status === "served") patch.served_at = serverTimestamp();
+  await updateDoc(orderDoc(restaurantId, orderId), patch);
 }
 
 // Soft-cancel an order: it stays in Firestore with status "cancelled"
@@ -984,8 +1008,8 @@ export async function getRestaurantUsers(restaurantId) {
 // An owner (general_admin) can run 2+ branches from ONE login. Their users
 // doc keeps restaurant_id (first branch) plus restaurant_ids (every branch
 // they can open). Staff logins stay per-branch — only the owner switches.
-// The branch switcher (AdminLayout) reads this list — one branch at
-// a time; there is no combined "all branches" view.
+// The branch switcher (AdminLayout) and the "All branches" combined view
+// (Admin dashboard + Order History) read this list.
 export function getAccessibleRestaurantIds(userProfile) {
   if (!userProfile) return [];
   const ids = [userProfile.restaurant_id, ...(userProfile.restaurant_ids || [])];
@@ -995,6 +1019,47 @@ export function getAccessibleRestaurantIds(userProfile) {
 export async function getRestaurantsByIds(ids) {
   const docs = await Promise.all((ids || []).map((id) => getRestaurant(id)));
   return docs.filter(Boolean);
+}
+
+// One live list across branches: each branch's orders, merged newest
+// first, tagged with _restaurantId so actions (cancel, receipt) hit the
+// right branch. Same merge pattern as SuperAdminOrdersPage.
+export function subscribeToMultiOrders(restaurantIds, callback) {
+  const ids = (restaurantIds || []).filter(Boolean);
+  if (ids.length === 0) { callback([]); return () => {}; }
+  const byBranch = new Map(ids.map((id) => [id, []]));
+  const emit = () => {
+    const items = [...byBranch.values()].flat()
+      .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
+    callback(items);
+  };
+  const unsubs = ids.map((rid) =>
+    onSnapshot(ordersCol(rid), (snap) => {
+      byBranch.set(rid, snap.docs.map(d => ({ id: d.id, ...d.data(), _restaurantId: rid })));
+      emit();
+    })
+  );
+  return () => unsubs.forEach((u) => u());
+}
+
+// Same merge for payment proofs (the AdminLayout bell + the dashboard
+// Payments tab in "All branches" mode).
+export function subscribeToMultiPayments(restaurantIds, callback) {
+  const ids = (restaurantIds || []).filter(Boolean);
+  if (ids.length === 0) { callback([]); return () => {}; }
+  const byBranch = new Map(ids.map((id) => [id, []]));
+  const emit = () => {
+    const items = [...byBranch.values()].flat()
+      .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+    callback(items);
+  };
+  const unsubs = ids.map((rid) =>
+    onSnapshot(query(paymentsCol(), where("restaurantId", "==", rid)), (snap) => {
+      byBranch.set(rid, snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      emit();
+    })
+  );
+  return () => unsubs.forEach((u) => u());
 }
 
 // Every general_admin who can own branches (the super admin picks one in

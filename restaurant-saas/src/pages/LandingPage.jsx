@@ -402,7 +402,7 @@ const FEATURES = [
   {
     icon: "👥",
     title: "Branch Managers",
-    desc: "One manager login above the restaurant admins — every admin option, plus branch switching to manage all their branches one at a time.",
+    desc: "One manager login above the restaurant admins — every admin option, plus branch switching and an all-branches view.",
   },
 ];
 
