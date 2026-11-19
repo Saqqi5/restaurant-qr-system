@@ -119,7 +119,7 @@ export default function BranchManagerModal({ restaurants = [], onClose, onCreate
                     ))}
                   </div>
                 )}
-                <p className="form-hint">The manager sees only Orders, Revenue and Menu — one branch at a time, no “All branches” view. They can cancel orders, but never delete them.</p>
+                <p className="form-hint">The manager sees Orders, Revenue, Menu and Settings — branch switching and “All branches” included, so they can manage all their branches. They can cancel orders, but never delete them.</p>
               </div>
               {error && <div className="error-banner">{error}</div>}
             </div>

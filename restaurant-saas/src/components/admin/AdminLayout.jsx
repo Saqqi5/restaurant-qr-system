@@ -86,11 +86,12 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
           </div>
         </div>
         <div className="topbar-right">
-          {/* Multi-branch owner: one login, switch branches here. "All
-              branches" is the combined view (revenue + orders together).
-              The branch MANAGER never sees "All branches" — they manage
-              one branch at a time (his 2026-11-19 decision). */}
-          {isMultiBranch && !isSuperAdmin && (
+          {/* Branch switching is ONLY for the Branch Manager (his
+              2026-11-19 correction): the single-restaurant admin never
+              sees it. "All branches" is the combined view (revenue +
+              orders together) — the manager manages one branch at a time
+              from the switcher, or all of them together from "All branches". */}
+          {isMultiBranch && userProfile?.role === "branch_manager" && (
             <select
               className="branch-switcher"
               value={activeRestaurantId || userProfile?.restaurant_id || ""}
@@ -98,9 +99,7 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
               title="Switch branch"
               aria-label="Switch branch"
             >
-              {userProfile?.role !== "branch_manager" && (
-                <option value="all">All branches</option>
-              )}
+              <option value="all">All branches</option>
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
@@ -207,13 +206,15 @@ function getSidebarLinks(role, pendingCount = 0) {
       logout,
     ];
   }
-  // Multi-branch manager (his 2026-11-19 decision): Orders, Revenue and
-  // Menu only — the dashboard's Orders / Menu / Analytics tabs and the
-  // Order History page. No Order Taker, Tables or Settings.
+  // Multi-branch manager (his 2026-11-19 decision, corrected): Orders,
+  // Revenue, Menu and Settings — the dashboard's Orders / Menu /
+  // Analytics tabs, the Order History page and the Settings page. No
+  // Order Taker or Tables.
   if (role === "branch_manager") {
     return [
       { path: "/admin/restaurant", icon: "🏪", label: "Dashboard", badge: pendingCount },
       { path: "/admin/history",    icon: "📋", label: "Order History", badge: 0 },
+      { path: "/admin/settings",   icon: "⚙️",  label: "Settings", badge: 0 },
       logout,
     ];
   }

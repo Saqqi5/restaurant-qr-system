@@ -248,7 +248,7 @@ export default function SuperAdminDashboard() {
           <button className="btn-primary" onClick={() => setShowManagerModal(true)}>+ New Branch Manager</button>
         </div>
         <p className="form-hint" style={{ marginTop: 8 }}>
-          A manager login you create and assign to specific branches. They see only Orders, Revenue and Menu — one branch at a time, no “All branches” view. They can cancel orders, but never delete them.
+          A manager login you create and assign to specific branches. They see Orders, Revenue, Menu and Settings — with branch switching and “All branches”, so they can manage all their branches. They can cancel orders, but never delete them. The single-restaurant admin never sees branch switching.
         </p>
         {managers.length === 0 ? (
           <p className="form-hint">No branch managers yet.</p>

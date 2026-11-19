@@ -227,8 +227,11 @@ service cloud.firestore {
       // update everything except the plan, and may not raise the table count
       // above the plan's limit (lowering it is always allowed). They may
       // never touch the plan expiry, the freeze flag, or the custom domain.
+      // A branch manager may update their branches the same way (his
+      // 2026-11-19 correction — the manager gets Settings too).
       allow update: if isSuperAdmin()
-        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged() && frozenUnchanged() && customDomainUnchanged());
+        || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged() && frozenUnchanged() && customDomainUnchanged())
+        || (isBranchManager(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged() && frozenUnchanged() && customDomainUnchanged());
 
       // ── Menu Items ──────────────────────────────────────────
       match /menu/{itemId} {

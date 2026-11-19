@@ -182,7 +182,7 @@ export default function App() {
           } />
           <Route path="/admin/settings" element={
             <WithAdminTenant>
-              <ProtectedRoute role="general_admin">
+              <ProtectedRoute role={["general_admin", "branch_manager"]}>
                 <RestaurantSettingsPage />
               </ProtectedRoute>
             </WithAdminTenant>

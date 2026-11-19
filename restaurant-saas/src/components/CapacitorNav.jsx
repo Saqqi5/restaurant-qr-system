@@ -25,11 +25,13 @@ const ROLE_TABS = {
     { label: "History", icon: "📋", to: "/admin/history" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
-  // Multi-branch manager (his 2026-11-19 decision): Orders, Revenue and
-  // Menu only, via the dashboard + history — no Order Taker, no settings.
+  // Multi-branch manager (his 2026-11-19 decision, corrected): Orders,
+  // Revenue, Menu and Settings — via the dashboard, history and settings.
+  // No Order Taker or Tables.
   branch_manager: [
     { label: "Dashboard", icon: "🏪", to: "/admin/restaurant" },
     { label: "History", icon: "📋", to: "/admin/history" },
+    { label: "Settings", icon: "⚙️", to: "/admin/settings" },
     { label: "Logout", icon: "⎋", action: "logout" },
   ],
   kitchen: [
