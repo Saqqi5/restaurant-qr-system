@@ -5,6 +5,7 @@ import { getPlanLabel } from "../config/plans";
 const ROLE_REDIRECTS = {
   super_admin: "/admin/super",
   general_admin: "/admin/restaurant",
+  branch_manager: "/admin/restaurant",
   kitchen: "/admin/kitchen",
   cash_counter: "/admin/cash",
   server: "/admin/server",

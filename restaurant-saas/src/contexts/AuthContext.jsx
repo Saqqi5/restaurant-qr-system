@@ -187,11 +187,11 @@ export function AuthProvider({ children }) {
     return getAuth(secondaryApp);
   }
 
-  async function registerStaff(email, password, name, role, restaurantId) {
+  async function registerStaff(email, password, name, role, restaurantId, restaurantIds = null) {
     const secondaryAuth = getSecondaryAuth();
     const result = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     try {
-      await createUser(result.user.uid, { email, name, role, restaurant_id: restaurantId });
+      await createUser(result.user.uid, { email, name, role, restaurant_id: restaurantId, restaurant_ids: restaurantIds });
     } finally {
       await signOut(secondaryAuth);
     }

@@ -2,7 +2,8 @@ import { formatPrice } from "../../utils/currency";
 import { getOrderPayable } from "../../config/db";
 
 export default function AnalyticsPanel({ orders, menuItems, currency }) {
-  const paid = orders.filter((o) => o.payment_status === "paid");
+  // Cancelled orders never count as revenue (his 2026-11-19 decision).
+  const paid = orders.filter((o) => o.payment_status === "paid" && o.status !== "cancelled");
   const totalRevenue = paid.reduce((s, o) => s + getOrderPayable(o).payable, 0);
   const avgOrder = paid.length ? totalRevenue / paid.length : 0;
 

@@ -40,6 +40,17 @@ service cloud.firestore {
         isOwnRestaurant(restaurantId);
     }
 
+    // Multi-branch manager (his 2026-11-19 decision): a login the super
+    // admin creates and assigns to specific branches. They manage one
+    // branch at a time (no "All branches" combined view), see only
+    // Orders / Revenue / Menu, and may cancel orders but never delete
+    // them. Their restaurant_ids list is what isOwnRestaurant checks.
+    function isBranchManager(restaurantId) {
+      return isAuthenticated() &&
+        getUserData().role == 'branch_manager' &&
+        isOwnRestaurant(restaurantId);
+    }
+
     function isStaff(restaurantId) {
       return isAuthenticated() &&
         isOwnRestaurant(restaurantId) &&
@@ -66,7 +77,7 @@ service cloud.firestore {
 
     function isPaymentStaff() {
       return isAuthenticated() &&
-        getUserData().role in ['general_admin', 'cash_counter', 'server', 'super_admin'];
+        getUserData().role in ['general_admin', 'cash_counter', 'server', 'super_admin', 'branch_manager'];
     }
 
     function isOrderStatusValid(status) {
@@ -224,8 +235,8 @@ service cloud.firestore {
         // Anyone can read menu items (for customer ordering)
         allow read: if true;
 
-        // Only general admin or super admin can write
-        allow write: if isSuperAdmin() || isGeneralAdmin(restaurantId);
+        // Only general admin, branch manager or super admin can write
+        allow write: if isSuperAdmin() || isGeneralAdmin(restaurantId) || isBranchManager(restaurantId);
       }
 
       // ── Orders ──────────────────────────────────────────────
@@ -265,6 +276,19 @@ service cloud.firestore {
           && request.resource.data.total == resource.data.total
           && request.resource.data.items == resource.data.items
           && request.resource.data.table_number == resource.data.table_number;
+
+        // A branch manager may cancel an order (any status except already
+        // cancelled) but may NEVER delete one, change the bill, the
+        // payment state, or touch a manual discount — cancel only, nothing
+        // else may change (his 2026-11-19 decision).
+        allow update: if isBranchManager(restaurantId)
+          && resource.data.status != 'cancelled'
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.payment_status == resource.data.payment_status
+          && request.resource.data.total == resource.data.total
+          && request.resource.data.items == resource.data.items
+          && request.resource.data.table_number == resource.data.table_number
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['manual_discount_type', 'manual_discount_value', 'manual_discount_amount', 'manual_discount_by', 'manual_discount_by_name', 'manual_discount_at']);
 
         // A customer may cancel their OWN order, but ONLY while it is still
         // pending — before the kitchen confirms it. The canceller must prove
@@ -308,10 +332,12 @@ service cloud.firestore {
         && request.resource.data.tableNumber is int
         && request.resource.data.tableNumber >= 0; // 0 = home delivery payment
 
-      // Authenticated staff can read payments
+      // Authenticated staff can read payments (isOwnRestaurant covers a
+      // multi-branch owner's / manager's restaurant_ids list, not just
+      // their first branch).
       allow read: if isAuthenticated() && (
         isSuperAdmin() ||
-        (isPaymentStaff() && getUserData().restaurant_id == resource.data.restaurantId)
+        (isPaymentStaff() && isOwnRestaurant(resource.data.restaurantId))
       );
 
       // Cash counter and admin can verify (update) payments

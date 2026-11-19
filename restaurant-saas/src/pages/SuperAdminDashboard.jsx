@@ -5,6 +5,7 @@ import {
   getAllRestaurants, createRestaurant, updateRestaurant, deleteRestaurant,
   getRestaurantUsers, mapDomain,
   getAllOwners, linkRestaurantToOwner, unlinkRestaurantFromOwner,
+  getBranchManagers, setUserDisabled,
   subscribeToPlanPayments, verifyPlanPayment, rejectPlanPayment,
   subscribeToSignupRequests, updateSignupRequest,
   subscribeToDemoLeads
@@ -22,6 +23,7 @@ import StaffModal from "../components/admin/StaffModal";
 import MenuManagerModal from "../components/admin/MenuManagerModal";
 import QRModal from "../components/admin/QRModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
+import BranchManagerModal from "../components/admin/BranchManagerModal";
 import StatsBar from "../components/admin/StatsBar";
 
 export default function SuperAdminDashboard() {
@@ -56,6 +58,11 @@ export default function SuperAdminDashboard() {
   // Branch owners (general_admin logins) — the Edit modal links a branch
   // to one of them so one login opens several branches.
   const [owners, setOwners] = useState([]);
+  // Multi-branch managers (his 2026-11-19 decision) — logins the super
+  // admin creates and assigns to specific branches.
+  const [managers, setManagers] = useState([]);
+  const [showManagerModal, setShowManagerModal] = useState(false);
+  const [managerBusy, setManagerBusy] = useState(null);
 
   useEffect(() => {
     getAllRestaurants().then((data) => {
@@ -63,6 +70,7 @@ export default function SuperAdminDashboard() {
       setLoading(false);
     });
     getAllOwners().then(setOwners).catch(() => {});
+    getBranchManagers().then(setManagers).catch(() => {});
   }, []);
 
   useEffect(() => subscribeToPlanPayments(setPlanPayments), []);
@@ -233,6 +241,50 @@ export default function SuperAdminDashboard() {
         </button>
       </div>
 
+      {/* ── Multi-branch managers (his 2026-11-19 decision) ── */}
+      <div className="settings-section" style={{ marginBottom: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <h2 className="settings-section-title" style={{ margin: 0 }}>👥 Branch Managers</h2>
+          <button className="btn-primary" onClick={() => setShowManagerModal(true)}>+ New Branch Manager</button>
+        </div>
+        <p className="form-hint" style={{ marginTop: 8 }}>
+          A manager login you create and assign to specific branches. They see only Orders, Revenue and Menu — one branch at a time, no “All branches” view. They can cancel orders, but never delete them.
+        </p>
+        {managers.length === 0 ? (
+          <p className="form-hint">No branch managers yet.</p>
+        ) : (
+          managers.map((m) => {
+            const branchNames = [...new Set([...(m.restaurant_ids || []), m.restaurant_id].filter(Boolean))]
+              .map((id) => restaurants.find((r) => r.id === id)?.name || id.slice(0, 8))
+              .join(", ");
+            return (
+              <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, border: "1px solid var(--color-border)", borderRadius: 12, padding: "12px 16px", marginBottom: 10, background: "var(--color-surface2)", opacity: m.is_disabled ? 0.6 : 1 }}>
+                <div>
+                  <strong>{m.name}</strong> <span style={{ color: "var(--color-muted)", fontSize: 13 }}>· {m.email}</span>
+                  <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 2 }}>Branches: {branchNames || "—"}{m.is_disabled ? " · disabled" : ""}</div>
+                </div>
+                <button
+                  className="btn-secondary"
+                  disabled={managerBusy === m.id}
+                  onClick={async () => {
+                    setManagerBusy(m.id);
+                    try {
+                      await setUserDisabled(m.id, !m.is_disabled);
+                      setManagers((prev) => prev.map((x) => (x.id === m.id ? { ...x, is_disabled: !m.is_disabled } : x)));
+                    } catch (e) {
+                      alert(e.message || "Could not update this manager.");
+                    }
+                    setManagerBusy(null);
+                  }}
+                >
+                  {m.is_disabled ? "Enable login" : "Disable login"}
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+
       {/* ── New signup requests (Get Started page) ── */}
       {(() => {
         const pending = signupRequests.filter((r) => r.status === "new");
@@ -401,6 +453,14 @@ export default function SuperAdminDashboard() {
               getPlanLimit(normalizePlan(createFromSignup.plan), null) || 10
             ),
           } : undefined}
+        />
+      )}
+
+      {showManagerModal && (
+        <BranchManagerModal
+          restaurants={restaurants}
+          onClose={() => setShowManagerModal(false)}
+          onCreated={() => getBranchManagers().then(setManagers).catch(() => {})}
         />
       )}
 

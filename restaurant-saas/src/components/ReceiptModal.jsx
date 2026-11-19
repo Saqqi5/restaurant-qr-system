@@ -115,7 +115,7 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
   const [actionError, setActionError] = useState("");
   const [confirmAction, setConfirmAction] = useState(null);
   const actorRole = actor?.role || "";
-  const canCancel = !!actor && ["general_admin", "cash_counter", "super_admin"].includes(actorRole) && displayOrder.status !== "cancelled";
+  const canCancel = !!actor && ["general_admin", "cash_counter", "super_admin", "branch_manager"].includes(actorRole) && displayOrder.status !== "cancelled";
   const canDelete = !!actor && ["general_admin", "super_admin"].includes(actorRole);
   async function runAction(kind) {
     if (confirmAction !== kind) { setConfirmAction(kind); setActionError(""); return; }

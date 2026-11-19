@@ -90,13 +90,17 @@ export default function OrderHistoryPage() {
     isOrderWithinRetention(o, planForOrder(o), platformLimits)
   );
 
+  // Cancelled orders never count as revenue (his 2026-11-19 decision) —
+  // a paid order that is later cancelled drops out of revenue here, in
+  // the dashboard and in analytics. The dashboard + super-admin pages
+  // already excluded them; this page and AnalyticsPanel did not.
   const totalRevenue = filtered
-    .filter((o) => o.payment_status === "paid")
+    .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + getOrderPayable(o).payable, 0);
   // Combined view: revenue per branch, each in its own currency.
   const revenueByBranch = isAllBranches
     ? filtered
-        .filter((o) => o.payment_status === "paid")
+        .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
         .reduce((acc, o) => {
           const bid = o._restaurantId || restaurantId;
           acc[bid] = (acc[bid] || 0) + getOrderPayable(o).payable;
@@ -213,7 +217,7 @@ export default function OrderHistoryPage() {
           <div className="hs-item">
             <span className="hs-label">Avg. Order</span>
             <span className="hs-value">
-              {filtered.length ? formatPrice(totalRevenue / filtered.filter(o => o.payment_status === "paid").length || 0, currency) : "—"}
+              {filtered.length ? formatPrice(totalRevenue / filtered.filter(o => o.payment_status === "paid" && o.status !== "cancelled").length || 0, currency) : "—"}
             </span>
           </div>
         )}

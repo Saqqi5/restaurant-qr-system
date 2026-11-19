@@ -87,7 +87,9 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
         </div>
         <div className="topbar-right">
           {/* Multi-branch owner: one login, switch branches here. "All
-              branches" is the combined view (revenue + orders together). */}
+              branches" is the combined view (revenue + orders together).
+              The branch MANAGER never sees "All branches" — they manage
+              one branch at a time (his 2026-11-19 decision). */}
           {isMultiBranch && !isSuperAdmin && (
             <select
               className="branch-switcher"
@@ -96,7 +98,9 @@ export default function AdminLayout({ children, title, subtitle, onLogout, userP
               title="Switch branch"
               aria-label="Switch branch"
             >
-              <option value="all">All branches</option>
+              {userProfile?.role !== "branch_manager" && (
+                <option value="all">All branches</option>
+              )}
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
@@ -200,6 +204,16 @@ function getSidebarLinks(role, pendingCount = 0) {
       { path: "/admin/tables",     icon: "🪑", label: "Tables", badge: 0 },
       { path: "/admin/history",    icon: "📋", label: "Order History", badge: 0 },
       { path: "/admin/settings",   icon: "⚙️",  label: "Settings", badge: 0 },
+      logout,
+    ];
+  }
+  // Multi-branch manager (his 2026-11-19 decision): Orders, Revenue and
+  // Menu only — the dashboard's Orders / Menu / Analytics tabs and the
+  // Order History page. No Order Taker, Tables or Settings.
+  if (role === "branch_manager") {
+    return [
+      { path: "/admin/restaurant", icon: "🏪", label: "Dashboard", badge: pendingCount },
+      { path: "/admin/history",    icon: "📋", label: "Order History", badge: 0 },
       logout,
     ];
   }

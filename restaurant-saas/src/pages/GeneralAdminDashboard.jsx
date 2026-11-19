@@ -24,17 +24,22 @@ import ConfirmModal from "../components/admin/ConfirmModal";
 import ReceiptModal from "../components/ReceiptModal";
 import AnalyticsPanel from "../components/admin/AnalyticsPanel";
 
-const TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
+const ALL_TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
+// Multi-branch manager (his 2026-11-19 decision): only Orders, Menu and
+// Revenue (analytics) — no payments, staff or QR/settings tabs.
+const MANAGER_TABS = ["orders", "menu", "analytics"];
 
 export default function GeneralAdminDashboard() {
   const { userProfile, restaurantId, logout, trialInfo, branches, accessibleRestaurantIds } = useAuth();
+  const isManager = userProfile?.role === "branch_manager";
+  const TABS = isManager ? MANAGER_TABS : ALL_TABS;
   // "all" = the combined All-branches view (one login, every branch).
   // Menu, staff and QR are per-branch, so those tabs ask for a branch;
   // orders, payments and analytics merge across branches.
   const isAllBranches = restaurantId === "all";
   const accessibleKey = accessibleRestaurantIds.join(",");
   const currency = useRestaurantCurrency(isAllBranches ? null : restaurantId);
-  const [activeTab, setActiveTab] = useState("menu");
+  const [activeTab, setActiveTab] = useState(isManager ? "orders" : "menu");
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -761,6 +766,7 @@ export default function GeneralAdminDashboard() {
           mode="receipt"
           onClose={() => setReceiptOrder(null)}
           discountActor={userProfile ? { uid: userProfile.id, name: userProfile.name } : null}
+          actor={userProfile ? { uid: userProfile.id, name: userProfile.name || userProfile.email, role: userProfile.role } : null}
         />
       )}
     </AdminLayout>

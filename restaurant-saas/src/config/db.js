@@ -752,9 +752,17 @@ export async function createUser(userId, data) {
     name: data.name,
     role: data.role,
     restaurant_id: data.restaurant_id || null,
+    // Multi-branch manager: the branches the super admin assigned them.
+    ...(data.restaurant_ids ? { restaurant_ids: data.restaurant_ids } : {}),
     created_at: serverTimestamp(),
     active: true,
   });
+}
+
+// All multi-branch manager logins (super admin creates them).
+export async function getBranchManagers() {
+  const snap = await getDocs(query(usersCol(), where("role", "==", "branch_manager")));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function getUser(userId) {
