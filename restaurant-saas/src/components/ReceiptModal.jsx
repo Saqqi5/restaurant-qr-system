@@ -221,7 +221,23 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
 
           <div style={{ textAlign: "center", fontSize: 12, color: "#666", marginTop: 14 }}>
             {isKot ? "— Kitchen copy —" : (
-              <>Thank you for dining <img src="/favicon.svg" alt="" style={{ height: 14, width: 14, verticalAlign: "-2px", margin: "0 1px" }} /> with us!</>
+              <>Thank you for dining <svg viewBox="0 0 100 100" aria-hidden="true" style={{ height: 14, width: 14, verticalAlign: "-2px", margin: "0 1px" }}>
+                {/* Plate + fork & knife, inlined (no network fetch) so it
+                    never shows as a broken image — the old <img> pointed
+                    at /favicon.svg and failed on a flaky connection. */}
+                <g fill="#20C997">
+                  <rect x="9" y="20" width="5" height="26" rx="2.5" />
+                  <rect x="16" y="20" width="5" height="26" rx="2.5" />
+                  <rect x="23" y="20" width="5" height="26" rx="2.5" />
+                  <rect x="16" y="42" width="6" height="38" rx="3" />
+                </g>
+                <circle cx="50" cy="50" r="21" fill="#20C997" />
+                <circle cx="50" cy="50" r="13" fill="none" stroke="#FFFFFF" strokeWidth="3" />
+                <g fill="#20C997">
+                  <path d="M74 20 h8 v30 l-4 6 -4 -6 z" />
+                  <rect x="75" y="58" width="6" height="22" rx="3" />
+                </g>
+              </svg> with us!</>
             )}
           </div>
           {/* Home-delivery + complaints numbers: big, below the thank-you
