@@ -48,6 +48,8 @@ export const menuItemDoc = (restaurantId, itemId) => doc(db, "restaurants", rest
 export const ordersCol = (restaurantId) => collection(db, "restaurants", restaurantId, "orders");
 export const orderDoc = (restaurantId, orderId) => doc(db, "restaurants", restaurantId, "orders", orderId);
 export const settingsLogsCol = (restaurantId) => collection(db, "restaurants", restaurantId, "settings_logs");
+export const waiterCallsCol = (restaurantId) => collection(db, "restaurants", restaurantId, "waiter_calls");
+export const reviewsCol = (restaurantId) => collection(db, "restaurants", restaurantId, "reviews");
 export const usersCol = () => collection(db, "users");
 export const userDoc = (userId) => doc(db, "users", userId);
 export const paymentsCol = () => collection(db, "payments");
@@ -134,6 +136,80 @@ export function subscribeToSettingsLogs(restaurantId, callback) {
     query(settingsLogsCol(restaurantId), orderBy("at", "desc"), limit(100)),
     (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
   );
+}
+
+// ── Waiter calls ─────────────────────────────────────────────────────────
+// A customer taps "Call Waiter" on the menu — one pending call per table.
+// The server / admin sees it live and acknowledges it, then marks it done.
+// Create is public (the customer is not signed in); read + update are
+// staff of the restaurant + super admin (firestore.rules).
+export async function callWaiter(restaurantId, tableNumber, sessionId) {
+  await addDoc(waiterCallsCol(restaurantId), {
+    table_number: Number(tableNumber),
+    session_id: sessionId || "",
+    status: "pending",
+    created_at: serverTimestamp(),
+  });
+}
+
+export function subscribeToWaiterCalls(restaurantId, callback) {
+  return onSnapshot(
+    query(waiterCallsCol(restaurantId), orderBy("created_at", "desc"), limit(50)),
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  );
+}
+
+export async function updateWaiterCall(restaurantId, callId, status) {
+  await updateDoc(doc(db, "restaurants", restaurantId, "waiter_calls", callId), {
+    status,
+    updated_at: serverTimestamp(),
+  });
+}
+
+// ── Reviews ──────────────────────────────────────────────────────────────
+// After paying, the customer rates the visit (1–5 stars + optional note).
+// The restaurant's review link (Google Business, Facebook page, or any
+// other — set in Settings as review_url) is offered right after rating.
+// Create is public (the customer is not signed in); read is staff of the
+// restaurant + super admin; update/delete is super admin only (rules).
+export async function submitReview(restaurantId, { orderId, tableNumber, rating, comment, sessionId }) {
+  await addDoc(reviewsCol(restaurantId), {
+    order_id: orderId || null,
+    table_number: Number(tableNumber) || 0,
+    rating: Number(rating),
+    comment: (comment || "").trim(),
+    session_id: sessionId || "",
+    created_at: serverTimestamp(),
+  });
+}
+
+export function subscribeToReviews(restaurantId, callback) {
+  return onSnapshot(
+    query(reviewsCol(restaurantId), orderBy("created_at", "desc"), limit(100)),
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  );
+}
+
+// Same merge for reviews (the dashboard Reviews tab, All-branches view).
+export function subscribeToMultiReviews(restaurantIds, callback) {
+  const ids = (restaurantIds || []).filter(Boolean);
+  if (ids.length === 0) { callback([]); return () => {}; }
+  const byBranch = new Map(ids.map((id) => [id, []]));
+  const emit = () => {
+    const items = [...byBranch.values()].flat()
+      .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
+    callback(items);
+  };
+  const unsubs = ids.map((rid) =>
+    onSnapshot(
+      query(reviewsCol(rid), orderBy("created_at", "desc"), limit(100)),
+      (snap) => {
+        byBranch.set(rid, snap.docs.map(d => ({ id: d.id, ...d.data(), _restaurantId: rid })));
+        emit();
+      }
+    )
+  );
+  return () => unsubs.forEach((u) => u());
 }
 
 // Freeze / unfreeze a whole restaurant (super admin only — the rules block
@@ -326,6 +402,13 @@ export async function createMenuItem(restaurantId, data) {
     promo_price: parseFloat(data.promo_price) || 0,
     promo_start: data.promo_start || "",
     promo_end: data.promo_end || "",
+    // Dish detail: spice level ("", Mild, Medium, Hot), allergens text,
+    // kitchen station (Tandoor, Curry, Drinks, …) and size options
+    // [{label, price}] — empty sizes = one size at the base price.
+    spice_level: data.spice_level || "",
+    allergens: (data.allergens || "").trim(),
+    station: (data.station || "").trim() || (data.category || "Kitchen"),
+    sizes: Array.isArray(data.sizes) ? data.sizes.filter((s) => s.label && Number(s.price) > 0) : [],
     created_at: serverTimestamp(),
   };
   await setDoc(ref, item);
@@ -550,6 +633,30 @@ export async function updatePaymentStatus(restaurantId, orderId, paymentMethod) 
   });
 }
 
+// Apply a verified payment to an order: the payment amount (which may
+// include the customer's tip) adds to amount_paid, the tip adds to
+// tip_amount, and the order becomes "paid" once amount_paid covers the
+// full payable (total − discount + tip) — otherwise "partially_paid"
+// (a split bill: each person pays their share, one proof at a time).
+export async function applyPaymentToOrder(restaurantId, orderId, { amount, tipAmount, method }) {
+  const ref = orderDoc(restaurantId, orderId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const order = snap.data();
+  const newTip = Math.max(0, (Number(order.tip_amount) || 0) + (Number(tipAmount) || 0));
+  const newPaid = Math.max(0, (Number(order.amount_paid) || 0) + (Number(amount) || 0));
+  const total = Number(order.total) || 0;
+  const discount = Math.max(0, Math.min(total, Number(order.manual_discount_amount) || 0));
+  const payable = Number((total - discount + newTip).toFixed(2));
+  await updateDoc(ref, {
+    tip_amount: Number(newTip.toFixed(2)),
+    amount_paid: Number(newPaid.toFixed(2)),
+    payment_status: newPaid >= payable ? "paid" : "partially_paid",
+    payment_method: method || order.payment_method || "online",
+    updated_at: serverTimestamp(),
+  });
+}
+
 export function subscribeToOrders(restaurantId, callback, filters = {}) {
   return onSnapshot(ordersCol(restaurantId), (snap) => {
     let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -622,6 +729,9 @@ export async function createPayment(data) {
     orderType: data.orderType || "dine_in",
     orderId: data.orderId || null,
     method: data.method || "easypaisa",
+    // Tip the customer added in the Pay Bill sheet (rides on this payment;
+    // the cashier's verification adds it to the order's tip_amount).
+    tip_amount: Math.max(0, Number(data.tip_amount) || 0),
     orderIds: data.orderIds || (data.orderId ? [data.orderId] : []),
     amount: parseFloat(data.amount),
     items: data.items || [],
@@ -639,15 +749,42 @@ export async function verifyPayment(payment) {
     status: "verified",
     verifiedAt: serverTimestamp(),
   });
-  // Mark every order this payment covers as paid — without this the order
-  // stays "unpaid" forever (revenue, Paid Orders and the receipt never update).
+  // Apply the verified amount to every order this payment covers — without
+  // this the order stays "unpaid" forever (revenue, Paid Orders and the
+  // receipt never update). A split bill pays in parts: the bill portion is
+  // applied to the orders in turn (oldest first) until it runs out, and
+  // each order becomes "paid" only once its own payable is covered. The
+  // tip rides on the first order (it belongs to the whole bill).
   const ids = payment.orderIds?.length
     ? payment.orderIds
     : payment.orderId
       ? [payment.orderId]
       : [];
+  let billRemaining = Math.max(0, (Number(payment.amount) || 0) - (Number(payment.tip_amount) || 0));
+  let tipRemaining = Number(payment.tip_amount) || 0;
   for (const orderId of ids) {
-    await updatePaymentStatus(payment.restaurantId, orderId, payment.method || "online");
+    if (billRemaining <= 0 && tipRemaining <= 0) break;
+    const ref = orderDoc(payment.restaurantId, orderId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) continue;
+    const order = snap.data();
+    const total = Number(order.total) || 0;
+    const discount = Math.max(0, Math.min(total, Number(order.manual_discount_amount) || 0));
+    const existingTip = Number(order.tip_amount) || 0;
+    const existingPaid = Number(order.amount_paid) || 0;
+    const balance = Math.max(0, total - discount + existingTip - existingPaid);
+    // The tip goes on the first order that still has a balance (or the
+    // first order at all, when the bill is already covered).
+    const tipHere = tipRemaining > 0 && (balance > 0 || billRemaining <= 0) ? tipRemaining : 0;
+    const payHere = Math.min(billRemaining, balance) + tipHere;
+    if (payHere <= 0) continue;
+    billRemaining -= Math.min(billRemaining, balance);
+    tipRemaining -= tipHere;
+    await applyPaymentToOrder(payment.restaurantId, orderId, {
+      amount: payHere,
+      tipAmount: tipHere,
+      method: payment.method || "online",
+    });
   }
 }
 
@@ -1046,7 +1183,25 @@ export function getItemOriginalPrice(item) {
 export function getOrderPayable(order) {
   const total = Number(order?.total) || 0;
   const discount = Math.max(0, Math.min(total, Number(order?.manual_discount_amount) || 0));
-  return { payable: Number((total - discount).toFixed(2)), discount };
+  const tip = Math.max(0, Number(order?.tip_amount) || 0);
+  const amountPaid = Math.max(0, Number(order?.amount_paid) || 0);
+  const payable = Number((total - discount + tip).toFixed(2));
+  return { payable, discount, tip, amountPaid, balance: Number(Math.max(0, payable - amountPaid).toFixed(2)) };
+}
+
+// Set a tip on an order (cashier / admin, from the receipt — the customer
+// picks a tip in the Pay Bill sheet and it rides on the payment instead).
+export async function setOrderTip(restaurantId, orderId, amount) {
+  const ref = doc(ordersCol(restaurantId), orderId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Order not found.");
+  const order = snap.data();
+  if (order.payment_status === "paid") throw new Error("This order is already paid.");
+  if (order.status === "cancelled") throw new Error("This order is cancelled.");
+  await updateDoc(ref, {
+    tip_amount: Number(Math.max(0, Number(amount) || 0).toFixed(2)),
+    updated_at: serverTimestamp(),
+  });
 }
 
 // One-customer discount, applied by the restaurant admin or the super

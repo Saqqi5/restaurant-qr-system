@@ -22,7 +22,13 @@ function getCategoryEmoji(category = "") {
 }
 
 function MenuCard({ item, cart, onAdd, onRemove, currency }) {
-  const qty = cart.find((c) => c.id === item.id)?.quantity || 0;
+  const sizes = Array.isArray(item.sizes) ? item.sizes : [];
+  const [sizeIdx, setSizeIdx] = useState(0);
+  const selectedSize = sizes.length > 0 ? sizes[Math.min(sizeIdx, sizes.length - 1)] : null;
+  // The quantity of THIS size (a dish in two sizes is two cart lines).
+  const cartKey = selectedSize ? `${item.id}__${selectedSize.label}` : item.id;
+  const qty = cart.find((c) => (c._key || c.id) === cartKey)?.quantity || 0;
+  const spice = item.spice_level === "Hot" ? "🌶️🌶️🌶️ Hot" : item.spice_level === "Medium" ? "🌶️🌶️ Medium" : item.spice_level === "Mild" ? "🌶️ Mild" : "";
   return (
     <div className={`menu-card ${!item.available ? "unavailable" : ""}`}>
       {item.image_url ? (
@@ -39,15 +45,35 @@ function MenuCard({ item, cart, onAdd, onRemove, currency }) {
         <div className="menu-card-info">
           <h3 className="menu-item-name">{item.name}</h3>
           {item.description && <p className="menu-item-desc">{item.description}</p>}
+          {spice && <div style={{ fontSize: 12, marginTop: 2 }}>{spice}</div>}
+          {item.allergens && <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>⚠️ {item.allergens}</div>}
+          {sizes.length > 0 && (
+            <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+              {sizes.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSizeIdx(i)}
+                  style={{
+                    padding: "4px 10px", borderRadius: 16, fontSize: 12, cursor: "pointer",
+                    border: i === sizeIdx ? "2px solid #20C997" : "1px solid var(--color-border)",
+                    background: i === sizeIdx ? "#e6faf3" : "transparent",
+                    color: "inherit", fontWeight: i === sizeIdx ? 700 : 400,
+                  }}
+                >
+                  {s.label} — {formatPrice(s.price, currency)}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="menu-item-meta">
-            {isItemPromoActive(item) ? (
+            {isItemPromoActive(item) && !selectedSize ? (
               <span className="menu-item-price">
                 <s className="price-was">{formatPrice(item.price, currency)}</s>{" "}
                 <span className="price-promo">{formatPrice(getItemPrice(item), currency)}</span>
                 <span className="promo-badge">🎉 Promo</span>
               </span>
             ) : (
-              <span className="menu-item-price">{formatPrice(item.price, currency)}</span>
+              <span className="menu-item-price">{formatPrice(selectedSize ? selectedSize.price : item.price, currency)}</span>
             )}
             <span className="menu-item-prep">⏱ {item.prep_time_minutes} min</span>
           </div>
@@ -56,16 +82,16 @@ function MenuCard({ item, cart, onAdd, onRemove, currency }) {
           {qty === 0 ? (
             <button
               className="btn-add"
-              onClick={() => onAdd(item)}
+              onClick={() => onAdd(item, selectedSize)}
               disabled={!item.available}
             >
               {item.available ? "Add" : "Unavailable"}
             </button>
           ) : (
             <div className="qty-control">
-              <button onClick={() => onRemove(item.id)}>−</button>
+              <button onClick={() => onRemove(cartKey)}>−</button>
               <span>{qty}</span>
-              <button onClick={() => onAdd(item)}>+</button>
+              <button onClick={() => onAdd(item, selectedSize)}>+</button>
             </div>
           )}
         </div>

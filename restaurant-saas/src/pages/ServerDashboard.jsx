@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, subscribeToOrders, createOrder, cancelOrder,
-  subscribeToRestaurantPayments
+  subscribeToRestaurantPayments, subscribeToWaiterCalls, updateWaiterCall
 , getRestaurant, getOrderPayable, getItemPrice, getItemOriginalPrice } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { sortByBookedAt } from "../utils/orderSort";
@@ -37,6 +37,8 @@ export default function ServerDashboard() {
   const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  // Waiter calls — a customer tapped "Call Waiter" on the menu.
+  const [waiterCalls, setWaiterCalls] = useState([]);
 
   // A server may delete an order ONLY while it is still pending — before
   // the kitchen confirms it. The order is soft-cancelled (status
@@ -60,7 +62,8 @@ export default function ServerDashboard() {
     const unsubMenu = subscribeToMenu(restaurantId, setMenuItems);
     const unsubOrders = subscribeToOrders(restaurantId, setOrders);
     const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
-    return () => { unsubMenu(); unsubOrders(); unsubPayments(); };
+    const unsubCalls = subscribeToWaiterCalls(restaurantId, setWaiterCalls);
+    return () => { unsubMenu(); unsubOrders(); unsubPayments(); unsubCalls(); };
   }, [restaurantId]);
 
   // Map tableNumber → latest payment status
@@ -72,20 +75,26 @@ export default function ServerDashboard() {
     }
   });
 
-  function addToCart(item) {
+  function addToCart(item, size) {
+    // A size option is its own cart line — the same dish in two sizes
+    // never merges. Called with a cart item (from the + button) the line
+    // is found by _key. The price is locked at add time.
+    const sizeLabel = size?.label || item.size_label || "";
+    const key = item._key || (sizeLabel ? `${item.id}__${sizeLabel}` : item.id);
     setCart((prev) => {
-      const ex = prev.find((c) => c.id === item.id);
-      if (ex) return prev.map((c) => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
+      const ex = prev.find((c) => (c._key || c.id) === key);
+      if (ex) return prev.map((c) => (c._key || c.id) === key ? { ...c, quantity: c.quantity + 1 } : c);
       // Charged at the promo price while the offer runs (see CustomerMenu).
-      return [...prev, { ...item, quantity: 1, notes: "", price: getItemPrice(item), original_price: getItemOriginalPrice(item) || 0 }];
+      const price = size ? Number(size.price) : (item._key ? item.price : getItemPrice(item));
+      return [...prev, { ...item, _key: key, size_label: sizeLabel, quantity: 1, notes: item.notes || "", price, original_price: size ? Number(size.price) : (item._key ? (item.original_price || item.price) : (getItemOriginalPrice(item) || 0)) }];
     });
   }
 
   function removeFromCart(itemId) {
     setCart((prev) => {
-      const ex = prev.find((c) => c.id === itemId);
-      if (ex?.quantity > 1) return prev.map((c) => c.id === itemId ? { ...c, quantity: c.quantity - 1 } : c);
-      return prev.filter((c) => c.id !== itemId);
+      const ex = prev.find((c) => (c._key || c.id) === itemId);
+      if (ex?.quantity > 1) return prev.map((c) => (c._key || c.id) === itemId ? { ...c, quantity: c.quantity - 1 } : c);
+      return prev.filter((c) => (c._key || c.id) !== itemId);
     });
   }
 
@@ -104,6 +113,12 @@ export default function ServerDashboard() {
         original_price: i.original_price || 0,
         quantity: i.quantity, notes: i.notes,
         prep_time_minutes: i.prep_time_minutes,
+        // Kitchen station + dish detail ride along so the kitchen can
+        // group by station and show the size / spice on the ticket.
+        station: i.station || i.category || "Kitchen",
+        category: i.category || "",
+        spice_level: i.spice_level || "",
+        size_label: i.size_label || "",
       })),
       notes,
       created_by: userProfile?.id || "server",
@@ -184,6 +199,46 @@ export default function ServerDashboard() {
           + New Order
         </button>
       </div>
+
+      {/* Waiter calls — a customer tapped "Call Waiter" on the menu */}
+      {waiterCalls.filter((c) => c.status === "pending").length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          {waiterCalls.filter((c) => c.status === "pending").map((c) => (
+            <div key={c.id} style={{ background: "#ff6b35", color: "#fff", borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <strong>🙋 Table {c.table_number} called a waiter</strong>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => updateWaiterCall(restaurantId, c.id, "acknowledged")}
+                  style={{ background: "#fff", color: "#ff6b35", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  On my way
+                </button>
+                <button
+                  onClick={() => updateWaiterCall(restaurantId, c.id, "done")}
+                  style={{ background: "transparent", color: "#fff", border: "1px solid #fff", borderRadius: 8, padding: "6px 12px", fontWeight: 700, cursor: "pointer" }}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {waiterCalls.filter((c) => c.status === "acknowledged").length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          {waiterCalls.filter((c) => c.status === "acknowledged").map((c) => (
+            <div key={c.id} style={{ background: "#f7931e", color: "#fff", borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <strong>🚶 Table {c.table_number} — waiter is on the way</strong>
+              <button
+                onClick={() => updateWaiterCall(restaurantId, c.id, "done")}
+                style={{ background: "#fff", color: "#f7931e", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, cursor: "pointer" }}
+              >
+                Done
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {view === "orders" && (
         <div className="server-orders">
@@ -268,16 +323,28 @@ export default function ServerDashboard() {
                 <h4 className="category-label">{cat}</h4>
                 <div className="menu-grid-compact">
                   {filteredMenu.filter((i) => i.category === cat).map((item) => {
-                    const inCart = cart.find((c) => c.id === item.id);
+                    const sizes = Array.isArray(item.sizes) ? item.sizes : [];
+                    const inCart = cart.filter((c) => c.id === item.id).reduce((s, c) => s + c.quantity, 0);
                     return (
-                      <div
-                        key={item.id}
-                        className="menu-item-compact"
-                        onClick={() => addToCart(item)}
-                      >
-                        <span className="item-name">{item.name}</span>
-                        <span className="item-price">{formatPrice(item.price, currency)}</span>
-                        {inCart && <span className="in-cart-badge">{inCart.quantity}</span>}
+                      <div key={item.id} className="menu-item-compact">
+                        <div onClick={() => addToCart(item, sizes.length > 0 ? sizes[0] : null)} style={{ display: "flex", justifyContent: "space-between", width: "100%", cursor: "pointer" }}>
+                          <span className="item-name">{item.name}{item.spice_level ? ` ${item.spice_level === "Hot" ? "🌶️🌶️🌶️" : item.spice_level === "Medium" ? "🌶️🌶️" : "🌶️"}` : ""}</span>
+                          <span className="item-price">{formatPrice(sizes.length > 0 ? sizes[0].price : item.price, currency)}</span>
+                          {inCart > 0 && <span className="in-cart-badge">{inCart}</span>}
+                        </div>
+                        {sizes.length > 0 && (
+                          <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
+                            {sizes.map((s, si) => (
+                              <button
+                                key={si}
+                                onClick={(e) => { e.stopPropagation(); addToCart(item, s); }}
+                                style={{ padding: "3px 8px", borderRadius: 12, fontSize: 11, border: "1px solid var(--color-border)", background: "transparent", color: "inherit", cursor: "pointer" }}
+                              >
+                                {s.label} {formatPrice(s.price, currency)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -290,13 +357,13 @@ export default function ServerDashboard() {
             <h3>Order — Table {selectedTable}</h3>
             {cart.length === 0 && <div className="empty-cart">Tap items to add</div>}
             {cart.map((item) => (
-              <div key={item.id} className="cart-item">
+              <div key={item._key || item.id} className="cart-item">
                 <div className="cart-item-info">
-                  <span className="cart-item-name">{item.name}</span>
+                  <span className="cart-item-name">{item.name}{item.size_label ? ` (${item.size_label})` : ""}</span>
                   <span className="cart-item-price">{formatPrice(item.price * item.quantity, currency)}</span>
                 </div>
                 <div className="cart-item-controls">
-                  <button onClick={() => removeFromCart(item.id)}>−</button>
+                  <button onClick={() => removeFromCart(item._key || item.id)}>−</button>
                   <span>{item.quantity}</span>
                   <button onClick={() => addToCart(item)}>+</button>
                 </div>

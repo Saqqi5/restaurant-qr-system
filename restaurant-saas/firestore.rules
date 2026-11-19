@@ -81,7 +81,7 @@ service cloud.firestore {
     }
 
     function isPaymentStatusValid(status) {
-      return status in ['unpaid', 'paid'];
+      return status in ['unpaid', 'partially_paid', 'paid'];
     }
 
     function isValidOrderCreate() {
@@ -253,6 +253,36 @@ service cloud.firestore {
           && request.resource.data.changes is list
           && request.resource.data.changes.size() > 0;
         allow read: if isSuperAdmin();
+        allow update, delete: if isSuperAdmin();
+      }
+
+      // ── Waiter calls ────────────────────────────────────────────
+      // A customer taps "Call Waiter" on the menu (not signed in). One
+      // pending call per table; staff acknowledge it, then mark it done.
+      match /waiter_calls/{callId} {
+        allow create: if request.resource.data.keys().hasAll(['table_number', 'session_id', 'status', 'created_at'])
+          && request.resource.data.status == 'pending'
+          && request.resource.data.table_number is int
+          && request.resource.data.table_number > 0;
+        allow read: if isSuperAdmin() || isGeneralAdmin(restaurantId) || isBranchManager(restaurantId)
+          || isKitchen(restaurantId) || isCashCounter(restaurantId) || isServer(restaurantId);
+        allow update: if (isSuperAdmin() || isGeneralAdmin(restaurantId) || isBranchManager(restaurantId)
+          || isServer(restaurantId))
+          && request.resource.data.status in ['acknowledged', 'done']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updated_at']);
+        allow delete: if isSuperAdmin();
+      }
+
+      // ── Reviews ─────────────────────────────────────────────────
+      // After paying, the customer rates the visit (1–5 stars + a note).
+      // The restaurant's review link (Google Business, Facebook page or
+      // any other — Settings → review_url) is offered right after rating.
+      match /reviews/{reviewId} {
+        allow create: if request.resource.data.keys().hasAll(['order_id', 'table_number', 'rating', 'comment', 'session_id', 'created_at'])
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5;
+        allow read: if isSuperAdmin() || isGeneralAdmin(restaurantId) || isBranchManager(restaurantId);
         allow update, delete: if isSuperAdmin();
       }
 

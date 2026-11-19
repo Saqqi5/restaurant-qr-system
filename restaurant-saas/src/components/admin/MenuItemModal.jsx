@@ -15,7 +15,17 @@ export default function MenuItemModal({ item, categories, onClose, onSave }) {
     promo_price: item?.promo_price || "",
     promo_start: item?.promo_start || "",
     promo_end: item?.promo_end || "",
+    spice_level: item?.spice_level || "",
+    allergens: item?.allergens || "",
+    station: item?.station || "",
   });
+  // Size options — each row is one size (label + price). Empty = one size
+  // at the base price. The customer picks a size when adding the dish.
+  const [sizes, setSizes] = useState(
+    Array.isArray(item?.sizes) && item.sizes.length > 0
+      ? item.sizes.map((s) => ({ label: s.label || "", price: s.price || "" }))
+      : []
+  );
   const [customCategory, setCustomCategory] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(item?.image_url || "");
@@ -35,7 +45,10 @@ export default function MenuItemModal({ item, categories, onClose, onSave }) {
     e.preventDefault();
     setLoading(true);
     const category = customCategory || form.category;
-    await onSave({ ...form, category }, imageFile);
+    const cleanSizes = sizes
+      .map((s) => ({ label: (s.label || "").trim(), price: parseFloat(s.price) || 0 }))
+      .filter((s) => s.label && s.price > 0);
+    await onSave({ ...form, category, sizes: cleanSizes }, imageFile);
     setLoading(false);
   }
 
@@ -163,6 +176,66 @@ export default function MenuItemModal({ item, categories, onClose, onSave }) {
                   />
                   Available for ordering
                 </label>
+              </div>
+
+              {/* Dish detail — spice, allergens, kitchen station, sizes */}
+              <div className="form-group">
+                <label>🌶️ Spice Level</label>
+                <select
+                  value={form.spice_level}
+                  onChange={(e) => setForm({ ...form, spice_level: e.target.value })}
+                >
+                  <option value="">No spice level</option>
+                  <option value="Mild">Mild 🌶️</option>
+                  <option value="Medium">Medium 🌶️🌶️</option>
+                  <option value="Hot">Hot 🌶️🌶️🌶️</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>⚠️ Allergens</label>
+                <input
+                  value={form.allergens}
+                  onChange={(e) => setForm({ ...form, allergens: e.target.value })}
+                  placeholder="e.g. Contains nuts, dairy, gluten"
+                />
+                <p className="form-hint">Shown on the menu under the dish — leave empty if none.</p>
+              </div>
+
+              <div className="form-group">
+                <label>🍳 Kitchen Station</label>
+                <input
+                  value={form.station}
+                  onChange={(e) => setForm({ ...form, station: e.target.value })}
+                  placeholder="e.g. Tandoor, Curry, Drinks (defaults to category)"
+                />
+                <p className="form-hint">The kitchen display groups orders by station — the cook picks their station and sees only their items.</p>
+              </div>
+
+              <div className="form-group">
+                <label>📏 Size Options <span style={{ fontWeight: 400, color: "var(--color-muted)" }}>(optional)</span></label>
+                {sizes.map((s, i) => (
+                  <div key={i} className="form-row" style={{ marginBottom: 6 }}>
+                    <input
+                      value={s.label}
+                      onChange={(e) => setSizes(sizes.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                      placeholder="e.g. Half / Full"
+                      style={{ flex: 1 }}
+                    />
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={s.price}
+                      onChange={(e) => setSizes(sizes.map((x, j) => j === i ? { ...x, price: e.target.value } : x))}
+                      placeholder="Price"
+                      style={{ flex: 1 }}
+                    />
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => setSizes(sizes.filter((_, j) => j !== i))}>✕</button>
+                  </div>
+                ))}
+                {sizes.length < 4 && (
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setSizes([...sizes, { label: "", price: "" }])}>+ Add size</button>
+                )}
+                <p className="form-hint">Empty = one size at the base price. The customer picks a size when adding the dish, and the kitchen ticket shows it.</p>
               </div>
             </div>
 

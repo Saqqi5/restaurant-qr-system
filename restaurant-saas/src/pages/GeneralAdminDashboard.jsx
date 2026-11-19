@@ -6,6 +6,7 @@ import {
   createMenuItem, updateMenuItem, deleteMenuItem, restoreMenuItem, createDemoLead,
   getRestaurantUsers, subscribeToPlatformSettings,
   subscribeToRestaurantPayments, subscribeToMultiOrders, subscribeToMultiPayments,
+  subscribeToReviews, subscribeToMultiReviews,
   verifyPayment
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
@@ -24,7 +25,7 @@ import ConfirmModal from "../components/admin/ConfirmModal";
 import ReceiptModal from "../components/ReceiptModal";
 import AnalyticsPanel from "../components/admin/AnalyticsPanel";
 
-const ALL_TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
+const ALL_TABS = ["menu", "orders", "payments", "analytics", "reviews", "staff", "qr"];
 // The branch manager sits ABOVE the restaurant admin (his 2026-11-19
 // decision) — they get every tab the admin has (menu, orders, payments,
 // analytics, staff, QR) plus the branch switcher and All branches.
@@ -42,6 +43,7 @@ export default function GeneralAdminDashboard() {
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [payments, setPayments] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,11 +79,12 @@ export default function GeneralAdminDashboard() {
       // No single menu / staff / restaurant doc — those tabs ask for a branch.
       const unsubOrders = subscribeToMultiOrders(accessibleRestaurantIds, setOrders);
       const unsubPayments = subscribeToMultiPayments(accessibleRestaurantIds, setPayments);
+      const unsubReviews = subscribeToMultiReviews(accessibleRestaurantIds, setReviews);
       setMenuItems([]);
       setStaff([]);
       setRestaurant(null);
       setLoading(false);
-      return () => { unsubOrders(); unsubPayments(); };
+      return () => { unsubOrders(); unsubPayments(); unsubReviews(); };
     }
     const unsubMenu = subscribeToMenu(restaurantId, (items) => {
       setMenuItems(items);
@@ -92,8 +95,9 @@ export default function GeneralAdminDashboard() {
     });
     const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
     const unsubRestaurant = subscribeToRestaurant(restaurantId, setRestaurant);
+    const unsubReviews = subscribeToReviews(restaurantId, setReviews);
     getRestaurantUsers(restaurantId).then(setStaff);
-    return () => { unsubMenu(); unsubOrders(); unsubPayments(); unsubRestaurant(); };
+    return () => { unsubMenu(); unsubOrders(); unsubPayments(); unsubRestaurant(); unsubReviews(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId, accessibleKey]);
 
@@ -270,6 +274,15 @@ export default function GeneralAdminDashboard() {
     return orderDate.toDateString() === today.toDateString();
   });
 
+  // Live today: tables currently occupied (an active unpaid order sits on
+  // them), orders today, and today's paid revenue — one glance, no tab.
+  const activeTables = new Set(
+    todayOrders
+      .filter((o) => o.status !== "cancelled" && o.payment_status !== "paid" && o.order_type !== "delivery")
+      .map((o) => o.table_number)
+  ).size;
+  const tableCount = restaurant?.table_count || 0;
+
   // Cancelled orders never count as revenue (they stay in history only).
   const todayRevenue = todayOrders
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
@@ -347,11 +360,13 @@ export default function GeneralAdminDashboard() {
       )}
       <StatsBar stats={isAllBranches ? [
         { label: "Branches", value: branches.length, icon: "🏪" },
+        { label: "Tables Active", value: `${activeTables} / ${branches.reduce((s, b) => s + (b.table_count || 0), 0)}`, icon: "🪑" },
         { label: "Today's Orders", value: todayOrders.length, icon: "📋" },
         ...branches.map((b) => ({ label: `Revenue — ${b.name}`, value: formatPrice(todayRevenueByBranch[b.id] || 0, b.currency || "$"), icon: "💰" })),
         { label: "Pending Orders", value: pendingOrders, icon: "⏳", alert: pendingOrders > 5 },
       ] : [
         { label: "Menu Items", value: menuItems.length, icon: "🍽️" },
+        { label: "Tables Active", value: tableCount > 0 ? `${activeTables} / ${tableCount}` : activeTables, icon: "🪑" },
         { label: "Today's Orders", value: todayOrders.length, icon: "📋" },
         { label: "Today's Revenue", value: formatPrice(todayRevenue, currency), icon: "💰" },
         { label: "Pending Orders", value: pendingOrders, icon: "⏳", alert: pendingOrders > 5 },
@@ -595,6 +610,49 @@ export default function GeneralAdminDashboard() {
             ))
           ) : (
             <AnalyticsPanel orders={visibleOrders} menuItems={menuItems} currency={currency} />
+          )}
+        </div>
+      )}
+
+      {/* Reviews Tab — customer star ratings after payment */}
+      {activeTab === "reviews" && (
+        <div className="tab-content">
+          {reviews.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">⭐</div>
+              <p>No reviews yet — customers are asked to rate their visit after paying.</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <span style={{ fontSize: 28 }}>⭐</span>
+                <div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>
+                    {(reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0) / reviews.length).toFixed(1)} / 5
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--color-muted)" }}>
+                    {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {reviews.map((r) => (
+                  <div key={r.id} style={{ border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ color: "#f5a623", fontSize: 16 }}>
+                        {"★".repeat(Number(r.rating) || 0)}{"☆".repeat(5 - (Number(r.rating) || 0))}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--color-muted)" }}>
+                        {r.created_at?.toDate ? r.created_at.toDate().toLocaleString() : ""}
+                        {r.table_number ? ` · Table ${r.table_number}` : ""}
+                        {isAllBranches && r._restaurantId ? ` · ${branchMap[r._restaurantId]?.name || ""}` : ""}
+                      </span>
+                    </div>
+                    {r.comment && <div style={{ fontSize: 14, marginTop: 6 }}>{r.comment}</div>}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getRestaurant, getOrderPayable, applyOrderDiscount, removeOrderDiscount, cancelOrder, deleteOrder, hideOrder } from "../config/db";
+import { getRestaurant, getOrderPayable, applyOrderDiscount, removeOrderDiscount, cancelOrder, deleteOrder, hideOrder, setOrderTip } from "../config/db";
 import { formatPrice } from "../utils/currency";
 
 // Printable receipt (customer bill) and KOT (kitchen order ticket).
@@ -67,7 +67,7 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
   const tax = displayOrder.tax_amount || 0;
   // Per-order manual discount (admin / super admin only): the stored
   // total never changes, so the slip shows the payable instead.
-  const { payable, discount: manualDiscount } = getOrderPayable(displayOrder);
+  const { payable, discount: manualDiscount, tip, amountPaid, balance } = getOrderPayable(displayOrder);
 
   // One-customer discount, applied from this slip by the restaurant
   // admin or the super admin only (discountActor is null for everyone
@@ -104,6 +104,26 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
       setDiscError(e.message || "Could not remove the discount.");
     }
     setDiscBusy(false);
+  }
+
+  // Tip (cashier / admin, from this slip): added to the order's bill.
+  const [tipValue, setTipValue] = useState("");
+  const [tipBusy, setTipBusy] = useState(false);
+  const [tipError, setTipError] = useState("");
+  const canTip = !!actor && ["general_admin", "cash_counter", "super_admin", "branch_manager"].includes(actorRole) && displayOrder.payment_status !== "paid" && displayOrder.status !== "cancelled";
+  async function handleSetTip() {
+    setTipError("");
+    setTipBusy(true);
+    try {
+      const v = Math.max(0, Number(tipValue) || 0);
+      await setOrderTip(displayOrder._restaurantId || restaurantId, displayOrder.id, v);
+      setLocalOrder({ ...displayOrder, tip_amount: v });
+      setTipValue("");
+      if (onDiscountApplied) onDiscountApplied();
+    } catch (e) {
+      setTipError(e.message || "Could not set the tip.");
+    }
+    setTipBusy(false);
   }
 
   // Cancel / Delete from this slip (only when an `actor` is passed —
@@ -251,12 +271,30 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
                   <span>{formatPrice(displayOrder.delivery_fee, currency)}</span>
                 </div>
               )}
+              {tip > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>💝 Tip</span>
+                  <span>{formatPrice(tip, currency)}</span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 17, fontWeight: 800, color: "#12805c", borderTop: "1px solid #ddd", marginTop: 4, paddingTop: 6 }}>
                 <span>Total</span><span>{formatPrice(payable, currency)}</span>
               </div>
+              {amountPaid > 0 && displayOrder.payment_status !== "paid" && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span>Paid so far</span>
+                  <span>−{formatPrice(amountPaid, currency)}</span>
+                </div>
+              )}
+              {displayOrder.payment_status !== "paid" && balance > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700 }}>
+                  <span>Balance due</span>
+                  <span>{formatPrice(balance, currency)}</span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666" }}>
                 <span>Payment</span>
-                <span style={{ color: displayOrder.payment_status === "paid" ? "#12805c" : "#b45309" }}>{displayOrder.payment_status === "paid" ? `Paid (${displayOrder.payment_method || "—"})` : "Unpaid"}</span>
+                <span style={{ color: displayOrder.payment_status === "paid" ? "#12805c" : "#b45309" }}>{displayOrder.payment_status === "paid" ? `Paid (${displayOrder.payment_method || "—"})` : displayOrder.payment_status === "partially_paid" ? `Partially paid (${formatPrice(amountPaid, currency)} of ${formatPrice(payable, currency)})` : "Unpaid"}</span>
               </div>
             </div>
           )}
@@ -351,6 +389,32 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
               </button>
             )}
             {discError && <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 8 }}>{discError}</div>}
+          </div>
+        )}
+
+        {/* Tip (cashier / admin). Outside the print area, so it never
+            appears on the printed slip — the tip line shows in the bill. */}
+        {canTip && (
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: "#f6f6f6", border: "1px solid #ddd" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>💝 Tip for this order</div>
+            {tip > 0 && (
+              <div style={{ fontSize: 13, marginBottom: 8 }}>Current tip: {formatPrice(tip, currency)}</div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="number" min="0" step="any" value={tipValue}
+                onChange={(e) => setTipValue(e.target.value)}
+                placeholder={`e.g. 100 (${currency})`}
+                style={{ flex: 1, padding: "8px", borderRadius: 8, border: "1px solid #ccc", minWidth: 0 }}
+              />
+              <button
+                onClick={handleSetTip} disabled={tipBusy}
+                style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "#20C997", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+              >
+                {tipBusy ? "…" : "Set tip"}
+              </button>
+            </div>
+            {tipError && <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 8 }}>{tipError}</div>}
           </div>
         )}
 

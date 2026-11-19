@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   subscribeToMenu, createOrder, subscribeToTableOrders, subscribeToSessionOrders,
   createPayment, subscribeToPayment, calculateBill, isExpiredDemoItem, sortCategories,
-  getOrderPayable, getEffectiveDiscount, getItemPrice, getItemOriginalPrice
+  getOrderPayable, getEffectiveDiscount, getItemPrice, getItemOriginalPrice, callWaiter, submitReview
 } from "../config/db";
 import { canUseDelivery } from "../config/plans";
 import { formatPrice } from "../utils/currency";
@@ -56,6 +56,53 @@ export default function CustomerMenu() {
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
+  // Tip + bill split (Pay Bill sheet): the tip the customer adds, and the
+  // number of people splitting the bill equally. The payment amount is the
+  // customer's share (bill + tip) / people; the cashier verifies each
+  // share and the order becomes paid once all shares are in.
+  const [tipAmount, setTipAmount] = useState(0);
+  const [splitCount, setSplitCount] = useState(1);
+  // Star rating after payment (1–5 stars + an optional note). Submitted
+  // once per visit; the restaurant's review link (Google Business,
+  // Facebook page or any other — Settings → review_url) is offered after.
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingSent, setRatingSent] = useState(false);
+  const [ratingBusy, setRatingBusy] = useState(false);
+
+  async function handleSubmitRating() {
+    if (!rating || ratingBusy || ratingSent) return;
+    setRatingBusy(true);
+    try {
+      await submitReview(restaurantId, {
+        orderId: activeOrders[0]?.id || null,
+        tableNumber: isDeliveryMode ? 0 : effectiveTable,
+        rating,
+        comment: ratingComment,
+        sessionId: mySessionId,
+      });
+      setRatingSent(true);
+    } catch (e) {
+      // A failed rating is silent — the customer can tap again.
+    }
+    setRatingBusy(false);
+  }
+  // Call Waiter — one tap summons staff to this table; the button shows
+  // "Waiter is on the way" until staff acknowledge it.
+  const [waiterCalled, setWaiterCalled] = useState(false);
+  const [callingWaiter, setCallingWaiter] = useState(false);
+
+  async function handleCallWaiter() {
+    if (!effectiveTable || callingWaiter || waiterCalled) return;
+    setCallingWaiter(true);
+    try {
+      await callWaiter(restaurantId, effectiveTable, mySessionId);
+      setWaiterCalled(true);
+    } catch (e) {
+      // A failed call is silent — the customer can tap again.
+    }
+    setCallingWaiter(false);
+  }
   // True while an order is being sent — the Place Order button is disabled
   // in that window, so a double tap can never book the order twice.
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -166,31 +213,37 @@ export default function CustomerMenu() {
     return unsub;
   }, [paymentId, paymentStage]);
 
-  function addToCart(item) {
+  function addToCart(item, size) {
+    // A size option (Half/Full, Small/Large) is its own cart line — the
+    // same dish in two sizes never merges. The price is locked at add time.
+    // Called with a cart item (from the drawer) the line is found by _key.
+    const sizeLabel = size?.label || item.size_label || "";
+    const key = item._key || (sizeLabel ? `${item.id}__${sizeLabel}` : item.id);
     setCart((prev) => {
-      const existing = prev.find((c) => c.id === item.id);
+      const existing = prev.find((c) => (c._key || c.id) === key);
       if (existing) {
-        return prev.map((c) => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
+        return prev.map((c) => (c._key || c.id) === key ? { ...c, quantity: c.quantity + 1 } : c);
       }
-      // The dish is charged at its promo price while the offer runs —
-      // the original price rides along so the bill and slip can show it
-      // struck through. The price is locked at add time.
-      return [...prev, { ...item, quantity: 1, notes: "", price: getItemPrice(item), original_price: getItemOriginalPrice(item) || 0 }];
+      // The dish is charged at its promo price while the offer runs (a
+      // size price wins over the promo) — the original price rides along
+      // so the bill and slip can show it struck through.
+      const price = size ? Number(size.price) : (item._key ? item.price : getItemPrice(item));
+      return [...prev, { ...item, _key: key, size_label: sizeLabel, quantity: 1, notes: item.notes || "", price, original_price: size ? Number(size.price) : (item._key ? (item.original_price || item.price) : (getItemOriginalPrice(item) || 0)) }];
     });
   }
 
   function removeFromCart(itemId) {
     setCart((prev) => {
-      const existing = prev.find((c) => c.id === itemId);
+      const existing = prev.find((c) => (c._key || c.id) === itemId);
       if (existing?.quantity > 1) {
-        return prev.map((c) => c.id === itemId ? { ...c, quantity: c.quantity - 1 } : c);
+        return prev.map((c) => (c._key || c.id) === itemId ? { ...c, quantity: c.quantity - 1 } : c);
       }
-      return prev.filter((c) => c.id !== itemId);
+      return prev.filter((c) => (c._key || c.id) !== itemId);
     });
   }
 
   function updateNotes(itemId, notes) {
-    setCart((prev) => prev.map((c) => c.id === itemId ? { ...c, notes } : c));
+    setCart((prev) => prev.map((c) => (c._key || c.id) === itemId ? { ...c, notes } : c));
   }
 
   async function placeOrder() {
@@ -227,6 +280,12 @@ export default function CustomerMenu() {
           quantity: i.quantity,
           notes: i.notes,
           prep_time_minutes: i.prep_time_minutes,
+          // Kitchen station + dish detail ride along so the kitchen can
+          // group by station and show the size / spice on the ticket.
+          station: i.station || i.category || "Kitchen",
+          category: i.category || "",
+          spice_level: i.spice_level || "",
+          size_label: i.size_label || "",
         })),
         created_by: mySessionId,
         // Add-on: this table already has an active order, so the kitchen
@@ -276,8 +335,14 @@ export default function CustomerMenu() {
     setUploading(true);
     try {
       // Calculate total from all active orders (after any per-order
-      // manual discount — the customer pays the payable, not the bill).
-      const total = activeOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0);
+      // manual discount — the customer pays the payable, not the bill),
+      // minus what is already paid, plus the tip they added. With a
+      // split, this payment is one person's share (bill + tip) / people.
+      const alreadyPaid = activeOrders.reduce((s, o) => s + getOrderPayable(o).amountPaid, 0);
+      const billTotal = activeOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0);
+      const remaining = Math.max(0, billTotal - alreadyPaid);
+      const total = Number(((remaining + tipAmount) / splitCount).toFixed(2));
+      const tipForThisPayment = Number((tipAmount / splitCount).toFixed(2));
       const allItems = activeOrders.flatMap(o => o.items || []);
 
       // Compress the screenshot to a data URL stored in the payment record.
@@ -299,6 +364,7 @@ export default function CustomerMenu() {
         method: activeMethodKey,
         orderIds: activeOrders.map((o) => o.id),
         amount: total,
+        tip_amount: tipForThisPayment,
         items: allItems,
         screenshotUrl,
       });
@@ -643,6 +709,26 @@ export default function CustomerMenu() {
         </button>
       )}
 
+      {/* Call Waiter — dine-in only, one tap summons staff to this table */}
+      {!isDeliveryMode && effectiveTable && (
+        <button
+          className="cart-fab"
+          onClick={handleCallWaiter}
+          disabled={callingWaiter || waiterCalled}
+          style={{
+            bottom: cartCount > 0 ? 92 : 20,
+            background: waiterCalled ? "#27ae60" : "#ff6b35",
+            opacity: callingWaiter ? 0.6 : 1,
+          }}
+          title="Call a waiter to your table"
+        >
+          <span className="cart-fab-icon">🙋</span>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>
+            {waiterCalled ? "Waiter is on the way ✓" : callingWaiter ? "Calling…" : "Call Waiter"}
+          </span>
+        </button>
+      )}
+
       <CartDrawer
         open={cartOpen}
         onClose={() => setCartOpen(false)}
@@ -722,10 +808,50 @@ export default function CustomerMenu() {
                       <span>{formatPrice(billDeliveryFee, currency)}</span>
                     </div>
                   )}
+                  {activeOrders.reduce((s, o) => s + getOrderPayable(o).amountPaid, 0) > 0 && (
+                    <div className="bill-row">
+                      <span>Already paid</span>
+                      <span>−{formatPrice(activeOrders.reduce((s, o) => s + getOrderPayable(o).amountPaid, 0), currency)}</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Tip + bill split */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+                    <span>💝 Tip</span>
+                    <input
+                      type="number" min="0" step="10"
+                      value={tipAmount}
+                      onChange={(e) => setTipAmount(Math.max(0, Number(e.target.value) || 0))}
+                      style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 15 }}
+                      placeholder="0"
+                    />
+                    <span style={{ color: "var(--color-muted)" }}>{currency}</span>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+                    <span>👥 Split bill equally</span>
+                    <select
+                      value={splitCount}
+                      onChange={(e) => setSplitCount(Number(e.target.value))}
+                      style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 15 }}
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                        <option key={n} value={n}>{n === 1 ? "No split — pay full bill" : `${n} people`}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {splitCount > 1 && (
+                    <div style={{ fontSize: 14, background: "var(--color-surface-muted)", borderRadius: 8, padding: "8px 10px" }}>
+                      Each person pays <strong>{formatPrice((orderTotal + tipAmount - activeOrders.reduce((s, o) => s + getOrderPayable(o).amountPaid, 0)) / splitCount, currency)}</strong>
+                      {" "}(bill {formatPrice(orderTotal + tipAmount, currency)} ÷ {splitCount})
+                    </div>
+                  )}
+                </div>
+
                 <div className="bill-total">
-                  <span>Total</span>
-                  <span>{formatPrice(orderTotal, currency)}</span>
+                  <span>{splitCount > 1 ? "Your share" : "Total"}</span>
+                  <span>{formatPrice(splitCount > 1 ? (orderTotal + tipAmount - activeOrders.reduce((s, o) => s + getOrderPayable(o).amountPaid, 0)) / splitCount : orderTotal + tipAmount - activeOrders.reduce((s, o) => s + getOrderPayable(o).amountPaid, 0), currency)}</span>
                 </div>
                 <button
                   className="btn-pay-now"
@@ -911,10 +1037,57 @@ export default function CustomerMenu() {
                 <div className="payment-status-desc">
                   Your payment has been confirmed. Thank you for dining with us!
                 </div>
+                {/* Rate your visit — 1–5 stars + an optional note */}
+                {!ratingSent ? (
+                  <div style={{ marginTop: 16, padding: 14, borderRadius: 12, background: "var(--color-surface-muted)", width: "100%", maxWidth: 340 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>How was your visit?</div>
+                    <div style={{ display: "flex", gap: 4, justifyContent: "center", marginBottom: 10 }}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setRating(s)}
+                          style={{ background: "none", border: "none", fontSize: 32, cursor: "pointer", padding: 2, color: s <= rating ? "#f5a623" : "#ccc" }}
+                          aria-label={`${s} star${s > 1 ? "s" : ""}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={ratingComment}
+                      onChange={(e) => setRatingComment(e.target.value)}
+                      placeholder="Tell us more (optional)"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--color-border)", fontSize: 14, marginBottom: 10, boxSizing: "border-box" }}
+                    />
+                    <button
+                      className="btn-pay-now"
+                      onClick={handleSubmitRating}
+                      disabled={!rating || ratingBusy}
+                      style={{ maxWidth: "100%", opacity: !rating ? 0.5 : 1 }}
+                    >
+                      {ratingBusy ? "Sending…" : "Submit rating"}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 16, padding: 14, borderRadius: 12, background: "var(--color-surface-muted)", width: "100%", maxWidth: 340 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>Thank you for rating us! ⭐</div>
+                    {restaurant?.review_url && (
+                      <a
+                        href={restaurant.review_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-pay-now"
+                        style={{ display: "block", marginTop: 12, textAlign: "center", textDecoration: "none" }}
+                      >
+                        ⭐ Leave a public review
+                      </a>
+                    )}
+                  </div>
+                )}
                 <button
                   className="btn-pay-now"
                   onClick={closePayment}
-                  style={{ maxWidth: 280, margin: "0 auto" }}
+                  style={{ maxWidth: 280, margin: "0 auto", marginTop: 14 }}
                 >
                   Done
                 </button>

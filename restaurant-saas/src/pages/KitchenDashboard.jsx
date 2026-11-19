@@ -42,6 +42,17 @@ export default function KitchenDashboard() {
   const [updating, setUpdating] = useState(new Set());
   const [kotOrder, setKotOrder] = useState(null);
   const { toasts, dismiss } = useNotifications(restaurantId);
+  // Live clock for the order timers — ticks every 30s so the elapsed
+  // time on every card stays current without re-fetching.
+  const [now, setNow] = useState(Date.now());
+  // Kitchen station filter — "All" or one station (Tandoor, Curry, …).
+  // A station cook picks their station and sees only their items.
+  const [stationFilter, setStationFilter] = useState("All");
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!restaurantId || restaurantId === "all") return;
@@ -63,8 +74,29 @@ export default function KitchenDashboard() {
 
   function getOrderAge(createdAt) {
     if (!createdAt?.toDate) return "—";
-    const mins = Math.floor((Date.now() - createdAt.toDate().getTime()) / 60000);
-    return mins < 1 ? "Just now" : `${mins}m ago`;
+    const mins = Math.floor((now - createdAt.toDate().getTime()) / 60000);
+    return mins < 1 ? "Just now" : `${mins}m`;
+  }
+
+  // An order is "late" once it has waited 15 minutes without being ready
+  // or served — the timer turns red so the kitchen sees it at a glance.
+  function isLate(order) {
+    if (!order.created_at?.toDate) return false;
+    if (["ready", "served"].includes(order.status)) return false;
+    return (now - order.created_at.toDate().getTime()) / 60000 >= 15;
+  }
+
+  // Stations present in the live orders (each item carries its dish's
+  // station, falling back to its category). "All" shows everything.
+  const stations = ["All", ...new Set(
+    orders.flatMap((o) => (o.items || []).map((i) => i.station || i.category || "Kitchen"))
+  )];
+
+  // Items of one order, filtered to the chosen station.
+  function visibleItems(order) {
+    const items = order.items || [];
+    if (stationFilter === "All") return items;
+    return items.filter((i) => (i.station || i.category || "Kitchen") === stationFilter);
   }
 
   function isOverdue(order) {
@@ -116,6 +148,25 @@ export default function KitchenDashboard() {
       )}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
 
+      {stations.length > 2 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+          {stations.map((s) => (
+            <button
+              key={s}
+              onClick={() => setStationFilter(s)}
+              style={{
+                padding: "6px 14px", borderRadius: 20, border: "1px solid var(--color-border)",
+                background: stationFilter === s ? "#20C997" : "transparent",
+                color: stationFilter === s ? "#fff" : "var(--color-text)",
+                fontWeight: stationFilter === s ? 700 : 400, cursor: "pointer",
+              }}
+            >
+              {s === "All" ? "🍳 All stations" : `🍳 ${s}`}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="kitchen-kanban">
         {ORDER_STAGES.map((stage) => {
           const stageOrders = ordersByStatus[stage.status] || [];
@@ -136,15 +187,24 @@ export default function KitchenDashboard() {
                 {stageOrders.length === 0 && (
                   <div className="kanban-empty">No orders here</div>
                 )}
-                {stageOrders.map((order) => (
+                {stageOrders.map((order) => {
+                  const items = visibleItems(order);
+                  if (stationFilter !== "All" && items.length === 0) return null;
+                  return (
                   <div
                     key={order.id}
                     className={`kitchen-card ${isOverdue(order) ? "overdue" : ""} ${order.is_addon ? "addon" : ""}`}
                   >
                     <div className="kitchen-card-header">
                       <span className="table-badge">{order.order_type === "delivery" ? "🛵 Delivery" : `Table ${order.table_number}`} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
-                      <span className="order-age">{getOrderAge(order.created_at)}</span>
+                      <span className="order-age" style={isLate(order) ? { color: "#e05252", fontWeight: 800 } : {}}>
+                        ⏱ {getOrderAge(order.created_at)}
+                      </span>
                     </div>
+
+                    {isLate(order) && (
+                      <div className="overdue-warning">⏰ Waiting 15+ min — late!</div>
+                    )}
 
                     {order.is_addon && (
                       <div className="addon-badge">➕ Add-on order — priority</div>
@@ -170,11 +230,21 @@ export default function KitchenDashboard() {
                     )}
 
                     <div className="kitchen-items">
-                      {order.items?.map((item, i) => (
+                      {items.map((item, i) => (
                         <div key={i} className="kitchen-item">
                           <span className="item-qty">×{item.quantity}</span>
                           <div>
                             <span className="item-name">{item.name}</span>
+                            {(item.station || item.category) && (
+                              <span style={{ fontSize: 11, color: "var(--color-muted)", marginLeft: 6 }}>
+                                [{item.station || item.category}]
+                              </span>
+                            )}
+                            {item.size_label && (
+                              <span style={{ fontSize: 11, color: "#20C997", marginLeft: 6 }}>
+                                ({item.size_label})
+                              </span>
+                            )}
                             {item.notes && (
                               <span className="item-note">📝 {item.notes}</span>
                             )}
@@ -210,7 +280,8 @@ export default function KitchenDashboard() {
                       🖨️ Print KOT
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

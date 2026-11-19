@@ -35,14 +35,14 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
           <>
             <div className="cart-items">
               {cart.map((item) => (
-                <div key={item.id} className="cart-item">
+                <div key={item._key || item.id} className="cart-item">
                   <div className="cart-item-top">
-                    <span className="cart-item-name">{item.name}</span>
+                    <span className="cart-item-name">{item.name}{item.size_label ? ` (${item.size_label})` : ""}</span>
                     <span className="cart-item-price">{formatPrice(item.price * item.quantity, currency)}</span>
                   </div>
                   <div className="cart-item-controls">
                     <div className="qty-control">
-                      <button onClick={() => onRemove(item.id)}>−</button>
+                      <button onClick={() => onRemove(item._key || item.id)}>−</button>
                       <span>{item.quantity}</span>
                       <button onClick={() => onAdd(item)}>+</button>
                     </div>
@@ -57,7 +57,7 @@ export default function CartDrawer({ open, onClose, cart, onAdd, onRemove, onUpd
                     className="item-notes-input"
                     placeholder="Special instructions..."
                     value={item.notes || ""}
-                    onChange={(e) => onUpdateNotes(item.id, e.target.value)}
+                    onChange={(e) => onUpdateNotes(item._key || item.id, e.target.value)}
                   />
                 </div>
               ))}

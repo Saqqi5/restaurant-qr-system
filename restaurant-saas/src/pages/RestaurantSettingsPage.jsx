@@ -34,6 +34,7 @@ const SETTING_LABELS = {
   payment_bank_name: "Bank name",
   logo_url: "Logo",
   menu_category_order: "Menu category order",
+  review_url: "Review link",
 };
 
 // Compare the last-saved values with the new ones and return the changed
@@ -69,6 +70,10 @@ export default function RestaurantSettingsPage() {
     payment_jazzcash_name: "",
     payment_bank_iban: "",
     payment_bank_name: "",
+    // Review link — where the customer is sent after rating (Google
+    // Business, Facebook page, or any other review page the restaurant
+    // chooses). Empty = no external review button, stars only.
+    review_url: "",
     delivery_enabled: false,
     delivery_fee: 0,
     free_delivery_above: 0,
@@ -170,6 +175,7 @@ export default function RestaurantSettingsPage() {
           payment_jazzcash_name: r.payment_jazzcash_name || r.name || "",
           payment_bank_iban: r.payment_bank_iban || "",
           payment_bank_name: r.payment_bank_name || r.name || "",
+          review_url: r.review_url || "",
         });
         setSavedForm({
           name: r.name || "",
@@ -193,6 +199,7 @@ export default function RestaurantSettingsPage() {
           payment_jazzcash_name: r.payment_jazzcash_name || r.name || "",
           payment_bank_iban: r.payment_bank_iban || "",
           payment_bank_name: r.payment_bank_name || r.name || "",
+          review_url: r.review_url || "",
           logo_url: r.logo_url || "",
           menu_category_order: Array.isArray(r.menu_category_order) ? [...r.menu_category_order] : [],
         });
@@ -533,6 +540,21 @@ export default function RestaurantSettingsPage() {
               />
               <p className="form-hint">Pakistan mobile — 11 digits (03XX-XXXXXXX). Extra digits are not accepted. Shown under “For Complaints &amp; Inquiries, call us on:”.</p>
             </div>
+          </div>
+        </section>
+
+        {/* ── Reviews ─────────────────────────────────────────────── */}
+        <section className="settings-section">
+          <h2 className="settings-section-title">⭐ Reviews</h2>
+          <p className="form-hint">After paying, the customer is asked to rate the visit (1–5 stars). Paste the link where you want them to leave a public review — your Google Business profile, your Facebook page, or any other review page. Empty = stars only, no external button.</p>
+          <div className="form-group">
+            <label>Review link (Google Business / Facebook page / any review page)</label>
+            <input
+              type="url"
+              value={form.review_url}
+              onChange={(e) => setForm({ ...form, review_url: e.target.value.trim() })}
+              placeholder="e.g. https://g.page/r/your-restaurant/review"
+            />
           </div>
         </section>
 
