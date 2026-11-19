@@ -5,6 +5,7 @@ import { ordersCol, subscribeToPlatformSettings, getOrderPayable } from "../conf
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { getBackupDays, getPlanLabel, getRetentionCutoffDate, isOrderWithinRetention } from "../config/plans";
 import AdminLayout from "../components/admin/AdminLayout";
+import ReceiptModal from "../components/ReceiptModal";
 
 function startOfDay(date) {
   const d = new Date(date);
@@ -24,6 +25,7 @@ export default function OrderHistoryPage() {
   const currency = useRestaurantCurrency(isAllBranches ? null : restaurantId);
   const [orders, setOrders]     = useState([]);
   const [loading, setLoading]   = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [dateFrom, setDateFrom] = useState(toDateInput(startOfDay(new Date())));
   const [dateTo,   setDateTo]   = useState(toDateInput(new Date()));
   const [statusFilter, setStatusFilter] = useState("all");
@@ -242,7 +244,7 @@ export default function OrderHistoryPage() {
             </thead>
             <tbody>
               {filtered.map((order) => (
-                <tr key={`${order._restaurantId || ""}-${order.id}`} style={order.status === "cancelled" ? { opacity: 0.65 } : undefined}>
+                <tr key={`${order._restaurantId || ""}-${order.id}`} onClick={() => setSelectedOrder(order)} style={{ cursor: "pointer", ...(order.status === "cancelled" ? { opacity: 0.65 } : {}) }}>
                   <td className="ht-mono">#{order.order_number ?? order.id?.slice(-6).toUpperCase()}</td>
                   <td className="ht-mono">{fmt(order.created_at)}</td>
                   {isAllBranches && <td>{order._branchName || "—"}</td>}
@@ -312,6 +314,22 @@ export default function OrderHistoryPage() {
         .ht-items { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-muted); }
         .ht-price { font-weight: 700; color: var(--color-primary); white-space: nowrap; }
       `}</style>
+      {/* Click a row to open the order — re-print the slip, cancel it, or
+          delete it (test / wrong orders). Edit is not offered: the safe
+          flow is cancel this order and place a fresh one. */}
+      {selectedOrder && (
+        <ReceiptModal
+          order={selectedOrder}
+          restaurantId={selectedOrder._restaurantId || restaurantId}
+          restaurantName={selectedOrder._branchName || ""}
+          currency={selectedOrder._currency || currency}
+          onClose={() => setSelectedOrder(null)}
+          discountActor={(userProfile?.role === "general_admin" || userProfile?.role === "super_admin") ? { uid: userProfile.id, name: userProfile.name } : null}
+          onDiscountApplied={fetchOrders}
+          actor={userProfile ? { uid: userProfile.id, name: userProfile.name || userProfile.email, role: userProfile.role } : null}
+          onOrderChanged={fetchOrders}
+        />
+      )}
     </AdminLayout>
   );
 }

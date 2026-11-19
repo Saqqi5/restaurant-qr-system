@@ -285,8 +285,11 @@ service cloud.firestore {
           && request.resource.data.items == resource.data.items
           && request.resource.data.table_number == resource.data.table_number;
 
-        // Only super admin can delete orders
-        allow delete: if isSuperAdmin();
+        // Delete: the super admin, or the restaurant's own general admin
+        // (his 2026-11-19 decision — so a restaurant admin can remove a
+        // test / wrong order from Order History). The kitchen, cashier
+        // and server can never delete an order.
+        allow delete: if isSuperAdmin() || isGeneralAdmin(restaurantId);
       }
     }
 

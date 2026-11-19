@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getRestaurant, getOrderPayable, applyOrderDiscount, removeOrderDiscount } from "../config/db";
+import { getRestaurant, getOrderPayable, applyOrderDiscount, removeOrderDiscount, cancelOrder, deleteOrder } from "../config/db";
 import { formatPrice } from "../utils/currency";
 
 // Printable receipt (customer bill) and KOT (kitchen order ticket).
@@ -7,7 +7,7 @@ import { formatPrice } from "../utils/currency";
 // the .receipt-print-area on a forced white page (the app is dark-themed).
 // The restaurant logo (set in Restaurant Settings → logo upload, saved as
 // `logo_url` on the restaurant doc) shows above the name when available.
-export default function ReceiptModal({ order, restaurantId, restaurantName, restaurantLogo = "", restaurantAddress = "", deliveryPhone = "", complaintsPhone = "", currency = "$", mode = "receipt", onClose, discountActor = null, onDiscountApplied }) {
+export default function ReceiptModal({ order, restaurantId, restaurantName, restaurantLogo = "", restaurantAddress = "", deliveryPhone = "", complaintsPhone = "", currency = "$", mode = "receipt", onClose, discountActor = null, onDiscountApplied, actor = null, onOrderChanged = null }) {
   const [name, setName] = useState(restaurantName || "");
   const [logo, setLogo] = useState(restaurantLogo || "");
   const [address, setAddress] = useState(restaurantAddress || "");
@@ -104,6 +104,40 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
       setDiscError(e.message || "Could not remove the discount.");
     }
     setDiscBusy(false);
+  }
+
+  // Cancel / Delete from this slip (only when an `actor` is passed —
+  // currently the Order History page). Cancel is a soft-cancel (the
+  // order stays in history as cancelled, the table is freed at once).
+  // Delete removes the order entirely (test / wrong orders only).
+  // Two-step confirm: first click arms the button, second click runs it.
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [confirmAction, setConfirmAction] = useState(null);
+  const actorRole = actor?.role || "";
+  const canCancel = !!actor && ["general_admin", "cash_counter", "super_admin"].includes(actorRole) && displayOrder.status !== "cancelled";
+  const canDelete = !!actor && ["general_admin", "super_admin"].includes(actorRole);
+  async function runAction(kind) {
+    if (confirmAction !== kind) { setConfirmAction(kind); setActionError(""); return; }
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const rid = displayOrder._restaurantId || restaurantId;
+      if (kind === "cancel") {
+        await cancelOrder(rid, displayOrder.id, { uid: actor.uid, name: actor.name });
+        setLocalOrder({ ...displayOrder, status: "cancelled", cancelled_by_name: actor.name });
+      } else {
+        await deleteOrder(rid, displayOrder.id);
+        if (onOrderChanged) onOrderChanged();
+        onClose();
+        return;
+      }
+      setConfirmAction(null);
+      if (onOrderChanged) onOrderChanged();
+    } catch (e) {
+      setActionError(e.message || `Could not ${kind} the order.`);
+    }
+    setActionBusy(false);
   }
 
   return (
@@ -306,6 +340,30 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
             {discError && <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 8 }}>{discError}</div>}
           </div>
         )}
+
+        {/* Cancel / Delete — outside the print area, so they never print.
+            Only when an `actor` was passed (Order History page). */}
+        {(canCancel || canDelete) && (
+          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+            {canCancel && (
+              <button
+                onClick={() => runAction("cancel")} disabled={actionBusy}
+                style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: confirmAction === "cancel" ? "1px solid #b91c1c" : "1px solid #f0b429", background: confirmAction === "cancel" ? "#b91c1c" : "#fff", color: confirmAction === "cancel" ? "#fff" : "#92400e", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+              >
+                {confirmAction === "cancel" ? "Confirm cancel?" : "✖️ Cancel order"}
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={() => runAction("delete")} disabled={actionBusy}
+                style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: confirmAction === "delete" ? "1px solid #b91c1c" : "1px solid #f0b429", background: confirmAction === "delete" ? "#b91c1c" : "#fff", color: confirmAction === "delete" ? "#fff" : "#92400e", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+              >
+                {confirmAction === "delete" ? "Confirm delete?" : "🗑️ Delete order"}
+              </button>
+            )}
+          </div>
+        )}
+        {actionError && <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 8 }}>{actionError}</div>}
 
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button

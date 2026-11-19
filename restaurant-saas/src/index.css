@@ -1696,12 +1696,18 @@ a { color: var(--color-primary); text-decoration: none; }
      (the white modal background belongs to the hidden parent). Force a
      plain white page + white slip for print. Text colours are NOT forced
      here — browsers print text colours as-is (only backgrounds are
-     dropped), so the slip's green/red/amber accents print correctly. */
+     dropped), so the slip's green/red/amber accents print correctly.
+     THERMAL (his 2026-11-19 decision): the slip is sized for the small
+     receipt printer restaurants use — an 80mm roll. @page tells the
+     browser the paper is 80mm wide; the slip itself is 80mm wide so it
+     fits the roll edge-to-edge instead of printing as a wide A4 sheet. */
+  @page { size: 80mm auto; margin: 0; }
   html, body { background: #fff !important; }
   body * { visibility: hidden; }
   .receipt-print-area, .receipt-print-area * { visibility: visible; }
-  .receipt-print-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff !important; color: #111 !important; }
+  .receipt-print-area { position: absolute; left: 0; top: 0; width: 80mm; max-width: 80mm; background: #fff !important; color: #111 !important; font-size: 12px; }
   .receipt-print-area * { background: transparent !important; border-color: #ccc !important; }
+  .receipt-print-area img { max-height: 48px !important; }
 }
 
 .order-paid-badge {
