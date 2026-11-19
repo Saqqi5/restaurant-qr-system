@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { subscribeToOrders, updateRestaurant, subscribeToPlatformSettings, getOrderPayable } from "../config/db";
+import { subscribeToOrders, updateRestaurant, subscribeToPlatformSettings, getOrderPayable, logSettingsChange } from "../config/db";
 import { getPlanLimit, getPlanLabel, normalizePlan } from "../config/plans";
 import { formatPrice } from "../utils/currency";
 import { getRestaurant } from "../config/db";
@@ -65,6 +65,16 @@ export default function TableManagementPage() {
       await updateRestaurant(restaurantId, { table_count: next });
       setRestaurant({ ...restaurant, table_count: next });
       setTableMsg("");
+      // Activity log (super-admin only to read): a table was added.
+      try {
+        await logSettingsChange(restaurantId, {
+          uid: userProfile?.id,
+          name: userProfile?.name || userProfile?.email || "",
+          role: userProfile?.role || "",
+        }, [{ field: "table_count", label: "Table count", from: String(tableCount), to: String(next) }]);
+      } catch (logErr) {
+        console.warn("Settings log write failed:", logErr);
+      }
     } catch (e) {
       setTableMsg(e.message || "Could not add a table.");
     }
@@ -84,6 +94,16 @@ export default function TableManagementPage() {
       setRestaurant({ ...restaurant, table_count: next });
       if (selectedTable === tableCount) setSelectedTable(null);
       setTableMsg("");
+      // Activity log (super-admin only to read): a table was removed.
+      try {
+        await logSettingsChange(restaurantId, {
+          uid: userProfile?.id,
+          name: userProfile?.name || userProfile?.email || "",
+          role: userProfile?.role || "",
+        }, [{ field: "table_count", label: "Table count", from: String(tableCount), to: String(next) }]);
+      } catch (logErr) {
+        console.warn("Settings log write failed:", logErr);
+      }
     } catch (e) {
       setTableMsg(e.message || "Could not remove the table.");
     }

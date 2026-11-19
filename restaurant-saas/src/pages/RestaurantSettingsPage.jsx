@@ -630,6 +630,7 @@ export default function RestaurantSettingsPage() {
         restaurantId={restaurantId}
         plan={plan}
         domainInfo={domainInfo}
+        userProfile={userProfile}
         onRequested={(domain) => setDomainInfo((prev) => ({ ...prev, domain_request: domain }))}
       />
 
@@ -691,7 +692,7 @@ export default function RestaurantSettingsPage() {
 // Ask the administrator for a custom domain (e.g. myrestaurant.com).
 // The administrator buys it and links it in one click; the request shows
 // on the restaurant's card and in the domain dialog until it is served.
-function DomainRequestSection({ restaurantId, plan, domainInfo, onRequested }) {
+function DomainRequestSection({ restaurantId, plan, domainInfo, userProfile, onRequested }) {
   const [wanted, setWanted] = useState(domainInfo.domain_request || "");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -725,6 +726,16 @@ function DomainRequestSection({ restaurantId, plan, domainInfo, onRequested }) {
       await updateRestaurant(restaurantId, { domain_request: domain, domain_request_at: new Date() });
       setSent(true);
       onRequested(domain);
+      // Activity log (super-admin only to read): a custom domain was requested.
+      try {
+        await logSettingsChange(restaurantId, {
+          uid: userProfile?.id,
+          name: userProfile?.name || userProfile?.email || "",
+          role: userProfile?.role || "",
+        }, [{ field: "domain_request", label: "Custom domain requested", from: domainInfo.domain_request || "(none)", to: domain }]);
+      } catch (logErr) {
+        console.warn("Settings log write failed:", logErr);
+      }
     } catch (err) {
       setError(err.message || "Could not send the request.");
     }
