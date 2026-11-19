@@ -77,7 +77,11 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
                 {order.status === "out_for_delivery" ? "out for delivery" : order.status}
               </span>
               <span className={`payment-dot ${order.payment_status}`}>
-                {order.payment_status}
+                {order.payment_status === "paid"
+                  ? "👍 Confirmed"
+                  : order.payment_status === "partially_paid"
+                    ? "⏳ Partially paid"
+                    : order.payment_status}
               </span>
               {showActions && order.status !== "pending" && order.status !== "cancelled" && (
                 <button

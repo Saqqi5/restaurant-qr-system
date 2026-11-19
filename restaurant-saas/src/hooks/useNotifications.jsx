@@ -2,10 +2,13 @@
  * useNotifications
  * ════════════════
  * Plays an audio ping and shows a toast whenever a new "pending" order
- * arrives in real-time. Used on Kitchen and Server dashboards.
+ * arrives in real-time — so the cashier and the kitchen can confirm a
+ * customer-placed order the moment it lands. The waiter (server) also
+ * gets a toast when an order becomes READY, with its table number.
  *
  * Usage:
  *   const { toasts, dismiss } = useNotifications(restaurantId);
+ *   const { toasts, dismiss } = useNotifications(restaurantId, true, { onReady: true });
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { subscribeToOrders } from "../config/db";
@@ -32,9 +35,12 @@ function playPing() {
 
 let toastId = 0;
 
-export function useNotifications(restaurantId, enabled = true) {
+export function useNotifications(restaurantId, enabled = true, options = {}) {
   const [toasts, setToasts] = useState([]);
   const knownIds = useRef(new Set());
+  // Last status seen per order — so a status flip to "ready" is caught
+  // exactly once (the waiter needs "Table X order is ready").
+  const knownStatus = useRef(new Map());
   const initialized = useRef(false);
 
   const dismiss = useCallback((id) => {
@@ -44,7 +50,7 @@ export function useNotifications(restaurantId, enabled = true) {
   const addToast = useCallback((message, type = "info") => {
     const id = ++toastId;
     setToasts((prev) => [...prev.slice(-4), { id, message, type }]); // max 5 toasts
-    if (type === "order") playPing();
+    if (type === "order" || type === "ready") playPing();
     // Auto-dismiss after 6 seconds
     setTimeout(() => dismiss(id), 6000);
   }, [dismiss]);
@@ -53,23 +59,40 @@ export function useNotifications(restaurantId, enabled = true) {
     if (!restaurantId || !enabled) return;
 
     const unsub = subscribeToOrders(restaurantId, (orders) => {
-      // On first load, just record existing IDs — don't notify
+      // On first load, just record existing IDs + statuses — don't notify
       if (!initialized.current) {
-        orders.forEach((o) => knownIds.current.add(o.id));
+        orders.forEach((o) => { knownIds.current.add(o.id); knownStatus.current.set(o.id, o.status); });
         initialized.current = true;
         return;
       }
 
       orders.forEach((order) => {
-        if (!knownIds.current.has(order.id) && order.status === "pending") {
+        const prevStatus = knownStatus.current.get(order.id);
+        if (!knownIds.current.has(order.id)) {
+          // Brand-new order — only a pending one needs confirming.
           knownIds.current.add(order.id);
-          addToast(`🔔 New order — Table ${order.table_number}`, "order");
+          knownStatus.current.set(order.id, order.status);
+          if (order.status === "pending") {
+            const isCustomer = String(order.created_by || "").startsWith("cust_");
+            addToast(
+              isCustomer
+                ? `🔔 New customer order — Table ${order.table_number}`
+                : `🔔 New order — Table ${order.table_number}`,
+              "order"
+            );
+          }
+        } else if (options.onReady && prevStatus !== "ready" && order.status === "ready") {
+          // This order just became ready — the waiter must know which table.
+          knownStatus.current.set(order.id, order.status);
+          addToast(`✅ Table ${order.table_number} order is ready`, "ready");
+        } else {
+          knownStatus.current.set(order.id, order.status);
         }
       });
     });
 
     return unsub;
-  }, [restaurantId, enabled, addToast]);
+  }, [restaurantId, enabled, addToast, options.onReady]);
 
   return { toasts, dismiss, addToast };
 }

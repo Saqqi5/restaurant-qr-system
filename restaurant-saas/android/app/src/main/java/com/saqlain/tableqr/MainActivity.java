@@ -14,6 +14,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AutofillPlugin.class);
         allowScreenshots();
         enableAutofill();
+        // A delayed re-clear: the WebView is created after onCreate, and
+        // if anything sets FLAG_SECURE during that setup, the login page
+        // (the first screen) would block screenshots. Clear again once
+        // the window is fully up.
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::allowScreenshots, 500);
     }
 
     @Override
@@ -22,6 +27,16 @@ public class MainActivity extends BridgeActivity {
         // Re-clear on every foreground return: if anything re-sets
         // FLAG_SECURE while the app is backgrounded, screenshots stay allowed.
         allowScreenshots();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // The login page is the FIRST screen — if FLAG_SECURE is set while
+        // the window gains focus (before onResume's clear lands), the
+        // login page blocks screenshots while every other page allows
+        // them. Re-clear on every focus gain so no page is ever blocked.
+        if (hasFocus) allowScreenshots();
     }
 
     // Screenshots must always be allowed in this app — FLAG_SECURE on the

@@ -94,7 +94,7 @@ export default function LoginPage() {
               onFocus={scrollFieldIntoView}
               placeholder="your@email.com"
               required
-              autoComplete="email"
+              autoComplete="username"
             />
           </div>
 

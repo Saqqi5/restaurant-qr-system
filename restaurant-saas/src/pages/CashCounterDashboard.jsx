@@ -10,6 +10,7 @@ import AdminLayout from "../components/admin/AdminLayout";
 import BranchRequired from "../components/admin/BranchRequired";
 import ReceiptModal from "../components/ReceiptModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
+import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
 export default function CashCounterDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
@@ -27,6 +28,9 @@ export default function CashCounterDashboard() {
   const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
   const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
+  // New customer order? Ping + toast at once, so the cashier can confirm
+  // the payment the moment it lands (his 2026-11-19 order).
+  const { toasts, dismiss } = useNotifications(restaurantId);
 
   // The cashier may delete a WRONG order only AFTER the kitchen has
   // confirmed it (a still-pending order is the server's to delete).
@@ -230,8 +234,10 @@ export default function CashCounterDashboard() {
                     <span className="order-total">{formatPrice(getOrderPayable(order).payable, currency)}</span>
                     <span className={`payment-badge ${order.payment_status}`}>
                       {order.payment_status === "paid"
-                        ? `✅ ${order.payment_method || "paid"}`
-                        : "⏳ Unpaid"}
+                        ? `👍 Confirmed${order.payment_method ? ` · ${order.payment_method}` : ""}`
+                        : order.payment_status === "partially_paid"
+                          ? "⏳ Partially paid"
+                          : "⏳ Unpaid"}
                     </span>
                   </div>
                 </div>
@@ -463,6 +469,7 @@ export default function CashCounterDashboard() {
           onCancel={() => setPendingDelete(null)}
         />
       )}
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </AdminLayout>
   );
 }

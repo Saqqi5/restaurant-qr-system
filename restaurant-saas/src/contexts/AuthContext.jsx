@@ -169,7 +169,14 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    await signOut(auth);
+    try { await signOut(auth); } catch (e) { /* still clear local state below */ }
+    // Clear local auth state SYNCHRONOUSLY — never wait for the
+    // onAuthStateChanged listener. Until currentUser is null, the bottom
+    // bar stays visible on the login page and tapping it re-enters the
+    // app without credentials (the security hole he caught 2026-11-19).
+    // Even if signOut itself throws, the local session is gone here, so
+    // the app can never auto-log-back-in from a stale session.
+    setCurrentUser(null);
     setUserProfile(null);
     setActiveRestaurantIdState(null);
   }
@@ -257,6 +264,13 @@ export function AuthProvider({ children }) {
     return data.password;
   }
 
+  // Edit a staff login's name, email (username) and role (super admin +
+  // restaurant admin). The Worker updates both the Firebase Auth login
+  // and the staff record, so a mistyped username is fixed in place.
+  async function updateStaff(staffUid, { name, email, role }) {
+    await callWorkerApi("/api/admin/update-staff", { uid: staffUid, name, email, role });
+  }
+
   // Generic Worker admin call (super-admin endpoints: custom domains).
   // Returns the parsed JSON; throws with the server's error message.
   async function callWorkerApi(path, body) {
@@ -292,6 +306,7 @@ export function AuthProvider({ children }) {
     createDefaultStaff,
     changePassword,
     resetStaffPassword,
+    updateStaff,
     callWorkerApi,
     hasRole,
     canAccessRestaurant,

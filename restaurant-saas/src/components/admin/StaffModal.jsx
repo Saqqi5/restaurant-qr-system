@@ -13,14 +13,14 @@ const STAFF_ROLES = [
 ];
 
 export default function StaffModal({ restaurant, onClose }) {
-  const { registerStaff, resetStaffPassword, currentUser, userProfile } = useAuth();
+  const { registerStaff, resetStaffPassword, updateStaff, currentUser, userProfile } = useAuth();
   const isSuperAdmin = userProfile?.role === "super_admin";
   const [staff, setStaff] = useState([]);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "kitchen" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [view, setView] = useState("list"); // "list" | "create"
+  const [view, setView] = useState("list"); // "list" | "create" | "edit"
   const [platformLimits, setPlatformLimits] = useState(null);
   const [pendingRemove, setPendingRemove] = useState(null); // staff member awaiting remove/hide confirm
   const [pendingReset, setPendingReset] = useState(null); // staff member awaiting password reset
@@ -28,6 +28,10 @@ export default function StaffModal({ restaurant, onClose }) {
   const [resetting, setResetting] = useState(false);
   const [disabling, setDisabling] = useState(null); // member id being disabled/enabled
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(null); // staff member being edited
+  const [editForm, setEditForm] = useState({ name: "", email: "", role: "kitchen" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
 
   const plan = normalizePlan(restaurant?.plan);
   const staffLimit = getStaffLimit(plan, platformLimits);
@@ -106,6 +110,34 @@ export default function StaffModal({ restaurant, onClose }) {
   // login is blocked with "Your account is disabled. Please contact your
   // administrator." — live, even if they are signed in right now. One
   // click enables them again.
+  // Edit an existing staff login (super admin + restaurant admin): name,
+  // email (username) and role. The email is the login username — if it was
+  // typed wrong at creation, fix it here instead of deleting + recreating.
+  // The Worker updates both the Firebase Auth login and the staff record.
+  function handleEdit(member) {
+    setEditing(member);
+    setEditForm({ name: member.name || "", email: member.email || "", role: member.role || "kitchen" });
+    setEditError("");
+    setView("edit");
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    if (!editing) return;
+    setEditError("");
+    setEditSaving(true);
+    try {
+      await updateStaff(editing.id, { name: editForm.name.trim(), email: editForm.email.trim(), role: editForm.role });
+      setSuccess(`${editForm.name} updated.`);
+      setStaff(await getRestaurantUsers(restaurant.id));
+      setEditing(null);
+      setView("list");
+    } catch (err) {
+      setEditError(err.message || "Failed to update staff member");
+    }
+    setEditSaving(false);
+  }
+
   async function handleToggleDisabled(member) {
     setDisabling(member.id);
     setError("");
@@ -174,13 +206,18 @@ export default function StaffModal({ restaurant, onClose }) {
 
         <div className="modal-tabs">
           <button className={`modal-tab ${view === "list" ? "active" : ""}`}
-            onClick={() => setView("list")}>
+            onClick={() => { setEditing(null); setView("list"); }}>
             Current Staff ({visibleStaff.length})
           </button>
           <button className={`modal-tab ${view === "create" ? "active" : ""}`}
-            onClick={() => setView("create")}>
+            onClick={() => { setEditing(null); setView("create"); }}>
             + Add Staff
           </button>
+          {view === "edit" && (
+            <button className="modal-tab active">
+              ✏️ Edit Staff
+            </button>
+          )}
         </div>
 
         <div className="modal-body">
@@ -208,12 +245,14 @@ export default function StaffModal({ restaurant, onClose }) {
               )}
               {visibleStaff.map((member) => (
                 <div key={member.id} className="staff-row">
-                  <div className="staff-avatar">{member.name?.[0]?.toUpperCase()}</div>
-                  <div className="staff-info">
-                    <span className="staff-name">{member.name}</span>
-                    <span className="staff-email">{member.email}</span>
+                  <div className="staff-row-top">
+                    <div className="staff-avatar">{member.name?.[0]?.toUpperCase()}</div>
+                    <div className="staff-info">
+                      <span className="staff-name">{member.name}</span>
+                      <span className="staff-email">{member.email}</span>
+                    </div>
                   </div>
-                  <div className="staff-actions">
+                  <div className="staff-row-bottom">
                     <span className={`role-badge role-${member.role}`}>
                       {getRoleIcon(member.role)} {getRoleLabel(member.role)}
                     </span>
@@ -222,37 +261,49 @@ export default function StaffModal({ restaurant, onClose }) {
                         🚫 Disabled
                       </span>
                     )}
-                    {isSuperAdmin && member.id !== currentUser?.uid && (
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        title={member.is_disabled ? "Enable this login" : "Disable this login"}
-                        onClick={() => handleToggleDisabled(member)}
-                        disabled={disabling === member.id}
-                      >
-                        {member.is_disabled ? "✅" : "🚫"}
-                      </button>
-                    )}
-                    {isSuperAdmin && member.id !== currentUser?.uid && (
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        title="Reset password"
-                        onClick={() => handleReset(member)}
-                      >
-                        🔑
-                      </button>
-                    )}
-                    {member.id !== currentUser?.uid && (
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        title="Remove staff member"
-                        onClick={() => handleRemove(member)}
-                      >
-                        🗑️
-                      </button>
-                    )}
+                    <div className="staff-actions">
+                      {member.id !== currentUser?.uid && (
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title="Edit name, email or role"
+                          onClick={() => handleEdit(member)}
+                        >
+                          ✏️
+                        </button>
+                      )}
+                      {isSuperAdmin && member.id !== currentUser?.uid && (
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title={member.is_disabled ? "Enable this login" : "Disable this login"}
+                          onClick={() => handleToggleDisabled(member)}
+                          disabled={disabling === member.id}
+                        >
+                          {member.is_disabled ? "✅" : "🚫"}
+                        </button>
+                      )}
+                      {isSuperAdmin && member.id !== currentUser?.uid && (
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title="Reset password"
+                          onClick={() => handleReset(member)}
+                        >
+                          🔑
+                        </button>
+                      )}
+                      {member.id !== currentUser?.uid && (
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title="Remove staff member"
+                          onClick={() => handleRemove(member)}
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -264,23 +315,27 @@ export default function StaffModal({ restaurant, onClose }) {
                 </p>
                 {removedStaff.map((member) => (
                   <div key={member.id} className="staff-row" style={{ opacity: 0.6 }}>
-                    <div className="staff-avatar">{member.name?.[0]?.toUpperCase()}</div>
-                    <div className="staff-info">
-                      <span className="staff-name">{member.name}</span>
-                      <span className="staff-email">{member.email}</span>
+                    <div className="staff-row-top">
+                      <div className="staff-avatar">{member.name?.[0]?.toUpperCase()}</div>
+                      <div className="staff-info">
+                        <span className="staff-name">{member.name}</span>
+                        <span className="staff-email">{member.email}</span>
+                      </div>
                     </div>
-                    <div className="staff-actions">
+                    <div className="staff-row-bottom">
                       <span className={`role-badge role-${member.role}`}>
                         {getRoleIcon(member.role)} {getRoleLabel(member.role)}
                       </span>
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        title="Restore staff member"
-                        onClick={() => handleRestoreStaff(member)}
-                      >
-                        ↩️
-                      </button>
+                      <div className="staff-actions">
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          title="Restore staff member"
+                          onClick={() => handleRestoreStaff(member)}
+                        >
+                          ↩️
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -356,6 +411,64 @@ export default function StaffModal({ restaurant, onClose }) {
               </button>
             </form>
             )
+          )}
+
+          {view === "edit" && editing && (
+            <form onSubmit={handleSaveEdit} className="staff-form">
+              {editError && <div className="error-banner">{editError}</div>}
+              <p className="form-hint" style={{ margin: "0 0 12px" }}>
+                Change the name, login email or role. The email is the username they sign in with — fix it here if it was typed wrong. The password is changed separately with the 🔑 button.
+              </p>
+
+              <div className="form-group">
+                <label>Full Name</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Email (login username)</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="john@restaurant.com"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Role</label>
+                <div className="role-selector">
+                  {STAFF_ROLES.map((role) => (
+                    <div
+                      key={role.value}
+                      className={`role-option ${editForm.role === role.value ? "selected" : ""}`}
+                      onClick={() => setEditForm((f) => ({ ...f, role: role.value }))}
+                    >
+                      <span className="role-option-icon">{role.icon}</span>
+                      <div>
+                        <div className="role-option-label">{role.label}</div>
+                        <div className="role-option-desc">{role.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button type="submit" className="btn-primary" disabled={editSaving} style={{ flex: 1 }}>
+                  {editSaving ? "Saving..." : "Save Changes"}
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => { setEditing(null); setView("list"); }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
           )}
         </div>
       </div>

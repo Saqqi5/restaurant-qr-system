@@ -364,6 +364,46 @@ const FEATURES = [
     title: "Your Own Currency",
     desc: "Bills, menus and revenue in your restaurant's own currency — Rs., $, € and more.",
   },
+  {
+    icon: "⏱️",
+    title: "Kitchen Order Timers",
+    desc: "Every order shows how long it has waited — late orders turn red at 15 minutes, so nothing is forgotten.",
+  },
+  {
+    icon: "🙋",
+    title: "Call Waiter",
+    desc: "Customers tap one button on the menu and the waiter sees their table light up on the floor — no shouting across the room.",
+  },
+  {
+    icon: "💝",
+    title: "Bill Split & Tips",
+    desc: "Split the bill between friends and add a tip — partial payments are tracked until the table is fully settled.",
+  },
+  {
+    icon: "⭐",
+    title: "Star Ratings & Reviews",
+    desc: "Customers rate their visit right after paying — and your Google or Facebook review page is one tap away.",
+  },
+  {
+    icon: "🌶️",
+    title: "Dish Details",
+    desc: "Spice level, allergens, and size options like Half / Full with their own prices — every dish, fully described.",
+  },
+  {
+    icon: "🍳",
+    title: "Kitchen Stations",
+    desc: "Orders are organised by station — Tandoor, Curry, Drinks — so each cook sees only their own items.",
+  },
+  {
+    icon: "🔔",
+    title: "Live Order Alerts",
+    desc: "The moment a customer orders, the cashier, kitchen and waiter all get a ping — and the waiter is told the second an order is ready.",
+  },
+  {
+    icon: "👥",
+    title: "Branch Managers",
+    desc: "One manager login above the restaurant admins — every admin option, plus branch switching and an all-branches view.",
+  },
 ];
 
 const PLANS = [

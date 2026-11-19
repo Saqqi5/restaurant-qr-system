@@ -12,6 +12,7 @@ import { getItemSizes } from "../config/db";
 import AdminLayout from "../components/admin/AdminLayout";
 import BranchRequired from "../components/admin/BranchRequired";
 import ConfirmModal from "../components/admin/ConfirmModal";
+import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
 export default function ServerDashboard() {
   const { userProfile, restaurantId, logout } = useAuth();
@@ -26,6 +27,10 @@ export default function ServerDashboard() {
   const [isDemo, setIsDemo] = useState(false);
   const [notes, setNotes] = useState("");
   const [placing, setPlacing] = useState(false);
+  // Waiter notifications: a ping + toast when a customer places an order,
+  // and again when an order becomes READY — with its table number, so the
+  // waiter knows exactly which table to serve (his 2026-11-19 order).
+  const { toasts, dismiss } = useNotifications(restaurantId, true, { onReady: true });
 
   useEffect(() => {
     if (!restaurantId || restaurantId === "all") return;
@@ -254,6 +259,16 @@ export default function ServerDashboard() {
               <div className="server-order-header">
                 <span className="table-badge">Table {order.table_number} • #{order.order_number ?? order.id?.slice(-6).toUpperCase()}</span>
                 <span className={`status-pill status-${order.status}`}>{order.status}</span>
+                {/* Payment confirmed? A GREEN badge, so the waiter knows at
+                    a glance this table's bill is settled and the table can
+                    be cleared. The kitchen never sees this (his 2026-11-19
+                    order — payment status is not the kitchen's business). */}
+                {order.payment_status === "paid" && (
+                  <span className="pay-status-pill pay-verified">👍 Confirmed</span>
+                )}
+                {order.payment_status === "partially_paid" && (
+                  <span className="pay-status-pill pay-pending">⏳ Partially paid</span>
+                )}
                 <span className="order-total-display">{formatPrice(getOrderPayable(order).payable, currency)}</span>
                 {getPaymentPill(order)}
               </div>
@@ -393,6 +408,7 @@ export default function ServerDashboard() {
           </div>
         </div>
       )}
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </AdminLayout>
   );
 }

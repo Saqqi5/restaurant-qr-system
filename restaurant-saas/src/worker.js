@@ -165,6 +165,8 @@ async function getUserDoc(uid, callerToken) {
     is_demo_user: f.is_demo_user?.booleanValue === true,
     email: f.email?.stringValue || null,
     name: f.name?.stringValue || null,
+    restaurant_id: f.restaurant_id?.stringValue || null,
+    restaurant_ids: (f.restaurant_ids?.arrayValue?.values || []).map((v) => v.stringValue).filter(Boolean),
   };
 }
 
@@ -304,6 +306,104 @@ async function handleResetPassword(request, env) {
     return json({ error: err?.error?.message || "Google rejected the password change." }, 500);
   }
   return json({ ok: true, password });
+}
+
+// ── Edit a staff login (super admin + restaurant admin) ──────────────
+// The browser SDK cannot change ANOTHER user's email/name, so the Worker
+// does it with the service account: Firebase Auth (email + displayName)
+// and the Firestore users doc (email + name + role) together, so the
+// login and the staff record never disagree. A mistyped username at
+// creation is fixed here instead of delete + recreate.
+//   caller: super_admin (any restaurant) or general_admin whose branches
+//   include the target's restaurant. Never a super_admin / platform
+//   owner / demo account, and never the caller's own login (edit your own
+//   name from the profile, not from here).
+const STAFF_ROLES = ["general_admin", "kitchen", "cash_counter", "server"];
+
+async function handleUpdateStaff(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  const idToken = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (!idToken) return json({ error: "Sign-in required." }, 401);
+  let caller;
+  try {
+    caller = await verifyIdToken(idToken);
+  } catch {
+    return json({ error: "Could not verify the sign-in." }, 401);
+  }
+  if (!caller) return json({ error: "Sign-in expired or invalid. Please sign in again." }, 401);
+  let callerDoc;
+  try {
+    callerDoc = await getUserDoc(caller.user_id, idToken);
+  } catch {
+    return json({ error: "Could not verify the caller." }, 500);
+  }
+  if (!callerDoc || !["super_admin", "general_admin"].includes(callerDoc.role)) {
+    return json({ error: "Only the administrator can edit staff logins." }, 403);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "Invalid request." }, 400);
+  }
+  const targetUid = typeof body?.uid === "string" ? body.uid.trim() : "";
+  if (!targetUid) return json({ error: "Missing staff account." }, 400);
+  if (targetUid === caller.user_id) return json({ error: "You cannot edit your own login here." }, 400);
+  const name = typeof body?.name === "string" ? body.name.trim() : "";
+  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+  const role = typeof body?.role === "string" ? body.role.trim() : "";
+  if (!name) return json({ error: "Enter a name." }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email address." }, 400);
+  if (!STAFF_ROLES.includes(role)) return json({ error: "Pick a valid role." }, 400);
+
+  let targetDoc;
+  try {
+    targetDoc = await getUserDoc(targetUid, idToken);
+  } catch {
+    return json({ error: "Could not read the staff account." }, 500);
+  }
+  if (!targetDoc) return json({ error: "Staff account not found." }, 404);
+  if (targetDoc.role === "super_admin" || targetDoc.is_platform_owner || targetDoc.is_demo_user) {
+    return json({ error: "This account cannot be edited here." }, 403);
+  }
+  // A restaurant admin may only edit staff of their own branches.
+  if (callerDoc.role === "general_admin") {
+    const accessible = new Set([...(callerDoc.restaurant_ids || []), callerDoc.restaurant_id].filter(Boolean));
+    if (!accessible.has(targetDoc.restaurant_id)) {
+      return json({ error: "This staff member belongs to another restaurant." }, 403);
+    }
+  }
+
+  let accessToken;
+  try {
+    accessToken = await getServiceAccessToken(env);
+  } catch (e) {
+    return json({ error: e.message || "Staff editing is not set up yet." }, 500);
+  }
+  // 1. Firebase Auth login: email (the username) + display name.
+  const res = await fetch(`${IDENTITY_TOOLKIT}/accounts:update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ localId: targetUid, email, displayName: name }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err?.error?.message || "";
+    if (msg.includes("EMAIL_EXISTS")) return json({ error: "That email is already used by another login." }, 400);
+    return json({ error: msg || "Google rejected the change." }, 500);
+  }
+  // 2. Firestore staff record: same email + name + role.
+  try {
+    await fsPatch(env, `/users/${targetUid}`, {
+      email: { stringValue: email },
+      name: { stringValue: name },
+      role: { stringValue: role },
+    });
+  } catch {
+    return json({ error: "Login updated, but the staff record could not be saved. Try again." }, 500);
+  }
+  return json({ ok: true });
 }
 
 // ── Custom domains (Cloudflare Registrar + Workers Custom Domains) ──────
@@ -630,6 +730,14 @@ export default {
         return withCors(request, await handleResetPassword(request, env));
       } catch (e) {
         return withCors(request, json({ error: e?.message || "Password reset failed." }, 500));
+      }
+    }
+    if (url.pathname === "/api/admin/update-staff") {
+      if (request.method !== "POST") return withCors(request, json({ error: "Method not allowed." }, 405));
+      try {
+        return withCors(request, await handleUpdateStaff(request, env));
+      } catch (e) {
+        return withCors(request, json({ error: e?.message || "Staff update failed." }, 500));
       }
     }
     const domainHandlers = {
