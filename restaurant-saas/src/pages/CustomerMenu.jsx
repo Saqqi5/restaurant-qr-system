@@ -719,6 +719,12 @@ export default function CustomerMenu() {
             bottom: cartCount > 0 ? 92 : 20,
             background: waiterCalled ? "#27ae60" : "#ff6b35",
             opacity: callingWaiter ? 0.6 : 1,
+            // Clear white ring + strong colour-matched shadow so the button
+            // reads as a distinct floating action, never part of a dish card.
+            border: "2px solid rgba(255,255,255,0.95)",
+            boxShadow: waiterCalled
+              ? "0 8px 30px rgba(39,174,96,0.55)"
+              : "0 8px 30px rgba(255,107,53,0.55)",
           }}
           title="Call a waiter to your table"
         >

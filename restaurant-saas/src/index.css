@@ -1175,7 +1175,7 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 
 /* Menu Grid (Customer) */
-.menu-grid-wrapper { flex: 1; }
+.menu-grid-wrapper { flex: 1; /* Bottom clearance so the last dish scrolls clear of the fixed Cart + Call Waiter buttons (worst case ~142px) */ padding-bottom: 170px; }
 .category-tabs {
   display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto;
   -webkit-overflow-scrolling: touch; scrollbar-width: none;
