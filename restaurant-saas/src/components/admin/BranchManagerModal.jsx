@@ -5,9 +5,9 @@ import { useAuth } from "../../contexts/AuthContext";
 // decision). The super admin picks the restaurants this manager may
 // manage; the password is generated here (same memorable
 // word-word-word-1234 format as the staff reset) and shown once, so the
-// super admin can copy it and hand it to the manager. The manager sees
-// only Orders / Revenue / Menu, manages one branch at a time (no "All
-// branches" view), and may cancel orders but never delete them.
+// super admin can copy it and hand it to the manager. The manager sits
+// ABOVE the restaurant admin — they get every option the admin has, plus
+// branch switching and "All branches".
 const WORDS = [
   "apple", "river", "mango", "cloud", "tiger", "ocean", "lemon", "eagle",
   "coral", "maple", "falcon", "harbor", "meadow", "rocket", "silver", "velvet",
@@ -119,7 +119,7 @@ export default function BranchManagerModal({ restaurants = [], onClose, onCreate
                     ))}
                   </div>
                 )}
-                <p className="form-hint">The manager sees Orders, Revenue, Menu and Settings — branch switching and “All branches” included, so they can manage all their branches. They can cancel orders, but never delete them.</p>
+                <p className="form-hint">The manager sits above the restaurant admin — they get every option the admin has (Menu, Orders, Payments, Revenue, Staff, QR, Settings, Order Taker, Tables) plus branch switching and “All branches”, so they can manage all their branches.</p>
               </div>
               {error && <div className="error-banner">{error}</div>}
             </div>

@@ -74,7 +74,12 @@ export default function OrderHistoryPage() {
         _branchName: branchMap[ids[i]]?.name,
         _currency: branchMap[ids[i]]?.currency || currency,
       }))
-    ).sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
+    )
+    // Orders the admin / manager "deleted" are only hidden from the
+    // restaurant — they never appear in Order History (the super admin
+    // still sees them on their own page).
+    .filter((o) => !o.hidden_from_restaurant)
+    .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
     setOrders(merged);
     setLoading(false);
   }
@@ -328,7 +333,7 @@ export default function OrderHistoryPage() {
           restaurantName={selectedOrder._branchName || ""}
           currency={selectedOrder._currency || currency}
           onClose={() => setSelectedOrder(null)}
-          discountActor={(userProfile?.role === "general_admin" || userProfile?.role === "super_admin") ? { uid: userProfile.id, name: userProfile.name } : null}
+          discountActor={["general_admin", "super_admin", "branch_manager"].includes(userProfile?.role) ? { uid: userProfile.id, name: userProfile.name } : null}
           onDiscountApplied={fetchOrders}
           actor={userProfile ? { uid: userProfile.id, name: userProfile.name || userProfile.email, role: userProfile.role } : null}
           onOrderChanged={fetchOrders}

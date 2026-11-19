@@ -33,8 +33,8 @@ import { expiryDateFrom, demoExpiryDateFrom, paidExpiryDateFrom } from "./plans"
 import { DEMO_MENU_SEED } from "./demoMenuSeed";
 
 import {
-  collection, doc, setDoc, updateDoc, deleteDoc,
-  getDoc, getDocs, query, where, onSnapshot,
+  collection, doc, setDoc, updateDoc, deleteDoc, addDoc,
+  getDoc, getDocs, query, where, orderBy, limit, onSnapshot,
   serverTimestamp, Timestamp, arrayUnion, arrayRemove
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -47,6 +47,7 @@ export const menuCol = (restaurantId) => collection(db, "restaurants", restauran
 export const menuItemDoc = (restaurantId, itemId) => doc(db, "restaurants", restaurantId, "menu", itemId);
 export const ordersCol = (restaurantId) => collection(db, "restaurants", restaurantId, "orders");
 export const orderDoc = (restaurantId, orderId) => doc(db, "restaurants", restaurantId, "orders", orderId);
+export const settingsLogsCol = (restaurantId) => collection(db, "restaurants", restaurantId, "settings_logs");
 export const usersCol = () => collection(db, "users");
 export const userDoc = (userId) => doc(db, "users", userId);
 export const paymentsCol = () => collection(db, "payments");
@@ -108,6 +109,31 @@ export async function startDemo(restaurantId) {
 
 export async function updateRestaurant(restaurantId, data) {
   await updateDoc(restaurantDoc(restaurantId), { ...data, updated_at: serverTimestamp() });
+}
+
+// ── Settings activity log ────────────────────────────────────────────────
+// Every Settings save by the restaurant admin or the branch manager writes
+// one entry here: who changed what, and when. The log is SUPER-ADMIN ONLY
+// to read (firestore.rules) — the admin / manager never see it. The super
+// admin reads it from the "Settings Log" button on each restaurant card.
+// `changes` is a list of { field, label, from, to } (plain values only).
+export async function logSettingsChange(restaurantId, by, changes) {
+  if (!changes || changes.length === 0) return;
+  await addDoc(settingsLogsCol(restaurantId), {
+    by_uid: by?.uid || null,
+    by_name: by?.name || "",
+    by_role: by?.role || "",
+    changes,
+    at: serverTimestamp(),
+  });
+}
+
+// Newest first. Super admin only (rules).
+export function subscribeToSettingsLogs(restaurantId, callback) {
+  return onSnapshot(
+    query(settingsLogsCol(restaurantId), orderBy("at", "desc"), limit(100)),
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  );
 }
 
 // Freeze / unfreeze a whole restaurant (super admin only — the rules block
@@ -487,6 +513,32 @@ export async function deleteOrder(restaurantId, orderId) {
   await deleteDoc(orderDoc(restaurantId, orderId));
 }
 
+// Hide an order from the restaurant (admin / branch manager "delete").
+// This is NOT a hard delete: the order document stays in Firestore and
+// the super admin still sees it (SuperAdminOrdersPage shows hidden orders
+// with a badge). Only the super admin hard-deletes (deleteOrder above).
+// The restaurant's own order lists filter hidden orders out.
+export async function hideOrder(restaurantId, orderId, by) {
+  await updateDoc(orderDoc(restaurantId, orderId), {
+    hidden_from_restaurant: true,
+    hidden_by: by?.uid || null,
+    hidden_by_name: by?.name || null,
+    hidden_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  });
+}
+
+// Restore a hidden order (super admin only, from SuperAdminOrdersPage).
+export async function unhideOrder(restaurantId, orderId) {
+  await updateDoc(orderDoc(restaurantId, orderId), {
+    hidden_from_restaurant: false,
+    hidden_by: null,
+    hidden_by_name: null,
+    hidden_at: null,
+    updated_at: serverTimestamp(),
+  });
+}
+
 export async function updatePaymentStatus(restaurantId, orderId, paymentMethod) {
   // Payment state and kitchen stage are separate: only the payment fields
   // change here. Setting status: "paid" used to drop the order out of the
@@ -501,6 +553,12 @@ export async function updatePaymentStatus(restaurantId, orderId, paymentMethod) 
 export function subscribeToOrders(restaurantId, callback, filters = {}) {
   return onSnapshot(ordersCol(restaurantId), (snap) => {
     let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Orders the restaurant admin / manager "deleted" are only hidden from
+    // the restaurant — they stay for the super admin. Restaurant views
+    // never see them (pass includeHidden: true to see them).
+    if (!filters.includeHidden) {
+      items = items.filter(o => !o.hidden_from_restaurant);
+    }
     if (filters.status) {
       items = items.filter(o => filters.status.includes(o.status));
     }

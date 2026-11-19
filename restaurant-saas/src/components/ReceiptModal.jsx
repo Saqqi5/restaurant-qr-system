@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getRestaurant, getOrderPayable, applyOrderDiscount, removeOrderDiscount, cancelOrder, deleteOrder } from "../config/db";
+import { getRestaurant, getOrderPayable, applyOrderDiscount, removeOrderDiscount, cancelOrder, deleteOrder, hideOrder } from "../config/db";
 import { formatPrice } from "../utils/currency";
 
 // Printable receipt (customer bill) and KOT (kitchen order ticket).
@@ -116,7 +116,11 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
   const [confirmAction, setConfirmAction] = useState(null);
   const actorRole = actor?.role || "";
   const canCancel = !!actor && ["general_admin", "cash_counter", "super_admin", "branch_manager"].includes(actorRole) && displayOrder.status !== "cancelled";
-  const canDelete = !!actor && ["general_admin", "super_admin"].includes(actorRole);
+  // Delete: the super admin hard-deletes. The restaurant admin and the
+  // branch manager may only HIDE the order from the restaurant (the
+  // record stays for the super admin) — so they get the same button, but
+  // it hides instead of deleting.
+  const canDelete = !!actor && ["general_admin", "super_admin", "branch_manager"].includes(actorRole);
   async function runAction(kind) {
     if (confirmAction !== kind) { setConfirmAction(kind); setActionError(""); return; }
     setActionBusy(true);
@@ -126,8 +130,17 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
       if (kind === "cancel") {
         await cancelOrder(rid, displayOrder.id, { uid: actor.uid, name: actor.name });
         setLocalOrder({ ...displayOrder, status: "cancelled", cancelled_by_name: actor.name });
-      } else {
+      } else if (actorRole === "super_admin") {
+        // Super admin: hard delete — the record is gone for everyone.
         await deleteOrder(rid, displayOrder.id);
+        if (onOrderChanged) onOrderChanged();
+        onClose();
+        return;
+      } else {
+        // Restaurant admin / branch manager: only HIDE it from the
+        // restaurant. The record stays in Firestore and the super admin
+        // still sees it.
+        await hideOrder(rid, displayOrder.id, { uid: actor.uid, name: actor.name });
         if (onOrderChanged) onOrderChanged();
         onClose();
         return;

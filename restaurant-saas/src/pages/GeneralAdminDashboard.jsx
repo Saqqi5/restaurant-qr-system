@@ -25,21 +25,20 @@ import ReceiptModal from "../components/ReceiptModal";
 import AnalyticsPanel from "../components/admin/AnalyticsPanel";
 
 const ALL_TABS = ["menu", "orders", "payments", "analytics", "staff", "qr"];
-// Multi-branch manager (his 2026-11-19 decision): only Orders, Menu and
-// Revenue (analytics) — no payments, staff or QR/settings tabs.
-const MANAGER_TABS = ["orders", "menu", "analytics"];
+// The branch manager sits ABOVE the restaurant admin (his 2026-11-19
+// decision) — they get every tab the admin has (menu, orders, payments,
+// analytics, staff, QR) plus the branch switcher and All branches.
 
 export default function GeneralAdminDashboard() {
   const { userProfile, restaurantId, logout, trialInfo, branches, accessibleRestaurantIds } = useAuth();
-  const isManager = userProfile?.role === "branch_manager";
-  const TABS = isManager ? MANAGER_TABS : ALL_TABS;
+  const TABS = ALL_TABS;
   // "all" = the combined All-branches view (one login, every branch).
   // Menu, staff and QR are per-branch, so those tabs ask for a branch;
   // orders, payments and analytics merge across branches.
   const isAllBranches = restaurantId === "all";
   const accessibleKey = accessibleRestaurantIds.join(",");
   const currency = useRestaurantCurrency(isAllBranches ? null : restaurantId);
-  const [activeTab, setActiveTab] = useState(isManager ? "orders" : "menu");
+  const [activeTab, setActiveTab] = useState("menu");
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);

@@ -24,6 +24,7 @@ import MenuManagerModal from "../components/admin/MenuManagerModal";
 import QRModal from "../components/admin/QRModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
 import BranchManagerModal from "../components/admin/BranchManagerModal";
+import SettingsLogModal from "../components/admin/SettingsLogModal";
 import StatsBar from "../components/admin/StatsBar";
 
 export default function SuperAdminDashboard() {
@@ -62,6 +63,7 @@ export default function SuperAdminDashboard() {
   // admin creates and assigns to specific branches.
   const [managers, setManagers] = useState([]);
   const [showManagerModal, setShowManagerModal] = useState(false);
+  const [logRestaurant, setLogRestaurant] = useState(null); // restaurant whose Settings Log is open
   const [managerBusy, setManagerBusy] = useState(null);
 
   useEffect(() => {
@@ -248,7 +250,7 @@ export default function SuperAdminDashboard() {
           <button className="btn-primary" onClick={() => setShowManagerModal(true)}>+ New Branch Manager</button>
         </div>
         <p className="form-hint" style={{ marginTop: 8 }}>
-          A manager login you create and assign to specific branches. They see Orders, Revenue, Menu and Settings — with branch switching and “All branches”, so they can manage all their branches. They can cancel orders, but never delete them. The single-restaurant admin never sees branch switching.
+          A manager login you create and assign to specific branches. They sit above the restaurant admin — they get every option the admin has (Menu, Orders, Payments, Revenue, Staff, QR, Settings, Order Taker, Tables) plus branch switching and “All branches”, so they can manage all their branches. The single-restaurant admin never sees branch switching.
         </p>
         {managers.length === 0 ? (
           <p className="form-hint">No branch managers yet.</p>
@@ -431,6 +433,7 @@ export default function SuperAdminDashboard() {
               onMapDomain={() => openModal(restaurant, "domain")}
               onManageMenu={() => openModal(restaurant, "menu")}
               onDelete={() => setDeleting(restaurant)}
+              onViewSettingsLog={() => setLogRestaurant(restaurant)}
             />
           ))}
           {filtered.length === 0 && (
@@ -461,6 +464,14 @@ export default function SuperAdminDashboard() {
           restaurants={restaurants}
           onClose={() => setShowManagerModal(false)}
           onCreated={() => getBranchManagers().then(setManagers).catch(() => {})}
+        />
+      )}
+
+      {logRestaurant && (
+        <SettingsLogModal
+          restaurantId={logRestaurant.id}
+          restaurantName={logRestaurant.name}
+          onClose={() => setLogRestaurant(null)}
         />
       )}
 

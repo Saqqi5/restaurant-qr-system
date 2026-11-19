@@ -30,6 +30,7 @@ const ROLE_TABS = {
   // No Order Taker or Tables.
   branch_manager: [
     { label: "Dashboard", icon: "🏪", to: "/admin/restaurant" },
+    { label: "Order Taker", icon: "🛎️", to: "/admin/order-taker" },
     { label: "History", icon: "📋", to: "/admin/history" },
     { label: "Settings", icon: "⚙️", to: "/admin/settings" },
     { label: "Logout", icon: "⎋", action: "logout" },

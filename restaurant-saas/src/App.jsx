@@ -189,7 +189,7 @@ export default function App() {
           } />
           <Route path="/admin/tables" element={
             <WithAdminTenant>
-              <ProtectedRoute role="general_admin">
+              <ProtectedRoute role={["general_admin", "branch_manager"]}>
                 <TableManagementPage />
               </ProtectedRoute>
             </WithAdminTenant>
@@ -203,7 +203,7 @@ export default function App() {
           } />
           <Route path="/admin/order-taker" element={
             <WithAdminTenant>
-              <ProtectedRoute role={["general_admin", "cash_counter", "server"]}>
+              <ProtectedRoute role={["general_admin", "cash_counter", "server", "branch_manager"]}>
                 <OrderTakerPage />
               </ProtectedRoute>
             </WithAdminTenant>

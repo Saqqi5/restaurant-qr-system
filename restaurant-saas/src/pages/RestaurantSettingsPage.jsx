@@ -1,13 +1,59 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTenant } from "../contexts/TenantContext";
-import { updateRestaurant, getRestaurant, subscribeToMenu, sortCategories, subscribeToPlatformSettings, createPlanPayment, subscribeToRestaurantPlanPayments } from "../config/db";
+import { updateRestaurant, getRestaurant, subscribeToMenu, sortCategories, subscribeToPlatformSettings, createPlanPayment, subscribeToRestaurantPlanPayments, logSettingsChange } from "../config/db";
 import { getPlanLimit, getPlanLabel, normalizePlan, getPlanPrice, getStaffLimit, getMenuItemLimit, getBackupLabel, PLANS, DOMAIN_CHARGE_PKR_PER_YEAR, canUseDelivery } from "../config/plans";
 import { buildDeliveryUrl } from "../config/tenantResolver";
 import { downscaleImage } from "../utils/image";
 import AdminLayout from "../components/admin/AdminLayout";
 import BranchRequired from "../components/admin/BranchRequired";
 import PlanPrice from "../components/PlanPrice";
+
+// Human-readable labels for the settings log (super admin only).
+const SETTING_LABELS = {
+  name: "Restaurant name",
+  table_count: "Table count",
+  tax_rate: "Tax rate (%)",
+  discount_rate: "Discount rate (%)",
+  delivery_enabled: "Home delivery",
+  delivery_fee: "Delivery fee",
+  free_delivery_above: "Free delivery above",
+  delivery_areas: "Delivery areas",
+  delivery_phone: "Delivery phone",
+  complaints_phone: "Complaints phone",
+  promo_enabled: "Promo",
+  promo_type: "Promo type",
+  promo_value: "Promo value",
+  promo_start: "Promo start",
+  promo_end: "Promo end",
+  payment_easypaisa_number: "Easypaisa number",
+  payment_easypaisa_name: "Easypaisa name",
+  payment_jazzcash_number: "JazzCash number",
+  payment_jazzcash_name: "JazzCash name",
+  payment_bank_iban: "Bank IBAN",
+  payment_bank_name: "Bank name",
+  logo_url: "Logo",
+  menu_category_order: "Menu category order",
+};
+
+// Compare the last-saved values with the new ones and return the changed
+// fields as { field, label, from, to } (plain values only — the log is
+// super-admin only, so payment numbers are fine to record).
+function diffSettings(oldValues, newValues) {
+  const changes = [];
+  const keys = new Set([...Object.keys(oldValues || {}), ...Object.keys(newValues || {})]);
+  for (const key of keys) {
+    if (!(key in SETTING_LABELS)) continue;
+    const from = oldValues?.[key];
+    const to = newValues?.[key];
+    const fromStr = Array.isArray(from) ? from.join(" › ") : String(from ?? "");
+    const toStr = Array.isArray(to) ? to.join(" › ") : String(to ?? "");
+    if (fromStr !== toStr) {
+      changes.push({ field: key, label: SETTING_LABELS[key], from: fromStr, to: toStr });
+    }
+  }
+  return changes;
+}
 
 export default function RestaurantSettingsPage() {
   const { userProfile, restaurantId, logout } = useAuth();
@@ -43,6 +89,10 @@ export default function RestaurantSettingsPage() {
   const deliveryAllowed = canUseDelivery(plan, { delivery_override: deliveryOverride });
   const deliveryLink = buildDeliveryUrl(restaurantId, "saas", domainInfo.custom_domain);
   const [loaded, setLoaded] = useState(false);
+  // Last-saved settings (for the activity log): the values as they were
+  // when the form loaded / last saved, so handleSave can record exactly
+  // what changed.
+  const [savedForm, setSavedForm] = useState(null);
   const [domainInfo, setDomainInfo] = useState({ custom_domain: null, domain_request: null });
   // Menu category order (customer menu): the restaurant's saved order, or
   // the standard Starters-first order until the admin reorders it below.
@@ -121,6 +171,31 @@ export default function RestaurantSettingsPage() {
           payment_bank_iban: r.payment_bank_iban || "",
           payment_bank_name: r.payment_bank_name || r.name || "",
         });
+        setSavedForm({
+          name: r.name || "",
+          table_count: r.table_count || 10,
+          tax_rate: Number(r.tax_rate) || 0,
+          discount_rate: Number(r.discount_rate) || 0,
+          delivery_enabled: r.delivery_enabled === true,
+          delivery_fee: Number(r.delivery_fee) || 0,
+          free_delivery_above: Number(r.free_delivery_above) || 0,
+          delivery_areas: r.delivery_areas || "",
+          delivery_phone: r.delivery_phone || "",
+          complaints_phone: r.complaints_phone || "",
+          promo_enabled: r.promo_enabled === true,
+          promo_type: r.promo_type === "flat" ? "flat" : "percent",
+          promo_value: Number(r.promo_value) || 0,
+          promo_start: r.promo_start || "",
+          promo_end: r.promo_end || "",
+          payment_easypaisa_number: r.payment_easypaisa_number || "",
+          payment_easypaisa_name: r.payment_easypaisa_name || r.name || "",
+          payment_jazzcash_number: r.payment_jazzcash_number || "",
+          payment_jazzcash_name: r.payment_jazzcash_name || r.name || "",
+          payment_bank_iban: r.payment_bank_iban || "",
+          payment_bank_name: r.payment_bank_name || r.name || "",
+          logo_url: r.logo_url || "",
+          menu_category_order: Array.isArray(r.menu_category_order) ? [...r.menu_category_order] : [],
+        });
         setLogoPreview(r.logo_url || "");
       }
     })
@@ -155,6 +230,28 @@ export default function RestaurantSettingsPage() {
         logo_url,
         ...(menuOrder ? { menu_category_order: menuOrder } : {}),
       });
+      // Activity log (super-admin only to read): record exactly what
+      // changed, so the administrator can see who changed what and when.
+      // A failed log write must never block the save itself.
+      try {
+        const changes = diffSettings(savedForm, {
+          ...form,
+          logo_url,
+          ...(menuOrder ? { menu_category_order: menuOrder } : {}),
+        });
+        await logSettingsChange(restaurantId, {
+          uid: userProfile?.id,
+          name: userProfile?.name || userProfile?.email || "",
+          role: userProfile?.role || "",
+        }, changes);
+        setSavedForm({
+          ...form,
+          logo_url,
+          ...(menuOrder ? { menu_category_order: menuOrder } : {}),
+        });
+      } catch (logErr) {
+        console.warn("Settings log write failed:", logErr);
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -537,17 +634,14 @@ export default function RestaurantSettingsPage() {
       />
 
       {/* ── Upgrade Plan (buy a plan, pay SAQLYN, administrator verifies) ──
-          Only the restaurant admin buys a plan — the branch manager cannot
-          (plan_payments create needs general_admin), so the section is
-          hidden for them instead of showing a button that fails. */}
-      {userProfile?.role !== "branch_manager" && (
-        <PlanUpgradeSection
-          restaurantId={restaurantId}
-          restaurantName={form.name || "My Restaurant"}
-          currentPlan={plan}
-          platformSettings={platformLimits}
-        />
-      )}
+          The branch manager sits above the restaurant admin, so they can
+          buy a plan too (plan_payments create allows branch_manager). */}
+      <PlanUpgradeSection
+        restaurantId={restaurantId}
+        restaurantName={form.name || "My Restaurant"}
+        currentPlan={plan}
+        platformSettings={platformLimits}
+      />
 
       <style>{`
         .settings-page { max-width: 680px; }

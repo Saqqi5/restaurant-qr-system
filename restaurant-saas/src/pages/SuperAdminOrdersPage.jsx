@@ -12,7 +12,7 @@
 // results client-side. Same filters, no rules change needed.
 import { useState, useEffect } from "react";
 import { getDocs, query, where, orderBy, Timestamp } from "firebase/firestore";
-import { getAllRestaurants, ordersCol, getOrderPayable, deleteOrder } from "../config/db";
+import { getAllRestaurants, ordersCol, getOrderPayable, deleteOrder, unhideOrder } from "../config/db";
 import { formatPrice } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import AdminLayout from "../components/admin/AdminLayout";
@@ -115,6 +115,16 @@ export default function SuperAdminOrdersPage() {
       alert("Could not delete this order. Please try again.");
     }
     setDeleting(false);
+  }
+
+  // Show a hidden order to the restaurant again (super admin only).
+  async function handleUnhideOrder(order) {
+    try {
+      await unhideOrder(order.restaurant_id, order.id);
+      setOrders((prev) => prev.map((o) => (o.id === order.id && o.restaurant_id === order.restaurant_id ? { ...o, hidden_from_restaurant: false } : o)));
+    } catch (e) {
+      alert("Could not restore this order. Please try again.");
+    }
   }
 
   const filtered = orders.filter((o) =>
@@ -347,6 +357,11 @@ export default function SuperAdminOrdersPage() {
                         by {order.cancelled_by_name}
                       </div>
                     )}
+                    {order.hidden_from_restaurant && (
+                      <div style={{ fontSize: 11, color: "#b45309", marginTop: 2 }}>
+                        🙈 Hidden from restaurant{order.hidden_by_name ? ` by ${order.hidden_by_name}` : ""}
+                      </div>
+                    )}
                   </td>
                   <td>
                     <span className={`payment-dot ${order.payment_status}`}>
@@ -354,6 +369,15 @@ export default function SuperAdminOrdersPage() {
                     </span>
                   </td>
                   <td>
+                    {order.hidden_from_restaurant && (
+                      <button
+                        className="btn-icon"
+                        title="Show this order to the restaurant again"
+                        onClick={(e) => { e.stopPropagation(); handleUnhideOrder(order); }}
+                      >
+                        ↩️
+                      </button>
+                    )}
                     <button
                       className="btn-icon-danger"
                       title="Delete this order permanently"
@@ -395,6 +419,8 @@ export default function SuperAdminOrdersPage() {
           onClose={() => setSlipOrder(null)}
           discountActor={userProfile ? { uid: userProfile.id, name: userProfile.name } : null}
           onDiscountApplied={() => fetchOrders()}
+          actor={userProfile ? { uid: userProfile.id, name: userProfile.name || userProfile.email, role: userProfile.role } : null}
+          onOrderChanged={() => fetchOrders()}
         />
       )}
 

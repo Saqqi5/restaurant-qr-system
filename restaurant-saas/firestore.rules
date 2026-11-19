@@ -40,11 +40,13 @@ service cloud.firestore {
         isOwnRestaurant(restaurantId);
     }
 
-    // Multi-branch manager (his 2026-11-19 decision): a login the super
-    // admin creates and assigns to specific branches. They manage one
-    // branch at a time (no "All branches" combined view), see only
-    // Orders / Revenue / Menu, and may cancel orders but never delete
-    // them. Their restaurant_ids list is what isOwnRestaurant checks.
+    // Multi-branch manager (his 2026-11-19 decision, corrected): a login
+    // the super admin creates and assigns to specific branches. The
+    // manager sits ABOVE the restaurant admin — they get every option
+    // the admin has (menu, orders, payments, staff, settings, order
+    // taker, tables, plan purchase, order delete, discount), PLUS the
+    // branch switcher and the "All branches" combined view. Their
+    // restaurant_ids list is what isOwnRestaurant checks.
     function isBranchManager(restaurantId) {
       return isAuthenticated() &&
         getUserData().role == 'branch_manager' &&
@@ -120,6 +122,7 @@ service cloud.firestore {
     function isOrderUpdateAllowed(restaurantId) {
       return isSuperAdmin() ||
         isGeneralAdmin(restaurantId) ||
+        isBranchManager(restaurantId) ||
         isKitchen(restaurantId) ||
         isCashCounter(restaurantId);
     }
@@ -139,18 +142,21 @@ service cloud.firestore {
         : (plan == 'premium' || plan == 'unlimited') ? 50
         : 20;
     }
-    // A restaurant's general admin may create staff accounts for their OWN
-    // restaurant (kitchen / cash / server / admin) — never a super admin,
-    // never a branch manager, and never with extra privileges. The new
-    // login gets exactly one restaurant (restaurant_id) — it may NOT
-    // carry restaurant_ids (multi-branch access), is_platform_owner
-    // (undeletable + hidden) or is_demo_user. Only the super admin sets
-    // those (branch managers are created by the super admin).
+    // A restaurant's general admin — and the branch manager, who sits
+    // ABOVE the admin (his 2026-11-19 decision: the manager gets every
+    // option the admin has, plus branch switching) — may create staff
+    // accounts for their OWN restaurant(s) (kitchen / cash / server /
+    // admin) — never a super admin, never a branch manager, and never
+    // with extra privileges. The new login gets exactly one restaurant
+    // (restaurant_id) — it may NOT carry restaurant_ids (multi-branch
+    // access), is_platform_owner (undeletable + hidden) or is_demo_user.
+    // Only the super admin sets those (branch managers are created by
+    // the super admin).
     // (The staff-login cap itself is enforced in the app; rules cannot count
     // documents in a collection.)
     function isStaffCreateAllowed() {
       return isAuthenticated()
-        && getUserData().role == 'general_admin'
+        && getUserData().role in ['general_admin', 'branch_manager']
         && isOwnRestaurant(request.resource.data.restaurant_id)
         && request.resource.data.role in ['general_admin', 'kitchen', 'cash_counter', 'server']
         && !('restaurant_ids' in request.resource.data)
@@ -161,7 +167,7 @@ service cloud.firestore {
     // the caller's own restaurant and be a staff role (never super admin).
     function isStaffDeleteAllowed() {
       return isAuthenticated()
-        && getUserData().role == 'general_admin'
+        && getUserData().role in ['general_admin', 'branch_manager']
         && isOwnRestaurant(resource.data.restaurant_id)
         && resource.data.role in ['general_admin', 'kitchen', 'cash_counter', 'server']
         && resource.data.get('is_platform_owner', false) != true;
@@ -190,8 +196,9 @@ service cloud.firestore {
 
     // ── Users ─────────────────────────────────────────────────
     match /users/{userId} {
-      // A restaurant's general admin can read the staff of their OWN
-      // restaurant (StaffModal list + plan cap). Nobody can read another
+      // A restaurant's general admin — and the branch manager, who sits
+      // above the admin — can read the staff of their OWN restaurant(s)
+      // (StaffModal list + plan cap). Nobody can read another
       // restaurant's staff — kitchen / cash / server can only read
       // themselves, and the super admin can read everyone.
       // NOTE: do NOT add per-document conditions (role / is_platform_owner)
@@ -202,7 +209,7 @@ service cloud.firestore {
       // the rules below still block DELETING a platform account.
       allow read: if isAuthenticated() && (
         request.auth.uid == userId || isSuperAdmin()
-        || (getUserData().role == 'general_admin'
+        || (getUserData().role in ['general_admin', 'branch_manager']
             && isOwnRestaurant(resource.data.restaurant_id))
       );
       allow create: if isSuperAdmin() || isStaffCreateAllowed();
@@ -235,6 +242,20 @@ service cloud.firestore {
         || (isGeneralAdmin(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged() && frozenUnchanged() && customDomainUnchanged())
         || (isBranchManager(restaurantId) && planUnchanged() && tableCountWithinLimit() && trialFieldsUnchanged() && frozenUnchanged() && customDomainUnchanged());
 
+      // ── Settings activity log ───────────────────────────────────
+      // Every Settings save by the restaurant admin or the branch manager
+      // writes one entry here (who changed what, and when). The log is
+      // SUPER-ADMIN ONLY to read — the admin / manager never see it.
+      match /settings_logs/{logId} {
+        allow create: if (isSuperAdmin() || isGeneralAdmin(restaurantId) || isBranchManager(restaurantId))
+          && request.resource.data.by_uid == request.auth.uid
+          && request.resource.data.keys().hasAll(['by_uid', 'by_name', 'by_role', 'changes', 'at'])
+          && request.resource.data.changes is list
+          && request.resource.data.changes.size() > 0;
+        allow read: if isSuperAdmin();
+        allow update, delete: if isSuperAdmin();
+      }
+
       // ── Menu Items ──────────────────────────────────────────
       match /menu/{itemId} {
         // Anyone can read menu items (for customer ordering)
@@ -262,7 +283,8 @@ service cloud.firestore {
         // must leave payment_status exactly as it was. A wrong confirmed
         // order is deleted by the cashier or the admin only (his 2026-11-16
         // decision). A per-order manual discount (manual_discount_* fields)
-        // may be set or removed ONLY by the restaurant admin or the super
+        // may be set or removed ONLY by the restaurant admin, the branch
+        // manager (above the admin, his 2026-11-19 decision) or the super
         // admin (his 2026-11-17 decision) — the cashier and the kitchen
         // can still move statuses, they just cannot touch the discount.
         allow update: if isOrderUpdateAllowed(restaurantId)
@@ -273,7 +295,7 @@ service cloud.firestore {
           && request.resource.data.total == resource.data.total
           && request.resource.data.items == resource.data.items
           && request.resource.data.table_number == resource.data.table_number
-          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['manual_discount_type', 'manual_discount_value', 'manual_discount_amount', 'manual_discount_by', 'manual_discount_by_name', 'manual_discount_at']) || isGeneralAdmin(restaurantId) || isSuperAdmin());
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['manual_discount_type', 'manual_discount_value', 'manual_discount_amount', 'manual_discount_by', 'manual_discount_by_name', 'manual_discount_at']) || isGeneralAdmin(restaurantId) || isBranchManager(restaurantId) || isSuperAdmin());
 
         // A server may cancel (soft-delete) an order, but ONLY while it is
         // still pending — before the kitchen confirms it. Nothing else may
@@ -322,11 +344,14 @@ service cloud.firestore {
           && request.resource.data.table_number == resource.data.table_number
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['manual_discount_type', 'manual_discount_value', 'manual_discount_amount', 'manual_discount_by', 'manual_discount_by_name', 'manual_discount_at']);
 
-        // Delete: the super admin, or the restaurant's own general admin
-        // (his 2026-11-19 decision — so a restaurant admin can remove a
-        // test / wrong order from Order History). The kitchen, cashier
-        // and server can never delete an order.
-        allow delete: if isSuperAdmin() || isGeneralAdmin(restaurantId);
+        // Delete: ONLY the super admin hard-deletes an order. The restaurant
+        // admin and the branch manager may CANCEL an order, but never delete
+        // it (his 2026-11-19 decision) — when they "delete" one from Order
+        // History, it is only HIDDEN from the restaurant (hidden_from_
+        // restaurant = true): the record stays in Firestore and the super
+        // admin still sees it. The kitchen, cashier and server can never
+        // delete an order either.
+        allow delete: if isSuperAdmin();
       }
     }
 
@@ -353,15 +378,16 @@ service cloud.firestore {
         (isPaymentStaff() && isOwnRestaurant(resource.data.restaurantId))
       );
 
-      // Cash counter and admin can verify (update) payments — pending to
-      // verified only, for their own restaurant (isOwnRestaurant covers a
-      // multi-branch owner's branches, not just the first one). Verifying
-      // changes ONLY the status (+ verifiedAt): the amount and table
-      // number are fixed at creation and may never be rewritten here.
+      // Cash counter, admin and branch manager (above the admin) can verify
+      // (update) payments — pending to verified only, for their own
+      // restaurant (isOwnRestaurant covers a multi-branch owner's
+      // branches, not just the first one). Verifying changes ONLY the
+      // status (+ verifiedAt): the amount and table number are fixed at
+      // creation and may never be rewritten here.
       allow update: if isAuthenticated() && (
         isSuperAdmin() ||
         (
-          getUserData().role in ['general_admin', 'cash_counter'] &&
+          getUserData().role in ['general_admin', 'cash_counter', 'branch_manager'] &&
           isOwnRestaurant(resource.data.restaurantId) &&
           request.resource.data.status == 'verified' &&
           resource.data.status == 'pending' &&
@@ -375,13 +401,13 @@ service cloud.firestore {
     }
 
     // ── Plan Payments (owner buys a plan, super admin verifies) ─────
-    // A restaurant's general admin creates a payment proof record for their
-    // own restaurant. Only the super admin may verify or reject it — the
-    // activation (plan + 30-day expiry) happens in the app when the super
-    // admin verifies.
+    // A restaurant's general admin — or the branch manager, who sits above
+    // the admin — creates a payment proof record for their own restaurant.
+    // Only the super admin may verify or reject it — the activation (plan
+    // + 30-day expiry) happens in the app when the super admin verifies.
     match /plan_payments/{paymentId} {
       allow create: if isAuthenticated()
-        && isGeneralAdmin(request.resource.data.restaurantId)
+        && (isGeneralAdmin(request.resource.data.restaurantId) || isBranchManager(request.resource.data.restaurantId))
         && request.resource.data.keys().hasAll([
             'id', 'restaurantId', 'plan', 'amount',
             'method', 'status', 'createdAt'
@@ -391,9 +417,10 @@ service cloud.firestore {
         && request.resource.data.amount is number
         && request.resource.data.amount > 0;
 
-      // The restaurant's general admin and the super admin can read them
+      // The restaurant's general admin, the branch manager and the super
+      // admin can read them
       allow read: if isAuthenticated() && (
-        isSuperAdmin() || isGeneralAdmin(resource.data.restaurantId)
+        isSuperAdmin() || isGeneralAdmin(resource.data.restaurantId) || isBranchManager(resource.data.restaurantId)
       );
 
       // Only the super admin can verify or reject (pending -> decided)

@@ -206,13 +206,15 @@ function getSidebarLinks(role, pendingCount = 0) {
       logout,
     ];
   }
-  // Multi-branch manager (his 2026-11-19 decision, corrected): Orders,
-  // Revenue, Menu and Settings — the dashboard's Orders / Menu /
-  // Analytics tabs, the Order History page and the Settings page. No
-  // Order Taker or Tables.
+  // Multi-branch manager (his 2026-11-19 decision, corrected): the manager
+  // sits ABOVE the restaurant admin, so they get every option the admin
+  // has — Dashboard, Order Taker, Tables, Order History, Settings — plus
+  // the branch switcher and All branches (rendered by AdminLayout).
   if (role === "branch_manager") {
     return [
       { path: "/admin/restaurant", icon: "🏪", label: "Dashboard", badge: pendingCount },
+      { path: "/admin/order-taker", icon: "🛎️", label: "Order Taker", badge: 0 },
+      { path: "/admin/tables",     icon: "🪑", label: "Tables", badge: 0 },
       { path: "/admin/history",    icon: "📋", label: "Order History", badge: 0 },
       { path: "/admin/settings",   icon: "⚙️",  label: "Settings", badge: 0 },
       logout,
