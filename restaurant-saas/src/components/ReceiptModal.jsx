@@ -312,7 +312,7 @@ export default function ReceiptModal({ order, restaurantId, restaurantName, rest
               <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>Give this customer a one-time discount on this displayOrder.</div>
             )}
             <div style={{ display: "flex", gap: 8 }}>
-              <select value={discType} onChange={(e) => setDiscType(e.target.value)} style={{ padding: "8px", borderRadius: 8, border: "1px solid #ccc" }}>
+              <select value={discType} onChange={(e) => setDiscType(e.target.value)} style={{ flex: "0 0 120px", width: 120, padding: "8px", borderRadius: 8, border: "1px solid #ccc" }}>
                 <option value="percent">% Percent</option>
                 <option value="flat">Amount ({currency})</option>
               </select>
