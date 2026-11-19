@@ -110,10 +110,11 @@ export default function StaffModal({ restaurant, onClose }) {
   // login is blocked with "Your account is disabled. Please contact your
   // administrator." — live, even if they are signed in right now. One
   // click enables them again.
-  // Edit an existing staff login (super admin + restaurant admin): name,
-  // email (username) and role. The email is the login username — if it was
-  // typed wrong at creation, fix it here instead of deleting + recreating.
-  // The Worker updates both the Firebase Auth login and the staff record.
+  // Edit an existing staff login (SUPER ADMIN ONLY — a restaurant admin
+  // or branch manager never sees the edit button): name, email (username)
+  // and role. The email is the login username — if it was typed wrong at
+  // creation, fix it here instead of deleting + recreating. The Worker
+  // updates both the Firebase Auth login and the staff record.
   function handleEdit(member) {
     setEditing(member);
     setEditForm({ name: member.name || "", email: member.email || "", role: member.role || "kitchen" });
@@ -262,7 +263,7 @@ export default function StaffModal({ restaurant, onClose }) {
                       </span>
                     )}
                     <div className="staff-actions">
-                      {member.id !== currentUser?.uid && (
+                      {isSuperAdmin && member.id !== currentUser?.uid && (
                         <button
                           type="button"
                           className="icon-btn"

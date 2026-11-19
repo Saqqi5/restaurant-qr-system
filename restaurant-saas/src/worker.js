@@ -308,38 +308,26 @@ async function handleResetPassword(request, env) {
   return json({ ok: true, password });
 }
 
-// ── Edit a staff login (super admin + restaurant admin) ──────────────
-// The browser SDK cannot change ANOTHER user's email/name, so the Worker
-// does it with the service account: Firebase Auth (email + displayName)
-// and the Firestore users doc (email + name + role) together, so the
-// login and the staff record never disagree. A mistyped username at
-// creation is fixed here instead of delete + recreate.
-//   caller: super_admin (any restaurant) or general_admin whose branches
-//   include the target's restaurant. Never a super_admin / platform
-//   owner / demo account, and never the caller's own login (edit your own
-//   name from the profile, not from here).
+// ── Edit a staff login (SUPER ADMIN ONLY) ─────────────────────────────
+// His 2026-11-19 order: a restaurant admin or a branch manager may NOT
+// edit staff logins — only the super admin. The browser SDK cannot change
+// ANOTHER user's email/name, so the Worker does it with the service
+// account: Firebase Auth (email + displayName) and the Firestore users
+// doc (email + name + role) together, so the login and the staff record
+// never disagree. A mistyped username at creation is fixed here instead
+// of delete + recreate.
+//   caller: super_admin only. Never a super_admin / platform owner /
+//   demo account as the target, and never the caller's own login.
 const STAFF_ROLES = ["general_admin", "kitchen", "cash_counter", "server"];
 
 async function handleUpdateStaff(request, env) {
-  const auth = request.headers.get("Authorization") || "";
-  const idToken = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!idToken) return json({ error: "Sign-in required." }, 401);
-  let caller;
-  try {
-    caller = await verifyIdToken(idToken);
-  } catch {
-    return json({ error: "Could not verify the sign-in." }, 401);
-  }
-  if (!caller) return json({ error: "Sign-in expired or invalid. Please sign in again." }, 401);
-  let callerDoc;
-  try {
-    callerDoc = await getUserDoc(caller.user_id, idToken);
-  } catch {
-    return json({ error: "Could not verify the caller." }, 500);
-  }
-  if (!callerDoc || !["super_admin", "general_admin"].includes(callerDoc.role)) {
-    return json({ error: "Only the administrator can edit staff logins." }, 403);
-  }
+  // SUPER ADMIN ONLY (his 2026-11-19 order — a restaurant admin or a
+  // branch manager may NOT edit staff logins). The browser SDK cannot
+  // change another user's email/name, so the Worker does it with the
+  // service account.
+  const admin = await requireSuperAdmin(request, "edit staff logins");
+  if (admin instanceof Response) return admin;
+  const { idToken } = admin;
 
   let body;
   try {
@@ -349,7 +337,7 @@ async function handleUpdateStaff(request, env) {
   }
   const targetUid = typeof body?.uid === "string" ? body.uid.trim() : "";
   if (!targetUid) return json({ error: "Missing staff account." }, 400);
-  if (targetUid === caller.user_id) return json({ error: "You cannot edit your own login here." }, 400);
+  if (targetUid === admin.caller.user_id) return json({ error: "You cannot edit your own login here." }, 400);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const role = typeof body?.role === "string" ? body.role.trim() : "";
@@ -366,13 +354,6 @@ async function handleUpdateStaff(request, env) {
   if (!targetDoc) return json({ error: "Staff account not found." }, 404);
   if (targetDoc.role === "super_admin" || targetDoc.is_platform_owner || targetDoc.is_demo_user) {
     return json({ error: "This account cannot be edited here." }, 403);
-  }
-  // A restaurant admin may only edit staff of their own branches.
-  if (callerDoc.role === "general_admin") {
-    const accessible = new Set([...(callerDoc.restaurant_ids || []), callerDoc.restaurant_id].filter(Boolean));
-    if (!accessible.has(targetDoc.restaurant_id)) {
-      return json({ error: "This staff member belongs to another restaurant." }, 403);
-    }
   }
 
   let accessToken;
