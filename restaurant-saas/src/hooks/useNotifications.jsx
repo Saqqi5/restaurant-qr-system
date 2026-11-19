@@ -12,8 +12,10 @@
  *               or starts the order (status leaves "pending"), and the
  *               beep repeats 3 times so it cuts through kitchen noise.
  *   Cashier:  useNotifications(restaurantId) — new order ping + toast.
- *   Waiter:   useNotifications(restaurantId, true, { onReady: true })
- *             — also a toast when an order becomes READY, with its table.
+ *   Waiter:   useNotifications(restaurantId, true, { onReady: true, onWaiterCall: true })
+ *             — also a toast when an order becomes READY, with its table,
+ *               and a loud persistent alert (table number + ~5.5s tone)
+ *               the moment a customer taps "Call Waiter".
  *   Cashier + admin: pass { onServed: true } — a toast the moment an
  *             order is SERVED and its payment is still pending, so the
  *             counter knows which tables owe money.
@@ -24,7 +26,7 @@
  *   const { toasts, dismiss } = useNotifications(restaurantId, true, { onReady: true });
  */
 import { useState, useEffect, useRef, useCallback } from "react";
-import { subscribeToOrders } from "../config/db";
+import { subscribeToOrders, subscribeToWaiterCalls } from "../config/db";
 
 // Tiny Web Audio API beep — no asset file needed. `times` repeats the
 // beep (a kitchen is noisy — one short beep is easy to miss).
@@ -44,6 +46,31 @@ function playPing(times = 1) {
       gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4);
       osc.start(t0);
       osc.stop(t0 + 0.4);
+    }
+  } catch (_) {
+    // Audio not available in some contexts — silent fail
+  }
+}
+
+// Waiter-call alarm — a two-tone alert that sounds for ~5.5 seconds
+// (his 2026-11-20 order: the tone must last at least 5 seconds), so a
+// waiter who stepped away from the screen still hears the call. 11 beeps,
+// 0.5s apart, alternating 880/660 Hz; the last beep ends at ~5.45s.
+function playWaiterAlert() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    for (let i = 0; i < 11; i++) {
+      const t0 = ctx.currentTime + i * 0.5;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(i % 2 === 0 ? 880 : 660, t0);
+      gain.gain.setValueAtTime(0.35, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.45);
+      osc.start(t0);
+      osc.stop(t0 + 0.45);
     }
   } catch (_) {
     // Audio not available in some contexts — silent fail
@@ -85,6 +112,13 @@ export function useNotifications(target, enabled = true, options = {}) {
   // when several are subscribed at once, each one's first load must stay
   // silent, not notify for its old orders).
   const initializedIds = useRef(new Set());
+  // Waiter calls — same pattern, separate sets: a call's toast must clear
+  // the moment it is acknowledged or marked done, and old pending calls
+  // must not re-alert when the waiter logs in.
+  const knownCallIds = useRef(new Set());
+  const knownCallStatus = useRef(new Map());
+  const toastByCall = useRef(new Map());
+  const initializedCallIds = useRef(new Set());
 
   const dismiss = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -96,6 +130,7 @@ export function useNotifications(target, enabled = true, options = {}) {
     if (type === "order") playPing(3); // 3 beeps — a kitchen is noisy
     else if (type === "served") playPing(2); // served + unpaid = money owed
     else if (type === "ready") playPing();
+    else if (type === "waiter") playWaiterAlert(); // ~5.5s alarm — a table is calling
     // A kitchen alert stays until the kitchen taps it away or starts the
     // order. Everywhere else it goes away after 6 seconds.
     if (!opts.persistent) setTimeout(() => dismiss(id), 6000);
@@ -162,6 +197,45 @@ export function useNotifications(target, enabled = true, options = {}) {
     return () => unsubs.forEach((u) => u && u());
   }, [idsKey, enabled, addToast, dismiss, options.onReady, options.onServed, options.persistent]);
 
+  // ── Waiter calls (his 2026-11-20 order) ──────────────────────────────
+  // When a customer taps "Call Waiter", the waiter gets a loud, persistent
+  // alert with the table number + a tone that lasts at least 5 seconds.
+  // First snapshot per restaurant is silent (old pending calls don't
+  // re-alert on login); a call's toast clears the moment it is
+  // acknowledged or marked done, so the waiter only hears live calls.
+  useEffect(() => {
+    if (!ids.length || !enabled || !options.onWaiterCall) return;
+
+    const handleCalls = (calls, rid) => {
+      if (!initializedCallIds.current.has(rid)) {
+        calls.forEach((c) => { knownCallIds.current.add(c.id); knownCallStatus.current.set(c.id, c.status); });
+        initializedCallIds.current.add(rid);
+        return;
+      }
+      calls.forEach((call) => {
+        const prevStatus = knownCallStatus.current.get(call.id);
+        if (!knownCallIds.current.has(call.id)) {
+          knownCallIds.current.add(call.id);
+          knownCallStatus.current.set(call.id, call.status);
+          if (call.status === "pending") {
+            const suffix = names[rid] ? ` • ${names[rid]}` : "";
+            const id = addToast(`🙋 Table ${call.table_number} called a waiter${suffix}`, "waiter", { persistent: true });
+            toastByCall.current.set(call.id, id);
+          }
+        } else {
+          if (prevStatus === "pending" && call.status !== "pending") {
+            const toast = toastByCall.current.get(call.id);
+            if (toast) { dismiss(toast); toastByCall.current.delete(call.id); }
+          }
+          knownCallStatus.current.set(call.id, call.status);
+        }
+      });
+    };
+
+    const unsubs = ids.map((id) => subscribeToWaiterCalls(id, (calls) => handleCalls(calls, id)));
+    return () => unsubs.forEach((u) => u && u());
+  }, [idsKey, enabled, addToast, dismiss, options.onWaiterCall]);
+
   return { toasts, dismiss, addToast };
 }
 
@@ -184,8 +258,8 @@ export function ToastContainer({ toasts, onDismiss }) {
           onClick={() => onDismiss(t.id)}
           style={{
             background: "#1a1a1a",
-            border: `1px solid ${t.type === "order" ? "#e85d04" : t.type === "served" ? "#e05252" : "#333"}`,
-            borderLeft: `4px solid ${t.type === "order" ? "#e85d04" : t.type === "served" ? "#e05252" : "#4a90d9"}`,
+            border: `1px solid ${t.type === "order" ? "#e85d04" : t.type === "served" ? "#e05252" : t.type === "waiter" ? "#ff6b35" : "#333"}`,
+            borderLeft: `4px solid ${t.type === "order" ? "#e85d04" : t.type === "served" ? "#e05252" : t.type === "waiter" ? "#ff6b35" : "#4a90d9"}`,
             color: "#f0f0f0", padding: "12px 16px",
             borderRadius: 10, fontSize: 13, cursor: "pointer",
             boxShadow: "0 4px 20px rgba(0,0,0,0.5)",

@@ -30,7 +30,9 @@ export default function ServerDashboard() {
   // Waiter notifications: a ping + toast when a customer places an order,
   // and again when an order becomes READY — with its table number, so the
   // waiter knows exactly which table to serve (his 2026-11-19 order).
-  const { toasts, dismiss } = useNotifications(restaurantId, true, { onReady: true });
+  // Plus a loud persistent alert (table number + ~5.5s tone) the moment a
+  // customer taps "Call Waiter" (his 2026-11-20 order).
+  const { toasts, dismiss } = useNotifications(restaurantId, true, { onReady: true, onWaiterCall: true });
 
   useEffect(() => {
     if (!restaurantId || restaurantId === "all") return;
