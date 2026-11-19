@@ -1494,6 +1494,33 @@ a { color: var(--color-primary); text-decoration: none; }
 .qr-item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 16px; text-align: center; }
 .qr-item-label { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
 
+/* ── Order status summary (his 2026-11-19 order) ──────────────────────
+   Boxes above the orders list, one per stage, each with its count. Tap a
+   box to show only that stage's orders. Payment pending is red, Paid is
+   green, so the money state reads at a glance. */
+.order-status-summary {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.stage-box {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 84px; padding: 10px 12px; cursor: pointer;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm); color: var(--color-text);
+}
+.stage-box:hover { border-color: var(--color-primary); }
+.stage-box.selected {
+  border: 2px solid var(--color-primary);
+  background: rgba(32, 201, 151, 0.1);
+}
+.stage-box.tone-red .stage-count { color: #e05252; }
+.stage-box.tone-red.selected { border-color: #e05252; background: rgba(224, 82, 82, 0.08); }
+.stage-box.tone-green .stage-count { color: #27ae60; }
+.stage-box.tone-green.selected { border-color: #27ae60; background: rgba(39, 174, 96, 0.08); }
+.stage-box.tone-muted .stage-count { color: var(--color-muted); }
+.stage-icon { font-size: 18px; line-height: 1; }
+.stage-count { font-size: 20px; font-weight: 800; line-height: 1.1; }
+.stage-label { font-size: 11px; color: var(--color-muted); text-align: center; }
+
 /* ── Payment-pending banner + red rows (his 2026-11-19 order) ────────
    A served (or ready) order that is still unpaid turns RED everywhere it
    is listed, and a red banner above the list counts how many tables owe

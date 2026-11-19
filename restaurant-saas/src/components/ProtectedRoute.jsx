@@ -25,9 +25,6 @@ function BranchSwitchButtons() {
             {b.name}
           </button>
         ))}
-        <button className="btn-secondary" onClick={() => setActiveRestaurantId("all")}>
-          All branches
-        </button>
       </div>
     </div>
   );

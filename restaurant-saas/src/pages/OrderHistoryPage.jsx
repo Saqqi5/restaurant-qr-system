@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { getDocs, query, orderBy, where, Timestamp } from "firebase/firestore";
 import { ordersCol, subscribeToPlatformSettings, getOrderPayable } from "../config/db";
@@ -19,10 +19,11 @@ function endOfDay(date) {
 }
 
 export default function OrderHistoryPage() {
-  const { userProfile, restaurantId, logout, trialInfo, branches, accessibleRestaurantIds } = useAuth();
-  // "all" = the combined All-branches view: every branch's orders, merged.
-  const isAllBranches = restaurantId === "all";
-  const currency = useRestaurantCurrency(isAllBranches ? null : restaurantId);
+  const { userProfile, restaurantId, logout, trialInfo } = useAuth();
+  // One branch at a time — there is no combined "all branches" view
+  // (removed his 2026-11-19 order). A multi-branch manager switches
+  // branches from the top bar; this page shows the active branch.
+  const currency = useRestaurantCurrency(restaurantId);
   const [orders, setOrders]     = useState([]);
   const [loading, setLoading]   = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -33,53 +34,29 @@ export default function OrderHistoryPage() {
   const [platformLimits, setPlatformLimits] = useState(null);
   useEffect(() => subscribeToPlatformSettings(setPlatformLimits), []);
 
-  // Branch docs by id — merged rows find their branch's name, currency
-  // and plan. Single-branch mode: the one doc is not loaded here, so the
-  // fallbacks below (currency prop, trialInfo plan) apply as before.
-  const branchMap = useMemo(() => {
-    const map = {};
-    if (isAllBranches) branches.forEach((b) => { map[b.id] = b; });
-    return map;
-  }, [isAllBranches, branches]);
-  const branchFor = (o) => branchMap[o?._restaurantId || restaurantId] || {};
   // Retention window (his 2026-11-16 order): the admin sees only orders
   // newer than their plan's backup window. Nothing is deleted — the
-  // super admin still sees everything. Combined view: each branch keeps
-  // its OWN plan's window; the From-date floor is the most restrictive.
-  const retentionDays = isAllBranches
-    ? (branches.length ? Math.min(...branches.map((b) => getBackupDays(b.plan || "basic", platformLimits))) : 30)
-    : getBackupDays(trialInfo?.plan || "basic", platformLimits);
-  const cutoffInput = toDateInput(isAllBranches
-    ? new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000)
-    : getRetentionCutoffDate(trialInfo?.plan || "basic", platformLimits));
+  // super admin still sees everything.
+  const retentionDays = getBackupDays(trialInfo?.plan || "basic", platformLimits);
+  const cutoffInput = toDateInput(getRetentionCutoffDate(trialInfo?.plan || "basic", platformLimits));
 
   async function fetchOrders() {
     setLoading(true);
     const from = Timestamp.fromDate(startOfDay(new Date(dateFrom)));
     const to   = Timestamp.fromDate(endOfDay(new Date(dateTo)));
-    // Combined view: one ranged query per branch, merged newest first.
-    const ids = isAllBranches ? accessibleRestaurantIds : [restaurantId];
-    const snaps = await Promise.all(ids.map((id) =>
-      getDocs(query(
-        ordersCol(id),
-        where("created_at", ">=", from),
-        where("created_at", "<=", to),
-        orderBy("created_at", "desc")
-      ))
+    const snap = await getDocs(query(
+      ordersCol(restaurantId),
+      where("created_at", ">=", from),
+      where("created_at", "<=", to),
+      orderBy("created_at", "desc")
     ));
-    const merged = snaps.flatMap((snap, i) =>
-      snap.docs.map((d) => ({
-        id: d.id, ...d.data(),
-        _restaurantId: ids[i],
-        _branchName: branchMap[ids[i]]?.name,
-        _currency: branchMap[ids[i]]?.currency || currency,
-      }))
-    )
-    // Orders the admin / manager "deleted" are only hidden from the
-    // restaurant — they never appear in Order History (the super admin
-    // still sees them on their own page).
-    .filter((o) => !o.hidden_from_restaurant)
-    .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
+    const merged = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      // Orders the admin / manager "deleted" are only hidden from the
+      // restaurant — they never appear in Order History (the super admin
+      // still sees them on their own page).
+      .filter((o) => !o.hidden_from_restaurant)
+      .sort((a, b) => (b.created_at?.seconds ?? 0) - (a.created_at?.seconds ?? 0));
     setOrders(merged);
     setLoading(false);
   }
@@ -88,7 +65,7 @@ export default function OrderHistoryPage() {
 
   // Payment filter + order-status filter (cancelled orders stay in
   // history with who cancelled them — nothing is ever hard-deleted).
-  const planForOrder = (o) => branchFor(o).plan || trialInfo?.plan || "basic";
+  const planForOrder = () => trialInfo?.plan || "basic";
   const filtered = orders.filter((o) =>
     (statusFilter === "all" || o.payment_status === statusFilter) &&
     (orderStatusFilter === "all" || o.status === orderStatusFilter) &&
@@ -102,24 +79,13 @@ export default function OrderHistoryPage() {
   const totalRevenue = filtered
     .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
     .reduce((s, o) => s + getOrderPayable(o).payable, 0);
-  // Combined view: revenue per branch, each in its own currency.
-  const revenueByBranch = isAllBranches
-    ? filtered
-        .filter((o) => o.payment_status === "paid" && o.status !== "cancelled")
-        .reduce((acc, o) => {
-          const bid = o._restaurantId || restaurantId;
-          acc[bid] = (acc[bid] || 0) + getOrderPayable(o).payable;
-          return acc;
-        }, {})
-    : {};
 
   function exportCSV() {
     const rows = [
-      ["Order #", "Order ID", isAllBranches ? "Branch" : null, "Table", "Type", "Status", "Payment", "Total", "Date", "Cancelled By", "Items"].filter((h) => h !== null).join(","),
+      ["Order #", "Order ID", "Table", "Type", "Status", "Payment", "Total", "Date", "Cancelled By", "Items"].join(","),
       ...filtered.map((o) => [
         o.order_number ?? "",
         o.id,
-        ...(isAllBranches ? [o._branchName || ""] : []),
         o.order_type === "delivery" ? "Delivery" : o.table_number,
         o.order_type || "dine_in",
         o.status,
@@ -134,7 +100,7 @@ export default function OrderHistoryPage() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url;
-    a.download = `orders_${isAllBranches ? "all" : restaurantId}_${dateFrom}_to_${dateTo}.csv`;
+    a.download = `orders_${restaurantId}_${dateFrom}_to_${dateTo}.csv`;
     a.click();
   }
 
@@ -191,9 +157,7 @@ export default function OrderHistoryPage() {
       </div>
 
       <p style={{ fontSize: "13px", color: "var(--color-muted)", margin: "0 0 12px" }}>
-        {isAllBranches
-          ? "Each branch keeps its own plan's history (Basic 30 days, Standard 90 days, Premium 1 year). Older orders are kept by the administrator."
-          : `Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`}
+        {`Showing orders from the last ${retentionDays} days — your ${getPlanLabel(trialInfo?.plan || "basic")} plan keeps ${retentionDays} days of history. Older orders are kept by the administrator.`}
       </p>
 
       {/* Summary row */}
@@ -202,30 +166,16 @@ export default function OrderHistoryPage() {
           <span className="hs-label">Orders</span>
           <span className="hs-value">{filtered.length}</span>
         </div>
-        {isAllBranches ? branches.map((b) => (
-          <div key={b.id} className="hs-item">
-            <span className="hs-label">Revenue — {b.name} (paid)</span>
-            <span className="hs-value">{formatPrice(revenueByBranch[b.id] || 0, b.currency || "$")}</span>
-          </div>
-        )) : (
-          <div className="hs-item">
-            <span className="hs-label">Revenue (paid)</span>
-            <span className="hs-value">{formatPrice(totalRevenue, currency)}</span>
-          </div>
-        )}
-        {isAllBranches ? (
-          <div className="hs-item">
-            <span className="hs-label">Paid Orders</span>
-            <span className="hs-value">{filtered.filter(o => o.payment_status === "paid").length}</span>
-          </div>
-        ) : (
-          <div className="hs-item">
-            <span className="hs-label">Avg. Order</span>
-            <span className="hs-value">
-              {filtered.length ? formatPrice(totalRevenue / filtered.filter(o => o.payment_status === "paid" && o.status !== "cancelled").length || 0, currency) : "—"}
-            </span>
-          </div>
-        )}
+        <div className="hs-item">
+          <span className="hs-label">Revenue (paid)</span>
+          <span className="hs-value">{formatPrice(totalRevenue, currency)}</span>
+        </div>
+        <div className="hs-item">
+          <span className="hs-label">Avg. Order</span>
+          <span className="hs-value">
+            {filtered.length ? formatPrice(totalRevenue / filtered.filter(o => o.payment_status === "paid" && o.status !== "cancelled").length || 0, currency) : "—"}
+          </span>
+        </div>
       </div>
 
       {/* Table */}
@@ -243,7 +193,6 @@ export default function OrderHistoryPage() {
               <tr>
                 <th>Order #</th>
                 <th>Time</th>
-                {isAllBranches && <th>Branch</th>}
                 <th>Table</th>
                 <th>Items</th>
                 <th>Total</th>
@@ -253,15 +202,14 @@ export default function OrderHistoryPage() {
             </thead>
             <tbody>
               {filtered.map((order) => (
-                <tr key={`${order._restaurantId || ""}-${order.id}`} onClick={() => setSelectedOrder(order)} style={{ cursor: "pointer", ...(order.status === "cancelled" ? { opacity: 0.65 } : {}) }}>
+                <tr key={order.id} onClick={() => setSelectedOrder(order)} style={{ cursor: "pointer", ...(order.status === "cancelled" ? { opacity: 0.65 } : {}) }}>
                   <td className="ht-mono">#{order.order_number ?? order.id?.slice(-6).toUpperCase()}</td>
                   <td className="ht-mono">{fmt(order.created_at)}</td>
-                  {isAllBranches && <td>{order._branchName || "—"}</td>}
                   <td>{order.order_type === "delivery" ? <span className="table-badge-sm">🛵 Delivery</span> : <span className="table-badge-sm">T{order.table_number}</span>}</td>
                   <td className="ht-items">
                     {order.items?.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
                   </td>
-                  <td className="ht-price">{formatPrice(getOrderPayable(order).payable, order._currency || currency)}</td>
+                  <td className="ht-price">{formatPrice(getOrderPayable(order).payable, currency)}</td>
                   <td>
                     <span className={`status-pill status-${order.status}`}>
                       {order.status === "out_for_delivery" ? "out for delivery" : order.status}
@@ -329,9 +277,8 @@ export default function OrderHistoryPage() {
       {selectedOrder && (
         <ReceiptModal
           order={selectedOrder}
-          restaurantId={selectedOrder._restaurantId || restaurantId}
-          restaurantName={selectedOrder._branchName || ""}
-          currency={selectedOrder._currency || currency}
+          restaurantId={restaurantId}
+          currency={currency}
           onClose={() => setSelectedOrder(null)}
           discountActor={["general_admin", "super_admin", "branch_manager"].includes(userProfile?.role) ? { uid: userProfile.id, name: userProfile.name } : null}
           onDiscountApplied={fetchOrders}

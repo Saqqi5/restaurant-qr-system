@@ -7,9 +7,10 @@ import {
 } from "../config/db";
 import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import AdminLayout from "../components/admin/AdminLayout";
-import BranchRequired from "../components/admin/BranchRequired";
 import ReceiptModal from "../components/ReceiptModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
+import OrderStatusSummary, { matchesStage } from "../components/admin/OrderStatusSummary";
+import { sortOrdersForDisplay } from "../utils/orderSort";
 import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
 export default function CashCounterDashboard() {
@@ -28,6 +29,10 @@ export default function CashCounterDashboard() {
   const [pendingDelete, setPendingDelete] = useState(null); // order awaiting delete confirm
   const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
+  // Stage filter from the summary boxes above the list (his 2026-11-19
+  // order): tap e.g. Payment pending to show only those orders. Null =
+  // all orders (the payment tabs below still filter by payment state).
+  const [stageFilter, setStageFilter] = useState(null);
   // New customer order? Ping + toast at once, so the cashier can confirm
   // the payment the moment it lands (his 2026-11-19 order). onServed:
   // the moment an order is served and still unpaid, the counter hears
@@ -51,7 +56,7 @@ export default function CashCounterDashboard() {
   }
 
   useEffect(() => {
-    if (!restaurantId || restaurantId === "all") return;
+    if (!restaurantId) return;
     const unsubOrders = subscribeToOrders(restaurantId, setOrders);
     const unsubPayments = subscribeToRestaurantPayments(restaurantId, setPayments);
     return () => { unsubOrders(); unsubPayments(); };
@@ -105,22 +110,18 @@ export default function CashCounterDashboard() {
   }
 
   // Cancelled orders never show at the counter (they live in history).
-  const filteredOrders = orders.filter((o) => {
+  // Paid + verified orders sink to the bottom — only the unpaid / active
+  // orders stay on top, in time order (his 2026-11-19 order).
+  const filteredOrders = sortOrdersForDisplay(orders.filter((o) => {
     if (o.status === "cancelled") return false;
+    if (!matchesStage(o, stageFilter)) return false;
     if (filter === "unpaid") return o.payment_status === "unpaid" && o.status !== "pending";
     if (filter === "paid") return o.payment_status === "paid";
     // Payment pending = served (or ready) and still unpaid — these are
-    // the tables that owe money right now. The banner above counts them.
+    // the tables that owe money right now.
     if (filter === "pending-payment") return ["ready", "served"].includes(o.status) && o.payment_status !== "paid";
     return true;
-  });
-
-  // The payment-pending summary (his 2026-11-19 order): how many tables
-  // have been served but not paid yet, and how much they owe in total.
-  const pendingPaymentOrders = orders.filter(
-    (o) => ["ready", "served"].includes(o.status) && o.payment_status !== "paid" && o.status !== "cancelled"
-  );
-  const pendingPaymentTotal = pendingPaymentOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0);
+  }));
 
   const todayPaid = orders.filter((o) => {
     const today = new Date().toDateString();
@@ -132,20 +133,6 @@ export default function CashCounterDashboard() {
   const unpaidCount = orders.filter((o) => o.payment_status === "unpaid" && o.status !== "pending" && o.status !== "cancelled").length;
   const pendingProofs = payments.filter(p => p.status === "pending");
   const verifiedProofs = payments.filter(p => p.status === "verified");
-
-  // The cash counter is one branch at a time — "All branches" picks a branch.
-  if (restaurantId === "all") {
-    return (
-      <AdminLayout
-        title="Cash Counter"
-        subtitle="Payment Management"
-        onLogout={logout}
-        userProfile={userProfile}
-      >
-        <BranchRequired title="Cash counter is per branch" />
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout
@@ -212,18 +199,9 @@ export default function CashCounterDashboard() {
       {/* Counter Orders Tab */}
       {mainTab === "orders" && (
         <>
-          {/* Payment-pending summary (his 2026-11-19 order): tap it and
-              only the served-but-unpaid orders show below. */}
-          {pendingPaymentOrders.length > 0 && (
-            <button
-              type="button"
-              className="payment-pending-banner"
-              onClick={() => setFilter("pending-payment")}
-            >
-              <span>⏳ Payment pending — {pendingPaymentOrders.length} order{pendingPaymentOrders.length > 1 ? "s" : ""}</span>
-              <span>{formatPrice(pendingPaymentTotal, currency)} · Tap to view</span>
-            </button>
-          )}
+          {/* Stage summary (his 2026-11-19 order): one box per stage with
+              its count — tap a box to show only that stage's orders. */}
+          <OrderStatusSummary orders={orders} selected={stageFilter} onSelect={setStageFilter} />
           <div className="filter-tabs">
             {["unpaid", "pending-payment", "paid", "all"].map((f) => (
               <button

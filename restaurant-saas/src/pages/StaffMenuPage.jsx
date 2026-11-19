@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import AdminLayout from "../components/admin/AdminLayout";
-import BranchRequired from "../components/admin/BranchRequired";
 import {
   subscribeToMenu, getItemPrice, getItemOriginalPrice, isItemPromoActive,
 } from "../config/db";
@@ -19,7 +18,7 @@ export default function StaffMenuPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (!restaurantId || restaurantId === "all") return;
+    if (!restaurantId) return;
     const unsub = subscribeToMenu(restaurantId, setMenuItems);
     return () => unsub();
   }, [restaurantId]);
@@ -39,19 +38,6 @@ export default function StaffMenuPage() {
     }
     return out;
   }, [menuItems, search]);
-
-  if (restaurantId === "all") {
-    return (
-      <AdminLayout
-        title="Menu"
-        subtitle={userProfile?.name || ""}
-        onLogout={logout}
-        userProfile={userProfile}
-      >
-        <BranchRequired title="Menu is per branch" />
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout

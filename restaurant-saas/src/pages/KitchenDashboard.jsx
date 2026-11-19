@@ -3,7 +3,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { subscribeToOrders, updateOrderStatus } from "../config/db";
 import { sortByBookedAt, sortForMaking } from "../utils/orderSort";
 import AdminLayout from "../components/admin/AdminLayout";
-import BranchRequired from "../components/admin/BranchRequired";
 import ReceiptModal from "../components/ReceiptModal";
 import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
@@ -58,7 +57,7 @@ export default function KitchenDashboard() {
   }, []);
 
   useEffect(() => {
-    if (!restaurantId || restaurantId === "all") return;
+    if (!restaurantId) return;
     const unsub = subscribeToOrders(
       restaurantId,
       (data) => { setOrders(data); setLoading(false); },
@@ -120,21 +119,6 @@ export default function KitchenDashboard() {
   }, {});
 
   const totalPending = ordersByStatus.pending.length + ordersByStatus.confirmed.length;
-
-  // The kitchen is one branch at a time — "All branches" picks a branch.
-  if (restaurantId === "all") {
-    return (
-      <AdminLayout
-        title="🍳 Kitchen"
-        subtitle="Order Queue"
-        onLogout={logout}
-        userProfile={userProfile}
-        compact
-      >
-        <BranchRequired title="Kitchen is per branch" />
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout

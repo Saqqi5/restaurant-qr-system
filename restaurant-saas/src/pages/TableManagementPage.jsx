@@ -6,7 +6,6 @@ import { formatPrice } from "../utils/currency";
 import { getRestaurant } from "../config/db";
 import { buildQrUrl } from "../config/tenantResolver";
 import AdminLayout from "../components/admin/AdminLayout";
-import BranchRequired from "../components/admin/BranchRequired";
 
 const TABLE_STATUS = {
   empty:      { label: "Empty",    color: "#2e2e2e", text: "#888",    border: "#3e3e3e" },
@@ -36,7 +35,7 @@ export default function TableManagementPage() {
   // Wait for the restaurant doc before drawing the floor — otherwise the
   // page briefly shows the wrong fallback count (20) instead of the real one.
   useEffect(() => {
-    if (!restaurantId || restaurantId === "all") return;
+    if (!restaurantId) return;
     getRestaurant(restaurantId)
       .then((r) => { if (r) setRestaurant(r); })
       .catch(() => {})
@@ -44,7 +43,7 @@ export default function TableManagementPage() {
   }, [restaurantId]);
 
   useEffect(() => {
-    if (!restaurantId || restaurantId === "all") return;
+    if (!restaurantId) return;
     const unsub = subscribeToOrders(restaurantId, setOrders);
     return unsub;
   }, [restaurantId]);
@@ -139,20 +138,6 @@ export default function TableManagementPage() {
       [...Array(tableCount)].filter((_, i) => getTableStatus(i + 1) === s).length,
     ])
   );
-
-  // Tables are one branch at a time — "All branches" picks a branch.
-  if (restaurantId === "all") {
-    return (
-      <AdminLayout
-        title="🪑 Tables"
-        subtitle="Floor Overview"
-        onLogout={logout}
-        userProfile={userProfile}
-      >
-        <BranchRequired title="Tables are per branch" />
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout

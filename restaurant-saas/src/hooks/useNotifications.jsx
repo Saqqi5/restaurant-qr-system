@@ -54,8 +54,9 @@ let toastId = 0;
 
 // One line per order source — the kitchen must know WHERE the order came
 // from at a glance. Delivery orders have no table number (never "Table
-// null" — that was a bug). In the all-branches view the branch name is
-// appended, so the admin knows WHICH branch the order belongs to.
+// null" — that was a bug). When a branch name is passed in
+// options.restaurantNames, it is appended, so the toast says WHICH
+// branch the order belongs to.
 function newOrderMessage(order, branchName) {
   const suffix = branchName ? ` • ${branchName}` : "";
   if (order.order_type === "delivery") return `🔔 New delivery order${suffix}`;
@@ -66,9 +67,8 @@ function newOrderMessage(order, branchName) {
 }
 
 export function useNotifications(target, enabled = true, options = {}) {
-  // target: one restaurant id, or an array of ids (admin all-branches
-  // view — one alert stream per branch). options.restaurantNames maps
-  // id → branch name for the toast.
+  // target: one restaurant id, or an array of ids. options.restaurantNames
+  // maps id → branch name for the toast.
   const ids = Array.isArray(target) ? target.filter(Boolean) : (target ? [target] : []);
   const idsKey = ids.join(",");
   const names = options.restaurantNames || {};
@@ -82,8 +82,8 @@ export function useNotifications(target, enabled = true, options = {}) {
   // order (status leaves "pending"), its alert goes away by itself.
   const toastByOrder = useRef(new Map());
   // Restaurants whose first snapshot has already been recorded (per id —
-  // the all-branches view subscribes to several at once, and each one's
-  // first load must stay silent, not notify for its old orders).
+  // when several are subscribed at once, each one's first load must stay
+  // silent, not notify for its old orders).
   const initializedIds = useRef(new Set());
 
   const dismiss = useCallback((id) => {
