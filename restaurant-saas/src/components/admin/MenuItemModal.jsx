@@ -18,6 +18,7 @@ export default function MenuItemModal({ item, categories, onClose, onSave }) {
     spice_level: item?.spice_level || "",
     allergens: item?.allergens || "",
     station: item?.station || "",
+    half_price: item?.half_price || "",
   });
   // Size options — each row is one size (label + price). Empty = one size
   // at the base price. The customer picks a size when adding the dish.
@@ -98,6 +99,17 @@ export default function MenuItemModal({ item, categories, onClose, onSave }) {
                   />
                 </div>
                 <div className="form-group">
+                  <label>Half Price <span style={{ fontWeight: 400, color: "var(--color-muted)" }}>(optional)</span></label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.half_price}
+                    onChange={(e) => setForm({ ...form, half_price: e.target.value })}
+                    placeholder="e.g. 450"
+                  />
+                </div>
+                <div className="form-group">
                   <label>Prep Time (min)</label>
                   <input
                     type="number"
@@ -108,6 +120,7 @@ export default function MenuItemModal({ item, categories, onClose, onSave }) {
                   />
                 </div>
               </div>
+              <p className="form-hint">Half price is the Full price's partner — fill it and the dish offers Half / Full (Half at this price, Full at the price above). Leave it empty for one size only. Size options below (if any) win over the half price.</p>
 
               {/* Promotional offer — admin / super admin only (this form
                   lives on the admin dashboard; menu writes are rules-locked

@@ -405,9 +405,13 @@ export async function createMenuItem(restaurantId, data) {
     // Dish detail: spice level ("", Mild, Medium, Hot), allergens text,
     // kitchen station (Tandoor, Curry, Drinks, …) and size options
     // [{label, price}] — empty sizes = one size at the base price.
+    // half_price is the shortcut for the common Half/Full split: when it
+    // is set (and no explicit sizes), the dish offers Half at half_price
+    // and Full at the base price.
     spice_level: data.spice_level || "",
     allergens: (data.allergens || "").trim(),
     station: (data.station || "").trim() || (data.category || "Kitchen"),
+    half_price: parseFloat(data.half_price) || 0,
     sizes: Array.isArray(data.sizes) ? data.sizes.filter((s) => s.label && Number(s.price) > 0) : [],
     created_at: serverTimestamp(),
   };
@@ -1167,6 +1171,21 @@ export function isItemPromoActive(item) {
 
 // What one unit of this dish costs right now: the promo price while the
 // offer runs, otherwise the regular price.
+// The sizes a dish offers. Explicit size options win; otherwise a set
+// half_price gives the common Half / Full split (Half at half_price,
+// Full at the base price); otherwise one size at the base price.
+export function getItemSizes(item) {
+  if (Array.isArray(item?.sizes) && item.sizes.length > 0) return item.sizes;
+  const half = parseFloat(item?.half_price) || 0;
+  if (half > 0) {
+    return [
+      { label: "Half", price: half },
+      { label: "Full", price: parseFloat(item.price) || 0 },
+    ];
+  }
+  return [];
+}
+
 export function getItemPrice(item) {
   return isItemPromoActive(item) ? Number(item.promo_price) : Number(item?.price) || 0;
 }

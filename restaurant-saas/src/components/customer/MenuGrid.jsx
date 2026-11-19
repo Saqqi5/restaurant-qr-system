@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { formatPrice } from "../../utils/currency";
-import { getItemPrice, isItemPromoActive } from "../../config/db";
+import { getItemPrice, getItemSizes, isItemPromoActive } from "../../config/db";
 
 const CATEGORY_EMOJIS = {
   pizza: "🍕", pasta: "🍝", salad: "🥗", soup: "🍲",
@@ -22,7 +22,8 @@ function getCategoryEmoji(category = "") {
 }
 
 function MenuCard({ item, cart, onAdd, onRemove, currency }) {
-  const sizes = Array.isArray(item.sizes) ? item.sizes : [];
+  // Sizes: explicit size options, or Half/Full from a set half_price.
+  const sizes = getItemSizes(item);
   const [sizeIdx, setSizeIdx] = useState(0);
   const selectedSize = sizes.length > 0 ? sizes[Math.min(sizeIdx, sizes.length - 1)] : null;
   // The quantity of THIS size (a dish in two sizes is two cart lines).

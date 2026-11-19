@@ -8,6 +8,7 @@ import { formatPrice, useRestaurantCurrency } from "../utils/currency";
 import { sortByBookedAt } from "../utils/orderSort";
 import { isExpiredDemoItem } from "../config/db";
 import { getDemoHiddenDishes } from "../utils/session";
+import { getItemSizes } from "../config/db";
 import AdminLayout from "../components/admin/AdminLayout";
 import BranchRequired from "../components/admin/BranchRequired";
 import ConfirmModal from "../components/admin/ConfirmModal";
@@ -323,7 +324,7 @@ export default function ServerDashboard() {
                 <h4 className="category-label">{cat}</h4>
                 <div className="menu-grid-compact">
                   {filteredMenu.filter((i) => i.category === cat).map((item) => {
-                    const sizes = Array.isArray(item.sizes) ? item.sizes : [];
+                    const sizes = getItemSizes(item);
                     const inCart = cart.filter((c) => c.id === item.id).reduce((s, c) => s + c.quantity, 0);
                     return (
                       <div key={item.id} className="menu-item-compact">
