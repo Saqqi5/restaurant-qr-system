@@ -162,6 +162,28 @@ export async function deleteRestaurant(restaurantId) {
     await deleteDoc(doc(domainMappingsCol(), restaurant.custom_domain));
   }
   await deleteDoc(restaurantDoc(restaurantId));
+
+  // Staff logins: a deleted restaurant must not leave orphaned logins
+  // that sign in to an empty dashboard (his 2026-11-19 catch). Disable
+  // every staff login of this restaurant — a disabled login is blocked
+  // at sign-in ("Your account is disabled..."), live, even if they are
+  // signed in right now. A multi-branch owner keeps their other
+  // branches: only this branch is unlinked from their lists, never
+  // disabled. (Platform owner / demo logins never appear here —
+  // getRestaurantUsers filters them out.)
+  const staff = await getRestaurantUsers(restaurantId);
+  for (const member of staff) {
+    const otherBranches = [...new Set([...(member.restaurant_ids || []), member.restaurant_id].filter(Boolean))].filter((id) => id !== restaurantId);
+    if (otherBranches.length > 0) {
+      await updateDoc(userDoc(member.id), {
+        restaurant_ids: otherBranches,
+        restaurant_id: otherBranches[0],
+        updated_at: serverTimestamp(),
+      });
+    } else {
+      await setUserDisabled(member.id, true);
+    }
+  }
 }
 
 // Reset a DEMO restaurant after visitors have played with it: delete all

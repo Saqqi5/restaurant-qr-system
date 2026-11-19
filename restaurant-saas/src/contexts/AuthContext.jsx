@@ -143,6 +143,15 @@ export function AuthProvider({ children }) {
     const accessible = getAccessibleRestaurantIds(profile);
     if (profile?.restaurant_id && profile?.role !== "super_admin" && accessible.length <= 1) {
       const restaurant = await getRestaurant(profile.restaurant_id);
+      // Safety net for a deleted restaurant: the delete disables its
+      // staff, but if a login somehow still points at a restaurant that
+      // no longer exists, block it here with a clear message instead of
+      // landing on an empty dashboard (his 2026-11-19 catch).
+      if (!restaurant) {
+        await signOut(auth);
+        setUserProfile(null);
+        throw new Error("This restaurant no longer exists. Please contact your administrator.");
+      }
       if (restaurant?.is_frozen === true) {
         await signOut(auth);
         setUserProfile(null);

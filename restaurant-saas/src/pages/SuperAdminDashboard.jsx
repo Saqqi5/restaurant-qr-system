@@ -444,8 +444,8 @@ export default function SuperAdminDashboard() {
             <div className="modal-body">
               <p className="modal-info">
                 Delete <strong>{deleting.name}</strong>? This permanently removes the
-                restaurant, its menu, orders and payments. Staff accounts are not
-                deleted. This cannot be undone.
+                restaurant, its menu, orders and payments. Staff logins are
+                disabled — they will no longer be able to sign in. This cannot be undone.
               </p>
             </div>
             <div className="modal-footer">
