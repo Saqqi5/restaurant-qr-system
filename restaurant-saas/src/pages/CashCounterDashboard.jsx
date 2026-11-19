@@ -29,8 +29,10 @@ export default function CashCounterDashboard() {
   const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
   // New customer order? Ping + toast at once, so the cashier can confirm
-  // the payment the moment it lands (his 2026-11-19 order).
-  const { toasts, dismiss } = useNotifications(restaurantId);
+  // the payment the moment it lands (his 2026-11-19 order). onServed:
+  // the moment an order is served and still unpaid, the counter hears
+  // "payment pending" for that table.
+  const { toasts, dismiss } = useNotifications(restaurantId, true, { onServed: true });
 
   // The cashier may delete a WRONG order only AFTER the kitchen has
   // confirmed it (a still-pending order is the server's to delete).
@@ -107,8 +109,18 @@ export default function CashCounterDashboard() {
     if (o.status === "cancelled") return false;
     if (filter === "unpaid") return o.payment_status === "unpaid" && o.status !== "pending";
     if (filter === "paid") return o.payment_status === "paid";
+    // Payment pending = served (or ready) and still unpaid — these are
+    // the tables that owe money right now. The banner above counts them.
+    if (filter === "pending-payment") return ["ready", "served"].includes(o.status) && o.payment_status !== "paid";
     return true;
   });
+
+  // The payment-pending summary (his 2026-11-19 order): how many tables
+  // have been served but not paid yet, and how much they owe in total.
+  const pendingPaymentOrders = orders.filter(
+    (o) => ["ready", "served"].includes(o.status) && o.payment_status !== "paid" && o.status !== "cancelled"
+  );
+  const pendingPaymentTotal = pendingPaymentOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0);
 
   const todayPaid = orders.filter((o) => {
     const today = new Date().toDateString();
@@ -200,14 +212,26 @@ export default function CashCounterDashboard() {
       {/* Counter Orders Tab */}
       {mainTab === "orders" && (
         <>
+          {/* Payment-pending summary (his 2026-11-19 order): tap it and
+              only the served-but-unpaid orders show below. */}
+          {pendingPaymentOrders.length > 0 && (
+            <button
+              type="button"
+              className="payment-pending-banner"
+              onClick={() => setFilter("pending-payment")}
+            >
+              <span>⏳ Payment pending — {pendingPaymentOrders.length} order{pendingPaymentOrders.length > 1 ? "s" : ""}</span>
+              <span>{formatPrice(pendingPaymentTotal, currency)} · Tap to view</span>
+            </button>
+          )}
           <div className="filter-tabs">
-            {["unpaid", "paid", "all"].map((f) => (
+            {["unpaid", "pending-payment", "paid", "all"].map((f) => (
               <button
                 key={f}
                 className={`filter-tab ${filter === f ? "active" : ""}`}
                 onClick={() => setFilter(f)}
               >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {f === "pending-payment" ? "Payment pending" : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
           </div>
@@ -222,7 +246,7 @@ export default function CashCounterDashboard() {
             {filteredOrders.map((order) => (
               <div
                 key={order.id}
-                className={`order-card ${selectedOrder?.id === order.id ? "selected" : ""}`}
+                className={`order-card ${selectedOrder?.id === order.id ? "selected" : ""} ${["ready", "served"].includes(order.status) && order.payment_status !== "paid" ? "payment-pending" : ""}`}
                 onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
               >
                 <div className="order-card-header">

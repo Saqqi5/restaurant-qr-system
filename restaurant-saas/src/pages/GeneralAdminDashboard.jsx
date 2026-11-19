@@ -24,6 +24,7 @@ import QRModal from "../components/admin/QRModal";
 import ConfirmModal from "../components/admin/ConfirmModal";
 import ReceiptModal from "../components/ReceiptModal";
 import AnalyticsPanel from "../components/admin/AnalyticsPanel";
+import { useNotifications, ToastContainer } from "../hooks/useNotifications";
 
 const ALL_TABS = ["menu", "orders", "payments", "analytics", "reviews", "staff", "qr"];
 // The branch manager sits ABOVE the restaurant admin (his 2026-11-19
@@ -43,6 +44,25 @@ export default function GeneralAdminDashboard() {
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
+  // Admin alert: EVERY new order — QR customer, staff Order Taker or
+  // delivery — pings + toasts here too (his 2026-11-19 order). In the
+  // all-branches view it listens to every branch, with the branch name
+  // in the toast.
+  const branchNames = useMemo(() => {
+    const map = {};
+    branches.forEach((b) => { map[b.id] = b.name; });
+    return map;
+  }, [branches]);
+  const { toasts, dismiss } = useNotifications(
+    isAllBranches ? accessibleRestaurantIds : restaurantId,
+    true,
+    { restaurantNames: branchNames, onServed: true }
+  );
+  // Payment-pending view (his 2026-11-19 order): tap the banner and the
+  // orders table shows only the served-but-unpaid orders. (The counts
+  // live below, next to visibleOrders — they read it, so they must sit
+  // after its declaration, not here.)
+  const [pendingOnly, setPendingOnly] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [payments, setPayments] = useState([]);
   const [staff, setStaff] = useState([]);
@@ -320,6 +340,16 @@ export default function GeneralAdminDashboard() {
     _currency: branchFor(o).currency || currency,
   }));
 
+  // Payment-pending summary (his 2026-11-19 order): served (or ready)
+  // but still unpaid — the tables that owe money right now.
+  const pendingPaymentOrders = visibleOrders.filter(
+    (o) => ["ready", "served"].includes(o.status) && o.payment_status !== "paid" && o.status !== "cancelled"
+  );
+  const pendingPaymentTotal = pendingPaymentOrders.reduce((s, o) => s + getOrderPayable(o).payable, 0);
+  const ordersShown = pendingOnly
+    ? ordersForTable.filter((o) => ["ready", "served"].includes(o.status) && o.payment_status !== "paid")
+    : ordersForTable;
+
   const pendingOrders = visibleOrders.filter((o) =>
     ["pending", "confirmed", "preparing"].includes(o.status)
   ).length;
@@ -513,7 +543,19 @@ export default function GeneralAdminDashboard() {
       {activeTab === "orders" && (
         <div className="tab-content">
           <p style={{ fontSize: "13px", color: "var(--color-muted)", margin: "0 0 12px" }}>{retentionNote}</p>
-          <OrdersTable orders={ordersForTable} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} showBranch={isAllBranches} />
+          {/* Payment-pending summary (his 2026-11-19 order): tap it and
+              only the served-but-unpaid orders show below. */}
+          {pendingPaymentOrders.length > 0 && (
+            <button
+              type="button"
+              className="payment-pending-banner"
+              onClick={() => setPendingOnly((v) => !v)}
+            >
+              <span>⏳ Payment pending — {pendingPaymentOrders.length} order{pendingPaymentOrders.length > 1 ? "s" : ""}</span>
+              <span>{formatPrice(pendingPaymentTotal, currency)}{pendingOnly ? " · ✕ Show all orders" : " · Tap to view"}</span>
+            </button>
+          )}
+          <OrdersTable orders={ordersShown} restaurantId={restaurantId} showActions={true} onSelectOrder={setReceiptOrder} showBranch={isAllBranches} />
         </div>
       )}
 
@@ -826,6 +868,7 @@ export default function GeneralAdminDashboard() {
           actor={userProfile ? { uid: userProfile.id, name: userProfile.name || userProfile.email, role: userProfile.role } : null}
         />
       )}
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </AdminLayout>
   );
 }

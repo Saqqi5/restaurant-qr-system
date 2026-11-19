@@ -41,7 +41,10 @@ export default function KitchenDashboard() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(new Set());
   const [kotOrder, setKotOrder] = useState(null);
-  const { toasts, dismiss } = useNotifications(restaurantId);
+  // Kitchen alert: EVERY new order — QR customer, staff Order Taker or
+  // delivery — gets a triple beep + a toast that STAYS on screen until
+  // the kitchen taps it away or starts the order (his 2026-11-19 order).
+  const { toasts, dismiss } = useNotifications(restaurantId, true, { persistent: true });
   // Live clock for the order timers — ticks every 30s so the elapsed
   // time on every card stays current without re-fetching.
   const [now, setNow] = useState(Date.now());

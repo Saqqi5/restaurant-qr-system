@@ -47,8 +47,14 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
         <div className="error-banner" style={{ marginBottom: 12 }}>{deleteError}</div>
       )}
       <div className="orders-list-admin">
-        {orders.map((order) => (
-          <div key={order.id} className="order-row-admin"
+        {orders.map((order) => {
+          // Served (or ready) but still unpaid = payment pending — the
+          // whole row turns RED so the admin sees at a glance which
+          // tables owe money (his 2026-11-19 order). Paid served orders
+          // stay their normal colour.
+          const paymentPending = ["ready", "served"].includes(order.status) && order.payment_status !== "paid";
+          return (
+          <div key={order.id} className={`order-row-admin${paymentPending ? " payment-pending" : ""}`}
             style={{ ...(order.status === "cancelled" ? { opacity: 0.65 } : {}), ...(onSelectOrder ? { cursor: "pointer" } : {}) }}
             onClick={onSelectOrder ? () => onSelectOrder(order) : undefined}
             title={onSelectOrder ? "Click to view slip" : undefined}>
@@ -73,8 +79,8 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
             </div>
             <div className="order-row-right">
               <span className="order-row-total">{formatPrice(getOrderPayable(order).payable, order._currency || currency)}</span>
-              <span className="status-dot" style={{ background: STATUS_COLORS[order.status] || "#888" }}>
-                {order.status === "out_for_delivery" ? "out for delivery" : order.status}
+              <span className="status-dot" style={{ background: paymentPending ? "#e05252" : STATUS_COLORS[order.status] || "#888" }}>
+                {order.status === "out_for_delivery" ? "out for delivery" : paymentPending ? "🔴 payment pending" : order.status}
               </span>
               <span className={`payment-dot ${order.payment_status}`}>
                 {order.payment_status === "paid"
@@ -96,7 +102,8 @@ export function OrdersTable({ orders, restaurantId, showActions = true, onSelect
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       {pendingDelete && (
         <ConfirmModal
