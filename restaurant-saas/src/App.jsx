@@ -27,6 +27,7 @@ import KitchenDashboard from "./pages/KitchenDashboard";
 import CashCounterDashboard from "./pages/CashCounterDashboard";
 import ServerDashboard from "./pages/ServerDashboard";
 import ProtectedRoute         from "./components/ProtectedRoute";
+import ErrorBoundary          from "./components/ErrorBoundary";
 import CapacitorNav           from "./components/CapacitorNav";
 import RestaurantSettingsPage from "./pages/RestaurantSettingsPage";
 import TableManagementPage    from "./pages/TableManagementPage";
@@ -129,6 +130,7 @@ function WithAdminTenant({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <ScrollToTop />
       <AuthProvider>
         <Routes>
@@ -244,6 +246,7 @@ export default function App() {
         </Routes>
         <CapacitorNav />
       </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
