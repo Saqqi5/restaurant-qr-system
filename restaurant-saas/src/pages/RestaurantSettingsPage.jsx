@@ -91,6 +91,11 @@ export default function RestaurantSettingsPage() {
   // delivery_override is set only by the administrator — never saved here.
   const [deliveryOverride, setDeliveryOverride] = useState(false);
   const [deliveryCurrency, setDeliveryCurrency] = useState("Rs.");
+  // domainInfo must be declared BEFORE deliveryLink (TDZ, 2026-11-20):
+  // deliveryLink reads domainInfo.custom_domain, and a const used before
+  // its own declaration throws "Cannot access before initialization" and
+  // blanks the whole page.
+  const [domainInfo, setDomainInfo] = useState({ custom_domain: null, domain_request: null });
   const deliveryAllowed = canUseDelivery(plan, { delivery_override: deliveryOverride });
   const deliveryLink = buildDeliveryUrl(restaurantId, "saas", domainInfo.custom_domain);
   const [loaded, setLoaded] = useState(false);
@@ -98,7 +103,6 @@ export default function RestaurantSettingsPage() {
   // when the form loaded / last saved, so handleSave can record exactly
   // what changed.
   const [savedForm, setSavedForm] = useState(null);
-  const [domainInfo, setDomainInfo] = useState({ custom_domain: null, domain_request: null });
   // Menu category order (customer menu): the restaurant's saved order, or
   // the standard Starters-first order until the admin reorders it below.
   // null = not loaded yet; saved with the form in handleSave.

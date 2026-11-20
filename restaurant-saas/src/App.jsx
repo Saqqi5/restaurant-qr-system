@@ -215,7 +215,7 @@ export default function App() {
               dishes or check a price without placing an order. */}
           <Route path="/admin/menu" element={
             <WithAdminTenant>
-              <ProtectedRoute role={["server", "general_admin", "cash_counter"]}>
+              <ProtectedRoute role={["server", "general_admin", "cash_counter", "branch_manager"]}>
                 <StaffMenuPage />
               </ProtectedRoute>
             </WithAdminTenant>
