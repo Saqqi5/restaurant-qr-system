@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   signInWithEmailAndPassword,
   signOut,
@@ -24,6 +24,12 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Guard against a stale onAuthStateChanged "user" event re-setting
+  // currentUser right after an explicit logout — the bottom bar would
+  // reappear on the login page (the bug he caught 2026-11-21). Set on
+  // logout, cleared on login. The listener only honours a user event
+  // while this is false.
+  const loggedOutRef = useRef(false);
   // Live trial/expiry state of the signed-in user's restaurant (null for
   // the super admin, and for restaurants with no expiry). trialBlocked is
   // true once the period has ended — the login is then blocked until the
@@ -47,6 +53,10 @@ export function AuthProvider({ children }) {
     const finish = () => { if (!settled) { settled = true; setLoading(false); } };
     const timer = setTimeout(finish, 5000);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // A stale "user" event arriving after an explicit logout must not
+      // restore the session — the user is gone, the login page is showing,
+      // and the bottom bar must stay hidden.
+      if (user && loggedOutRef.current) return;
       setCurrentUser(user);
       if (user) {
         const profile = await getUser(user.uid);
@@ -138,6 +148,7 @@ export function AuthProvider({ children }) {
   }, [currentUser]);
 
   async function login(email, password) {
+    loggedOutRef.current = false;
     const result = await signInWithEmailAndPassword(auth, email, password);
     const profile = await getUser(result.user.uid);
     // A disabled login may not sign in at all — not even to see a dashboard.
@@ -180,6 +191,10 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
+    // Mark logged-out FIRST, so a stale onAuthStateChanged "user" event
+    // (queued before signOut finished) cannot restore the session and
+    // bring the bottom bar back on the login page.
+    loggedOutRef.current = true;
     try { await signOut(auth); } catch (e) { /* still clear local state below */ }
     // Clear local auth state SYNCHRONOUSLY — never wait for the
     // onAuthStateChanged listener. Until currentUser is null, the bottom

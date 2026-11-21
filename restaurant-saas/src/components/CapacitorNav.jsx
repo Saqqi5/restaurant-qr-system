@@ -176,6 +176,14 @@ export default function CapacitorNav() {
   // Buy a Plan / Login) is ever shown in the app.
   if (!currentUser) return null;
 
+  // The bottom bar is signed-in ADMIN navigation only — it never shows
+  // on the login page or any public page, even if auth state is
+  // momentarily stale right after logout (the bug he caught 2026-11-21:
+  // Dashboard / Order Taker / History / Logout stayed visible on the
+  // login page after logging out as demoadmin). Every tab is an /admin
+  // route, so the bar only belongs on /admin pages.
+  if (!location.pathname.startsWith("/admin")) return null;
+
   // Signed in → the role's panel tabs.
   const tabs = ROLE_TABS[role] || ROLE_TABS.general_admin;
 
